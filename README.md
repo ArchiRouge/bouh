@@ -17,14 +17,38 @@ Ton héros de l'alpha (Archi404, Guerrier niveau 8, Bottes du Néant et ensemble
 client/          le jeu (c'est aussi le dossier embarqué dans l'app iOS)
   index.html     écran de création du héros et canevas
   config.js      ← adresse du serveur à renseigner
+  persist.js     sauvegarde durable dans l'app iOS (charge game.js)
   core.js        monde et simulation, partagés avec le serveur
   assets.js      direction artistique, entièrement procédurale
   game.js        rendu, interface, contrôles tactiles, réseau
 server/          serveur multijoueur (Node + ws)
 assets/          icône 1024 px et écran de lancement de l'app
+ios/             projet Xcode (généré par Capacitor, déjà configuré)
+.github/workflows/ios.yml   compilation iOS et envoi sur TestFlight sans Mac
 Dockerfile, fly.toml   déploiement du serveur
 capacitor.config.json  configuration de l'app iOS
 ```
+
+## Tester sur ton iPhone pendant le développement
+
+Le projet Xcode (`ios/`) est déjà prêt dans le dépôt. Deux façons d'installer le jeu sur l'iPhone :
+
+| | **A. Avec un Mac** (gratuit) | **B. Sans Mac : GitHub Actions → TestFlight** |
+|---|---|---|
+| Il faut | Xcode 26+, un câble, ton identifiant Apple | Apple Developer Program (99 $/an) |
+| Installer | `npm install && npx cap sync ios && npx cap open ios`, choisis ton équipe dans *Signing*, ▶ | Actions → **iOS** → *Run workflow* ; la version arrive dans l'app TestFlight |
+| Limite | l'app expire au bout de 7 jours (relancer ▶ suffit) | 90 jours par version, mises à jour en un clic |
+
+**Ta progression est conservée dans les deux cas** : chaque mise à jour garde la sauvegarde tant que l'identifiant de l'app
+(`appId` dans `capacitor.config.json`, `com.etheria.online`) ne change pas. Dans l'app, la sauvegarde est recopiée dans les
+préférences natives de l'iPhone (`client/persist.js`), qui font partie des sauvegardes iCloud. Seule la suppression de l'app l'efface.
+
+Pour la voie B, une seule fois :
+1. Sur appstoreconnect.apple.com → Apps → **+** : crée l'app avec le Bundle ID `com.etheria.online` (ou change `appId` s'il est pris).
+2. Users and Access → Integrations → App Store Connect API : crée une clé avec le rôle **Admin**, télécharge le `.p8`.
+3. Sur GitHub, Settings → Secrets and variables → Actions, ajoute `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (le contenu du `.p8`).
+4. Facultatif : la variable `TESTFLIGHT_ON_PUSH` = `true` envoie une nouvelle version sur TestFlight à chaque push.
+5. Sur l'iPhone, installe TestFlight ; tu es testeur interne automatiquement en tant que titulaire du compte.
 
 ## 1. Tester en local (5 minutes)
 
@@ -63,9 +87,7 @@ Prérequis :
 2. À la racine du projet :
    ```bash
    npm install
-   npm run ios:add       # crée le projet Xcode (dossier ios/)
-   npm run ios:assets    # génère l'icône et l'écran de lancement depuis assets/
-   npm run ios:sync
+   npm run ios:sync      # le projet Xcode ios/ existe déjà
    npm run ios:open      # ouvre Xcode
    ```
 3. Dans Xcode :

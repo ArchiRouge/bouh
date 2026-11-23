@@ -1,0 +1,96 @@
+# iOS builds without a Mac.
+#  - "Simulator build": runs on every push, needs no Apple account. It just checks that the app compiles.
+#  - "TestFlight": builds a signed release and uploads it to TestFlight, so the new version lands on the
+#    iPhone through the TestFlight app. Data on the phone (your hero) is kept across TestFlight updates.
+#    Runs when started by hand (Actions tab → iOS → Run workflow) or on every push if the repository
+#    variable TESTFLIGHT_ON_PUSH is "true". Needs these repository secrets (Settings → Secrets → Actions):
+#      APPLE_TEAM_ID       10-character Team ID (developer.apple.com → Membership)
+#      ASC_KEY_ID          App Store Connect API key ID (appstoreconnect.apple.com → Users and Access → Integrations, role Admin)
+#      ASC_ISSUER_ID       Issuer ID shown on the same page
+#      ASC_KEY_P8          full text of the downloaded AuthKey_XXXX.p8 file
+name: iOS
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    name: Simulator build
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx cap sync ios
+      - name: Build for the iOS Simulator
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0
+
+  testflight:
+    name: TestFlight
+    needs: simulator
+    if: github.event_name == 'workflow_dispatch' || vars.TESTFLIGHT_ON_PUSH == 'true'
+    runs-on: macos-26
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - name: Check secrets
+        run: |
+          for s in APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
+            if [ -z "${!s}" ]; then echo "::error::Missing repository secret $s (see the top of .github/workflows/ios.yml)"; exit 1; fi
+          done
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx cap sync ios
+      - name: Archive (signed automatically with the API key)
+        run: |
+          KEY="$RUNNER_TEMP/AuthKey.p8"; printf '%s' "$ASC_KEY_P8" > "$KEY"
+          BUNDLE_ID=$(node -p "require('./capacitor.config.json').appId")
+          BUILD=$(( ${{ github.run_number }} + 100 ))
+          echo "Bundle $BUNDLE_ID, build $BUILD"
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" CURRENT_PROJECT_VERSION="$BUILD" \
+            archive | tail -n 40
+          test "${PIPESTATUS[0]}" -eq 0
+      - name: Upload to TestFlight
+        run: |
+          cat > "$RUNNER_TEMP/export.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates -authenticationKeyPath "$RUNNER_TEMP/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+      - name: Clean up key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/AuthKey.p8"
