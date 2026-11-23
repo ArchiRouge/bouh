@@ -64,6 +64,13 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - Equipped gear is painted onto the character sprite (`paintChibi(look, dir, frame, blink, gear)`); sprites are 24×31 with the body offset by `CHAR_OX/CHAR_OY` = 4.
 - `C.gearStr(equip)` encodes head/chest/legs/feet/weapon; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
 
+## Rendering & smoothness
+- The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving
+  characters glide at screen-pixel precision; static art stays on the game-pixel grid. `adaptQuality()` halves `RQ` if the
+  average frame time exceeds 20 ms (full → half → 1). Tapping the minimap shows `fps` and `Q<RQ>`.
+- Avoid full-screen per-frame effects (composite modes, scaled smoothed draws): cache them per screen size (see `OVERLAY`).
+- Measure before/after with a CPU-throttled headless run; headless rAF timestamps snap to 16.7 ms, so judge movement by time, not per frame.
+
 ## Rules
 - Player progress must survive updates: never rename or remove fields of `saveData()` in `client/core.js`; new fields need a default in `addPlayer`.
 - After any change in `client/`, run `npx cap sync ios` before rebuilding.

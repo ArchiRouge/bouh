@@ -12,14 +12,14 @@
 
   /* ---------- canvases : monde (pixels fins) + interface (pixels plus gros) ---------- */
   const cvW = $('world'), cvU = $('ui'), g = cvW.getContext('2d'), u = cvU.getContext('2d');
-  let ST = 0, SB = 0, S = 4, SU = 6, VW = 300, VH = 600, UW = 200, UH = 400, K = S / SU, dpr = 1, grade = null, vign = null, sea = null, OVERLAY = null;
+  let ST = 0, SB = 0, S = 4, SU = 6, VW = 300, VH = 600, UW = 200, UH = 400, K = S / SU, dpr = 1, grade = null, vign = null, sea = null, OVERLAY = null, SUBX = 0, SUBY = 0, RQ = 0;
   function resize() {
     dpr = window.devicePixelRatio || 1;
     const pw = Math.round(innerWidth * dpr), ph = Math.round(innerHeight * dpr), pm = Math.min(pw, ph);
     S = Math.max(1, Math.round(pm / 240)); SU = Math.max(2, Math.round(pm / 195), S); // zoom : ~240 px de monde sur la largeur
     VW = Math.ceil(pw / S); VH = Math.ceil(ph / S); UW = Math.ceil(pw / SU); UH = Math.ceil(ph / SU); K = S / SU;
     const sp = document.getElementById('safe'); if (sp) { const cs = getComputedStyle(sp); ST = Math.round(parseFloat(cs.paddingTop || 0) * dpr / SU); SB = Math.round(parseFloat(cs.paddingBottom || 0) * dpr / SU); }
-    cvW.width = VW; cvW.height = VH; cvW.style.width = VW * S / dpr + 'px'; cvW.style.height = VH * S / dpr + 'px';
+    RQ = Math.min(RQ || S, S); cvW.width = VW * RQ; cvW.height = VH * RQ; cvW.style.width = VW * S / dpr + 'px'; cvW.style.height = VH * S / dpr + 'px'; // RQ sous-pixels par pixel de jeu : la caméra glisse finement
     cvU.width = UW; cvU.height = UH; cvU.style.width = UW * SU / dpr + 'px'; cvU.style.height = UH * SU / dpr + 'px';
     g.imageSmoothingEnabled = false; u.imageSmoothingEnabled = false;
     grade = g.createLinearGradient(0, 0, VW * 0.5, VH);
@@ -160,6 +160,7 @@
     e.preventDefault(); if (e.pointerType === 'touch') usedTouch = true;
     if (mode !== 'play') return;
     const p = toU(e);
+    if (Math.hypot(p.x - (UW - 27), p.y - (27 + ST)) < 25) { showFps = !showFps; return; } // mini-carte → compteur d'images/s
     if (p.x >= 3 && p.x <= 3 + Math.min(104, UW - 64) && p.y >= ST + 3 && p.y <= ST + 36) { openChar(); return; } // portrait → page personnage
     if (hudWalk && p.x >= hudWalk.x && p.x <= hudWalk.x + hudWalk.w && p.y >= hudWalk.y - 3 && p.y <= hudWalk.y + hudWalk.h + 3) { openWalk(); return; }
     if (talkRect && p.x >= talkRect.x - 3 && p.x <= talkRect.x + talkRect.w + 3 && p.y >= talkRect.y - 4 && p.y <= talkRect.y + talkRect.h + 4) { interact(); return; }
@@ -548,7 +549,7 @@
     if (mode !== 'play') { const [cx, cy] = ePx({ x: W.CX, y: W.CY, z: 1 }); tx = cx + Math.cos(time * 0.12) * 70; ty = cy + Math.sin(time * 0.12) * 36; }
     else { [tx, ty] = ePx(me); ty -= 10; }
     // caméra : verrouillée au pixel sur le héros (pas de tremblement), glisse seulement sur les grands sauts
-    if (mode === 'play' && Math.hypot(tx - camX, ty - camY) < 24) { camX = Math.round(tx); camY = Math.round(ty); }
+    if (mode === 'play' && Math.hypot(tx - camX, ty - camY) < 24) { camX = tx; camY = ty; }
     else { const k = Math.min(1, dt * 8); camX += (tx - camX) * k; camY += (ty - camY) * k; }
   }
 
@@ -576,7 +577,7 @@
     const L = 9 + Math.min(6, sp / 8), ax = sx + side * 3, ay = ny + 1;
     for (let k = 0; k <= L; k++) {
       const wave = Math.sin(time * 9 - k * 0.75 + (e.bph || 0)) * k * 0.14;
-      const x = Math.round(ax + dx * k - dy * wave), y = Math.round(ay + dy * k * 0.7 + dx * wave * side + k * 0.15);
+      const x = sx + Math.round(ax - sx + dx * k - dy * wave), y = sy + Math.round(ay - sy + dy * k * 0.7 + dx * wave * side + k * 0.15);
       g.fillStyle = k > L - 2 ? SCc[2] : SCc[0]; g.fillRect(x, y, 1, 2);
       if (k % 3 === 0) { g.fillStyle = SCc[1]; g.fillRect(x, y, 1, 1); }
       if (e.scarf === 2 && ((time * 4 + k) % 5) < 0.4) { g.fillStyle = '#ffffff'; g.fillRect(x, y - 1, 1, 1); }
@@ -584,7 +585,8 @@
   }
   function frameOf(e) { const f = Math.floor(e.anim) % 4; if (!e.moving && e.set.blinkF && ((time + (e.bph || e.x)) % 3.4) < 0.14) { if (e.face === 'front') return e.set.blinkF; if (e.face === 'side') return e.flip ? e.set.blinkSL : e.set.blinkS; } if (e.face === 'side') return (e.flip ? e.set.sideL : e.set.side)[f]; return e.set[e.face][f]; }
   function drawEntity(e, ox, oy) {
-    const sx = Math.round(ox + (e.x - e.y) * 16), sy = Math.round(oy + (e.x + e.y) * 8 - e.z * 8);
+    const fine = e.kind === 'char' || e.kind === 'npc' || e.kind === 'mob', snap = v => fine ? Math.round(v * RQ) / RQ : Math.round(v);
+    const sx = snap(ox + (e.x - e.y) * 16), sy = snap(oy + (e.x + e.y) * 8 - e.z * 8);
     if (sx < -50 || sx > VW + 50 || sy < -12 || sy > VH + 90) return;
     switch (e.kind) {
       case 'decor': { const img = e.anim ? e.anim[Math.floor(time * 1.6 + e.ph) % 2] : e.img; g.drawImage(img, sx - (img.width >> 1), sy - img.height + 2); return; }
@@ -646,10 +648,11 @@
   }
   function render() {
     labels.length = 0;
-    g.fillStyle = sea; g.fillRect(0, 0, VW, VH);
+    g.setTransform(RQ, 0, 0, RQ, 0, 0); g.fillStyle = sea; g.fillRect(0, 0, VW, VH);
     // (reflets de nuages sur la mer retirés : coûteux sur mobile)
     const shx = shake > 0 ? Math.round((Math.random() - .5) * 3) : 0, shy = shake > 0 ? Math.round((Math.random() - .5) * 3) : 0;
-    const ox = Math.round(VW / 2 - camX) + shx, oy = Math.round(VH / 2 - camY) + shy; lastOX = ox; lastOY = oy;
+    const fx = VW / 2 - camX + shx, fy = VH / 2 - camY + shy, ox = Math.floor(fx), oy = Math.floor(fy); lastOX = ox; lastOY = oy;
+    SUBX = Math.round((fx - ox) * RQ); SUBY = Math.round((fy - oy) * RQ); g.setTransform(RQ, 0, 0, RQ, SUBX, SUBY); g.imageSmoothingEnabled = false;
     for (const b of DYN) b.length = 0;
     const push = e => DYN[clamp(Math.floor(e.x + e.y), 0, NB - 1)].push(e);
     for (const m of mobs) if (m.alive) { m.kind = 'mob'; push(m); }
@@ -698,7 +701,7 @@
     for (const l of LAMPS) { const sx = ox + (l.x - l.y) * 16, sy = oy + (l.x + l.y) * 8 - l.z * 8 - 26; for (let k = 0; k < 3; k++) { const a = time * (0.7 + k * 0.3) + k * 2.1 + l.x; g.globalAlpha = 0.5 + 0.5 * Math.sin(time * 5 + k * 3 + l.y); g.fillStyle = '#fff4a8'; g.fillRect(Math.round(sx + Math.cos(a) * (9 + k * 3)), Math.round(sy + 6 + Math.sin(a * 1.3) * 7), 1, 1); } }
     g.globalAlpha = 1;
     // étalonnage + vignette : précalculés une fois par taille d'écran (un seul dessin par image)
-    g.drawImage(OVERLAY, 0, 0);
+    g.setTransform(RQ, 0, 0, RQ, 0, 0); g.drawImage(OVERLAY, 0, 0);
     g.imageSmoothingEnabled = false;
     // pollen
     for (const m of motes) {
@@ -753,7 +756,7 @@
     const ox = lastOX, oy = lastOY;
     // étiquettes du monde
     for (const l of labels) {
-      const x = Math.round(l.x * K), y = Math.round(l.y * K);
+      const x = Math.round((l.x + SUBX / RQ) * K), y = Math.round((l.y + SUBY / RQ) * K);
       if (l.npc) {
         text(u, l.t, x, y - 6, l.c, 'center');
         const mk = npcMark(l.npc);
@@ -772,7 +775,7 @@
       }
       if (mode === 'play' || l.t) text(u, l.t + (l.lv ? ' ' + l.lv : ''), x, y - 6, l.c, 'center');
     }
-    for (const f of floats) { const e = f.t / f.dur; u.globalAlpha = e > 0.75 ? (1 - e) * 4 : 1; text(u, f.text, (ox + f.x + f.vx * f.t) * K, (oy + f.y - Math.sqrt(e) * 22) * K, f.color, 'center', f.big ? 2 : 1); u.globalAlpha = 1; }
+    for (const f of floats) { const e = f.t / f.dur; u.globalAlpha = e > 0.75 ? (1 - e) * 4 : 1; text(u, f.text, (ox + SUBX / RQ + f.x + f.vx * f.t) * K, (oy + SUBY / RQ + f.y - Math.sqrt(e) * 22) * K, f.color, 'center', f.big ? 2 : 1); u.globalAlpha = 1; }
     if (mode !== 'play') return;
     u.save(); u.translate(0, ST);
     // panneau de statut
@@ -799,6 +802,7 @@
     if (lines.length) { u.fillStyle = 'rgba(16,24,90,.55)'; u.fillRect(3, y0, cw, lines.length * 7 + 3); lines.forEach((l, i) => text(u, l.text, 5, y0 + 1 + i * 7, l.color)); }
     // mini-carte et statut réseau
     drawMinimap(UW - 27, 27);
+    if (showFps) text(u, fpsShown + ' i/s Q' + RQ, UW - 27, 61, fpsShown >= 50 ? '#9cf07a' : fpsShown >= 30 ? '#ffd23f' : '#ff7a6a', 'center');
     text(u, netMode === 'online' ? online + ' en ligne' : 'Solo', UW - 27, 53, netMode === 'online' ? '#9cf07a' : '#c8c0d8', 'center');
     u.restore();
     // bannière de zone
@@ -869,7 +873,17 @@
 
   /* ---------- boucle ---------- */
   let last = performance.now();
+  // qualité adaptative : si le téléphone ne tient pas ~50 images/s, on divise la résolution du monde (pleine → moitié → pixel de jeu)
+  let perfN = 0, perfT = 0, perfGrace = 2, showFps = false, fpsN = 0, fpsT = 0, fpsShown = 0;
+  function adaptQuality(ms) {
+    if (mode !== 'play' || document.hidden || ms > 250) return;
+    perfN++; perfT += ms; if (perfT < 2000) return;
+    const avg = perfT / perfN; perfN = 0; perfT = 0;
+    if (perfGrace > 0) { perfGrace--; return; }
+    if (avg > 20 && RQ > 1) { RQ = Math.max(1, Math.floor(RQ / 2)); resize(); perfGrace = 1; }
+  }
   function loop(now) {
+    adaptQuality(now - last); fpsN++; fpsT += now - last; if (fpsT >= 500) { fpsShown = Math.round(fpsN * 1000 / fpsT); fpsN = 0; fpsT = 0; }
     const dt = clamp((now - last) / 1000, 0, 0.05); last = now;
     update(dt); render(); drawUI(); if (mode !== 'play') drawPreview(); else drawCharPreview();
     requestAnimationFrame(loop);
@@ -929,6 +943,6 @@
   }
   const saveOnLeave = () => { if (link) link.saveNow(); };
   addEventListener('pagehide', saveOnLeave); document.addEventListener('visibilitychange', () => { if (document.hidden) saveOnLeave(); });
-  window.__etheria = { get cam() { return [camX, camY, lastOX, lastOY, VW, VH]; }, me, mobs, others, get link() { return link; }, get mode() { return mode; }, play, input, W, get ART() { return ART; } };
+  window.__etheria = { get cam() { return [camX, camY, lastOX, lastOY, VW, VH, RQ, lastOX * RQ + SUBX, lastOY * RQ + SUBY]; }, me, mobs, others, get link() { return link; }, get mode() { return mode; }, play, input, W, get ART() { return ART; } };
   boot();
 })();
