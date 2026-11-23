@@ -1,6 +1,7 @@
 /* Pixels Worlds — direction artistique procédurale
-   Pixel art 16 bits façon JRPG : couleurs franches et saturées, ombrage en aplats (tramage léger),
-   lumière venant du haut-gauche, contours sombres bien lisibles, héros chibi dont l'équipement se voit. */
+   « Aquarelle 16 bits » : la lisibilité d'un Zelda de cartouche (tuiles nettes, silhouettes claires, contours),
+   la palette pastel harmonisée et l'atmosphère d'un livre d'aquarelles (ombres décalées vers le violet et le
+   bleu-vert, lumières crème, couleur propre à chaque zone), des héros chibi dont l'équipement se voit. */
 (function () {
   'use strict';
   const C = window.EtheriaCore;
@@ -19,11 +20,11 @@
     a(x, y) { if (x < 0 || y < 0 || x >= this.w || y >= this.h) return 0; return this.d[(y * this.w + x) * 4 + 3]; }
     col(x, y) { const k = (y * this.w + x) * 4; return [this.d[k], this.d[k + 1], this.d[k + 2]]; }
     outline(f, tint) {
-      f = f == null ? 0.5 : f; tint = tint || [22, 14, 40];
+      f = f == null ? 0.5 : f; tint = tint || [44, 26, 58];
       const add = [];
       for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) {
         if (this.a(x, y) > 0) continue;
-        for (const [a, b] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (this.a(x + a, y + b) > 100) { add.push([x, y, mix(mul(this.col(x + a, y + b), f * 0.6), tint, 0.62)]); break; }
+        for (const [a, b] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (this.a(x + a, y + b) > 100) { add.push([x, y, mix(mul(this.col(x + a, y + b), f * 0.7), tint, 0.55)]); break; }
       }
       for (const [x, y, c] of add) this.set(x, y, c);
       return this;
@@ -48,18 +49,22 @@
   }
 
   /* ---------- palettes ---------- */
-  const GRASS = R(['#1e5a46', '#237a44', '#2f9a46', '#45b84c', '#6cd256', '#9ee46a', '#d0f48c']);
-  const SAND = R(['#c09a6a', '#d8b47e', '#ead098', '#f6e4b4', '#fff4d8']);
-  const STONE = R(['#68668c', '#8280a4', '#9c9abc', '#b8b4d2', '#d6d2e6']);
-  const PATHC = R(['#8a5e3e', '#a8764a', '#c49260', '#dcae7a', '#f0cc9a']);
-  const CLIFF = R(['#3e2a2a', '#5e3c32', '#80543e', '#a0704c', '#c08e60', '#dcb07a']);
-  const MOSS = R(['#1e5a3a', '#257a3e', '#34a046', '#5cc456']);
-  const SANDC = R(['#7a5232', '#9a6a40', '#b8864e', '#d0a066']);
-  const STONEC = R(['#403e60', '#545274', '#6a688a', '#8280a0']);
-  const WATER = R(['#1c4ab0', '#2462cc', '#2e7ee0', '#3e9cee', '#5cbaf4', '#8ad8f8', '#c8f0fc']);
-  const FOAM = rgb('#eafcff');
-  C.ART_WATER_BG = '#2462cc';
+  const GRASS = R(['#2e5260', '#357468', '#47967a', '#66b088', '#90c896', '#bce0a4', '#e8f2c4']);
+  const SAND = R(['#b98f86', '#d2a894', '#e6c3a4', '#f3dcbc', '#fbefd8']);
+  const STONE = R(['#5f5c7e', '#7a7798', '#9693b2', '#b5b1cc', '#d8d3e6']);
+  const PATHC = R(['#8c6a6e', '#a8807a', '#c39c8c', '#dab9a2', '#eed6bd']);
+  const CLIFF = R(['#3a2c4c', '#523b5e', '#6e4e6c', '#8c6478', '#ab8088', '#c9a09c']);
+  const MOSS = R(['#2c4a5a', '#356460', '#4a8068', '#6a9e74']);
+  const SANDC = R(['#6e4e62', '#8a6670', '#a8807e', '#c49c8e']);
+  const STONEC = R(['#3c3a5c', '#504e70', '#666486', '#7e7c9c']);
+  const WATER = R(['#1e3f66', '#26567a', '#2f6f8a', '#3f8a98', '#62a8aa', '#96c8bc', '#d0e8d8']);
+  const FOAM = rgb('#f4f0e0');
+  C.ART_WATER_BG = '#26567a';
 
+  /* ---------- couleur propre à chaque zone (bourg, prairies, bois, terres sauvages) ---------- */
+  const ZT1 = rgb('#d8d27a'), ZT2 = rgb('#3e6a96'), ZT3 = rgb('#b8744a');
+  const smooth = (v, a, b) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  function zoneW(i, j) { const d = Math.hypot(i + 0.5 - C.CX, j + 0.5 - C.CY), a = smooth(d, 8, 10), b = smooth(d, 14, 16), c = smooth(d, 19.5, 21.5); return [1 - a, a * (1 - b), b * (1 - c), c]; }
   /* ---------- terrain ---------- */
   function buildTerrain(W) {
     const { MW, MH, TY, HT, idx, inb } = W;
@@ -113,6 +118,7 @@
         if (hR >= 0 && hR < h && dv < 0.05) v += 0.15;
         let col = c || ramp(top, v, gx, gy);
         if ((hBR < h && 1 - du < 0.06) || (hBL < h && 1 - dv < 0.06)) col = top[top.length - 1];
+        if (t === 2) { const zw = zoneW(i, j); if (zw[1]) col = mix(col, ZT1, 0.12 * zw[1]); if (zw[2]) col = mix(col, ZT2, 0.30 * zw[2]); if (zw[3]) col = mix(col, ZT3, 0.30 * zw[3]); col = col.map(Math.round); }
         P.set(x, y, col);
       }
       const left = x < 16, gx = gx0 + x;
@@ -179,7 +185,7 @@
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
       const n = pn(x / 8, y / 8, 1) * 0.65 + pn(x / 4, y / 4, 2) * 0.35;
       const a = clamp((n - 0.52) / 0.18, 0, 1);
-      P.set(x, y, [24, 30, 70], Math.round(a * 255));
+      P.set(x, y, [46, 36, 92], Math.round(a * 255));
     }
     return P.done();
   }
@@ -393,10 +399,14 @@
   const CROWN = (() => { const P = new Pix(9, 6); const g = R(['#a87818', '#f2c94c', '#fff0a0']); for (let x = 0; x < 9; x++) { P.set(x, 4, g[1]); P.set(x, 5, g[0]); } for (const x of [0, 4, 8]) { P.set(x, 1, g[2]); P.set(x, 2, g[1]); P.set(x, 3, g[1]); } for (const x of [2, 6]) { P.set(x, 3, g[1]); } P.set(4, 4, rgb('#e8414a')); P.set(1, 4, rgb('#4aa0f0')); P.set(7, 4, rgb('#4aa0f0')); P.outline(0.4); return P.done(); })();
 
   /* ---------- arbres et végétation ---------- */
-  const LEAF = R(['#123e3a', '#1a5e3c', '#24803e', '#38a444', '#5cc44c', '#96e06a']);
-  const PINE = R(['#0f3a3a', '#17503e', '#226a44', '#30864a', '#46a456']);
-  const BLOSSOM = R(['#9a3a7a', '#c4568e', '#e67aa8', '#f8a2c0', '#ffc8da', '#fff0f6']);
-  const BARK = R(['#3a2218', '#55321e', '#724626', '#905e32', '#ae7a44']);
+  const LEAF = R(['#1f3550', '#24505a', '#2f6c62', '#468a6a', '#6aa874', '#9cc884']);
+  const LEAF_BOIS = R(['#1c2048', '#26305e', '#2f4a72', '#3f6a86', '#5a8c9a', '#8ab4b0']);
+  const LEAF_TERRES = R(['#3a1c2c', '#5e2a32', '#8a3c34', '#b45a3a', '#d8824a', '#f0b070']);
+  const PINE_BOIS = R(['#161a40', '#1e2a52', '#263e62', '#30546e', '#44707a']);
+  const PINE_TERRES = R(['#2a1a2a', '#422430', '#5e3236', '#7c4a3e', '#9a6650']);
+  const PINE = R(['#1c2e4a', '#223f52', '#2c5458', '#3a6a5e', '#548466']);
+  const BLOSSOM = R(['#8a4a78', '#b0658e', '#d088a6', '#e8aabe', '#f6cbd6', '#fff0f2']);
+  const BARK = R(['#2e2238', '#463246', '#5e4450', '#7a5a5c', '#987468']);
   function paintRoundTree(seed, pal) {
     const r = mulberry32(seed), Wd = 36, Ht = 44, P = new Pix(Wd, Ht), c = Wd / 2;
     const tb = Ht - 1;
@@ -421,7 +431,8 @@
     P.outline(0.45);
     return P.done();
   }
-  function paintPine(seed) {
+  function paintPine(seed, pal) {
+    pal = pal || PINE;
     const r = mulberry32(seed), Wd = 26, Ht = 46, P = new Pix(Wd, Ht), c = 13;
     for (let y = 36; y < Ht; y++) for (let x = c - 1; x <= c + 1; x++) P.set(x, y, BARK[x === c - 1 ? 3 : 1]);
     const tiers = [[2, 14, 5], [9, 23, 8], [17, 32, 10.5], [25, 40, 12]];
@@ -431,7 +442,7 @@
         for (let x = Math.round(c - hw); x <= Math.round(c + hw); x++) {
           if (y === y1 && hash(x, y, seed) < 0.5) continue;
           const lx = (x - c) / hw; let v = 0.55 - lx * 0.35 + (1 - t) * 0.2 - (y / Ht) * 0.15 + (hash(x, y, seed + 1) - 0.5) * 0.18;
-          P.set(x, y, ramp(PINE, v, x, y));
+          P.set(x, y, ramp(pal, v, x, y));
         }
       }
     }
@@ -439,13 +450,14 @@
     P.outline(0.45);
     return P.done();
   }
-  function paintBush(seed, berries) {
+  function paintBush(seed, berries, pal) {
+    pal = pal || LEAF;
     const r = mulberry32(seed), P = new Pix(20, 14);
     const blobs = [{ x: 10, y: 8, r: 6 }, { x: 5, y: 9, r: 4.5 }, { x: 15, y: 9, r: 4.5 }, { x: 8 + r() * 4, y: 5, r: 4 }];
     for (let y = 0; y < 14; y++) for (let x = 0; x < 20; x++) {
       let best = null, bz = -9; for (const b of blobs) { const dx = (x + .5 - b.x) / b.r, dy = (y + .5 - b.y) / b.r, d = dx * dx + dy * dy; if (d <= 1 && y < 13) { const z = b.y * 0.2 + Math.sqrt(1 - d); if (z > bz) { bz = z; best = [dx, dy, d]; } } }
       if (!best) continue; const [dx, dy, d] = best; let v = 0.42 + 0.4 * -(dx * 0.6 + dy * 0.8) + (hash(x, y, seed) - 0.5) * 0.25; if (d > 0.8) v -= 0.15;
-      P.set(x, y, ramp(LEAF, v, x, y));
+      P.set(x, y, ramp(pal, v, x, y));
     }
     if (berries) for (let k = 0; k < 5; k++) { const x = 3 + r() * 14 | 0, y = 4 + r() * 7 | 0; if (P.a(x, y)) { P.set(x, y, rgb('#e83a5a')); P.set(x - 1, y - 1, rgb('#ff9aa8')); } }
     P.outline(0.45);
@@ -476,9 +488,9 @@
   function paintPebble(seed) { const P = new Pix(5, 3); P.set(1, 1, ROCKR[3]); P.set(2, 1, ROCKR[2]); P.set(2, 0, ROCKR[4]); if (seed % 2) P.set(3, 1, ROCKR[2]); P.outline(0.5); return P.done(); }
 
   /* ---------- maisons à colombages ---------- */
-  const ROOFS = [R(['#5c2018', '#842e22', '#a84430', '#c66244', '#de865a']), R(['#22305a', '#2e4478', '#405e9c', '#5a7cbc', '#7ea0d6']), R(['#283e26', '#36583a', '#4a7448', '#669456', '#88b26c']), R(['#4a2c1c', '#643c26', '#805234', '#9c6a44', '#b88656'])];
-  const PLASTER = R(['#b8a07a', '#d2bc94', '#e6d4ae', '#f4e6c6', '#fff4dc']);
-  const TIMBER = R(['#2e1a10', '#4a2c1a', '#664024']);
+  const ROOFS = [R(['#5a2a3a', '#7e3a44', '#a4504e', '#c46e60', '#de9478']), R(['#22344e', '#2c4a62', '#3c6478', '#56828e', '#7ea4a8']), R(['#2c3e3a', '#3a5648', '#4e7058', '#6a8c68', '#8eaa80']), R(['#3e2a40', '#563a52', '#704e62', '#8c6676', '#a8828a'])];
+  const PLASTER = R(['#b39a8a', '#cdb4a0', '#e2ccb4', '#f2e2cc', '#fdf3e2']);
+  const TIMBER = R(['#2c1a24', '#45283a', '#5e3a48']);
   function paintHouse(v) {
     const Hw = 24, Hr = 20, o = 0.2, ox = 40, oy = 42, P = new Pix(80, 78);
     const pr = (x, y, z) => [ox + (x - y) * 16, oy + (x + y) * 8 - z];
@@ -666,6 +678,8 @@
       oak: [11, 12, 13].map(s => paintRoundTree(s, LEAF)),
       blossom: [21, 22, 23].map(s => paintRoundTree(s, BLOSSOM)),
       pine: [31, 32, 33].map(s => paintPine(s)),
+      oak_2: [11, 12, 13].map(s => paintRoundTree(s, LEAF_BOIS)), pine_2: [31, 32, 33].map(s => paintPine(s, PINE_BOIS)), bush_2: [41, 42, 43].map((s, i) => paintBush(s, i === 1, LEAF_BOIS)),
+      oak_3: [11, 12, 13].map(s => paintRoundTree(s, LEAF_TERRES)), pine_3: [31, 32, 33].map(s => paintPine(s, PINE_TERRES)), bush_3: [41, 42, 43].map((s, i) => paintBush(s, i === 1, LEAF_TERRES)),
       bush: [41, 42, 43].map((s, i) => paintBush(s, i === 1)),
       rock: [51, 52, 53].map(s => paintRock(s))
     };

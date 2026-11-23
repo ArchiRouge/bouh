@@ -60,7 +60,7 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   `window.ETHERIA_CONFIG = { server: 'wss://<app>.fly.dev/ws' };` and `npx cap sync ios`.
 
 ## Art & visible gear
-- Art direction: bright 16-bit JRPG pixel art (saturated palettes, flat shading with light dithering, dark outlines, blue windows with white borders). All art is procedural in `client/assets.js`.
+- Art direction « aquarelle 16 bits »: old-school Zelda readability (clean tiles, clear silhouettes, plum-tinted outlines) + Gris-like harmonised pastel palettes with hue-shifted shadows (violet/teal) and cream lights + chibi heroes with visible gear. Each zone owns a colour, baked at paint time (grass tint, per-zone foliage sets `oak_2`/`oak_3`…) plus a cached per-zone grade that crossfades (`ZONE_LOOK`, `zoneGrade`): bourg warm dawn, prairies gold-jade, bois blue-violet mist + light shafts + fireflies, terres sauvages ember. UI: ink-indigo panels, thin cream borders, gold accents. All art is procedural in `client/assets.js`; atmosphere in `client/game.js`.
 - Equipped gear is painted onto the character sprite (`paintChibi(look, dir, frame, blink, gear)`); sprites are 24×31 with the body offset by `CHAR_OX/CHAR_OY` = 4.
 - `C.gearStr(equip)` encodes head/chest/legs/feet/weapon; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
 
