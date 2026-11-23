@@ -16,7 +16,7 @@
   function resize() {
     dpr = window.devicePixelRatio || 1;
     const pw = Math.round(innerWidth * dpr), ph = Math.round(innerHeight * dpr), pm = Math.min(pw, ph);
-    S = Math.max(1, Math.round(pm / 200)); SU = Math.max(2, Math.round(pm / 195), S); // caméra plus proche : l'équipement des héros se lit
+    S = Math.max(1, Math.round(pm / 240)); SU = Math.max(2, Math.round(pm / 195), S); // zoom : ~240 px de monde sur la largeur
     VW = Math.ceil(pw / S); VH = Math.ceil(ph / S); UW = Math.ceil(pw / SU); UH = Math.ceil(ph / SU); K = S / SU;
     const sp = document.getElementById('safe'); if (sp) { const cs = getComputedStyle(sp); ST = Math.round(parseFloat(cs.paddingTop || 0) * dpr / SU); SB = Math.round(parseFloat(cs.paddingBottom || 0) * dpr / SU); }
     cvW.width = VW; cvW.height = VH; cvW.style.width = VW * S / dpr + 'px'; cvW.style.height = VH * S / dpr + 'px';
@@ -177,6 +177,7 @@
     e.preventDefault(); if (e.pointerType === 'touch') usedTouch = true;
     if (mode !== 'play') return;
     const p = toU(e);
+    if (p.x >= 3 && p.x <= 3 + Math.min(104, UW - 64) && p.y >= ST + 3 && p.y <= ST + 36) { openChar(); return; } // portrait → page personnage
     if (hudWalk && p.x >= hudWalk.x && p.x <= hudWalk.x + hudWalk.w && p.y >= hudWalk.y - 3 && p.y <= hudWalk.y + hudWalk.h + 3) { openWalk(); return; }
     if (talkRect && p.x >= talkRect.x - 3 && p.x <= talkRect.x + talkRect.w + 3 && p.y >= talkRect.y - 4 && p.y <= talkRect.y + talkRect.h + 4) { interact(); return; }
     const b = hitBtn(p);
@@ -258,56 +259,85 @@
   $('clist').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.disabled || !link) return; if (b.dataset.r != null) link.send({ t: 'craft', r: +b.dataset.r }); if (b.dataset.scarf != null) link.send({ t: 'scarf', s: +b.dataset.scarf }); });
   $('cclose').addEventListener('click', () => { $('craft').hidden = true; craftNpc = null; });
   $('dcraft').addEventListener('click', () => openCraft(dlgNpc));
-  /* ---------- fiche de personnage & sac (façon WoW) ---------- */
+  /* ---------- page personnage : équipement, essayage, stats, sac, compétences ---------- */
   const iconCache2 = new Map();
   function iconURL(t) { let u0 = iconCache2.get(t); if (!u0) { const T = C.ITEMS[t]; u0 = ARTAPI.itemIcon(T.icon, T.c).toDataURL(); iconCache2.set(t, u0); } return u0; }
   function statLine(inst) { const st = C.itemStats(inst); return Object.keys(st).map(k => '+' + st[k] + ' ' + C.STAT_NAMES[k]).join(' · '); }
-  let charSig = '', sel = null; // sel = { from: 'bag'|'slot', i | slot }
-  function openChar() { if (mode !== 'play') return; charSig = ''; sel = null; renderChar(); $('char').hidden = false; input.atkBtn = false; joy.active = false; }
+  let charSig = '', sel = null, charTab = 'stats', bagFilter = 'all', sellArm = false, prevDir = 0, prevSet = null; // sel = { from: 'bag', i } | { slot }
+  const ARMOR = ['head', 'chest', 'legs', 'feet'];
+  function openChar() { if (mode !== 'play') return; charSig = ''; sel = null; sellArm = false; renderChar(); $('char').hidden = false; input.atkBtn = false; joy.active = false; }
   function slotHTML(sl) {
     const it = me.equip && me.equip[sl];
     return it ? `<button type="button" class="slot r${it[1]}${sel && sel.slot === sl ? ' sel' : ''}" data-slot="${sl}" aria-label="${C.ITEMS[it[0]].n}"><img src="${iconURL(it[0])}" alt=""></button><span>${C.SLOT_NAMES[sl]}</span>`
       : `<button type="button" class="slot empty" data-slot="${sl}" aria-label="${C.SLOT_NAMES[sl]} vide"></button><span>${C.SLOT_NAMES[sl]}</span>`;
+  }
+  // équipement « essayé » : celui du héros avec l'objet sélectionné du sac à la place (ou l'emplacement vidé)
+  function trialEquip() {
+    if (!sel || !me.equip) return null;
+    const e = Object.assign({}, me.equip);
+    if (sel.from === 'bag') { const inst = (me.bag || [])[sel.i]; if (!inst) return null; e[C.ITEMS[inst[0]].slot] = inst; return e; }
+    if (sel.slot) { e[sel.slot] = null; return e; }
+    return null;
   }
   function tipHTML(inst, equipped) {
     const T = C.ITEMS[inst[0]], R0 = C.RARITY[inst[1]], st = C.itemStats(inst), cur = !equipped && me.equip && me.equip[T.slot] ? C.itemStats(me.equip[T.slot]) : null;
     const keys = [...new Set([...Object.keys(st), ...(cur ? Object.keys(cur) : [])])];
     const lines0 = keys.map(k => { const v = st[k] || 0, d = cur ? v - (cur[k] || 0) : 0; return `<li>${v ? '+' + v : '–'} ${C.STAT_NAMES[k]}${cur && d ? ` <em class="${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d})</em>` : ''}</li>`; }).join('');
     const tooLow = me.lvl < T.lvl, lines = lines0 + (T.speed ? `<li>+${Math.round(T.speed * 100)} % vitesse de déplacement</li>` : '') + (T.fx === 'void' ? '<li class="lore">Laisse des empreintes de néant.</li>' : '') + (T.lore ? `<li class="lore">« ${T.lore} »</li>` : '');
-    return `<b style="color:${R0[1]}">${T.n}</b><small>${R0[0]} · ${C.SLOT_NAMES[T.slot]} · <span class="${tooLow ? 'no' : ''}">Niveau ${T.lvl}</span></small><ul>${lines}</ul>${cur ? '<small>Comparé à ton objet équipé</small>' : ''}
-      <div class="tipb">${equipped ? `<button type="button" data-act="unequip">Retirer</button>` : `<button type="button" data-act="equip" ${tooLow ? 'disabled' : ''}>Équiper</button><button type="button" data-act="sell" class="sell">Vendre ${C.itemValue(inst)} PO</button>`}</div>`;
+    const sellBtn = `<button type="button" data-act="sell" class="sell">${sellArm ? 'Confirmer la vente' : 'Vendre ' + C.itemValue(inst) + ' PO'}</button>`;
+    return `<b style="color:${R0[1]}">${T.n}</b><small>${R0[0]} · ${C.SLOT_NAMES[T.slot]} · <span class="${tooLow ? 'no' : ''}">Niveau ${T.lvl}${tooLow ? ' requis' : ''}</span></small><ul>${lines}</ul>${cur ? '<small>Comparé à ton objet équipé · stats ci-dessous avec cet objet</small>' : ''}
+      <div class="tipb">${equipped ? `<button type="button" data-act="unequip">Retirer</button>` : `<button type="button" data-act="equip" ${tooLow ? 'disabled' : ''}>Équiper</button>${sellBtn}`}</div>`;
   }
+  function statRows(rows) { return rows.map(([k, v, d, unit]) => `<div><span>${k}</span><b>${v == null ? '–' : v + (unit || '')}${d ? `<em class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}${unit || ''}</em>` : ''}</b></div>`).join(''); }
   function renderChar() {
-    const sig = JSON.stringify([me.equip, me.bag, me.lvl, me.gold, sel]); if (sig === charSig) return; charSig = sig;
-    $('chsub').textContent = me.name + ' · ' + CL().name + ' niveau ' + me.lvl + ' · ' + me.gold + ' PO';
+    const sig = JSON.stringify([me.equip, me.bag, me.lvl, me.xp, me.gold, sel, charTab, bagFilter, sellArm]); if (sig === charSig) return; charSig = sig;
+    const K0 = CL(), bag = me.bag || [];
+    $('chtitle').textContent = me.name; $('chsub').textContent = K0.name + ' · niveau ' + me.lvl + ' · ' + fmt(me.gold || 0) + ' PO';
+    const xpf = me.need ? Math.min(1, (me.xp || 0) / me.need) : 0; $('chxp').style.width = (xpf * 100).toFixed(1) + '%'; $('chxpt').textContent = 'XP ' + fmt(me.xp || 0) + ' / ' + fmt(me.need || 0);
     $('slotsL').innerHTML = ['head', 'chest', 'legs'].map(slotHTML).join('');
     $('slotsR').innerHTML = ['weapon', 'feet', 'trinket'].map(slotHTML).join('');
-    const S2 = me.stats || {};
-    $('chstats').innerHTML = [['Force', S2.str], ['Endurance', S2.sta], ['Intelligence', S2.int], ['Agilité', S2.agi], ['Armure', S2.armor], ['Attaque', Math.round(me.atk || 0)], ['Points de vie', me.maxhp], ['Points de mana', me.maxmp], ['Critique', Math.round((me.crit || 0) * 100) + ' %'], ['Réduction', Math.round((me.red || 0) * 100) + ' %'], ['Vitesse', Math.round((me.speed || 1) * 100) + ' %']].map(([k, v]) => `<div><span>${k}</span><b>${v == null ? '–' : v}</b></div>`).join('');
-    const bag = me.bag || [];
-    const K0 = CL();
+    // stats actuelles, et différence si un objet est essayé
+    const now = C.computeStats(me.lvl, me.equip, me.cls), te = trialEquip(), tr = te ? C.computeStats(me.lvl, te, me.cls) : null;
+    const dv = (a, b) => tr ? Math.round(b) - Math.round(a) : 0, S2 = now.stats, T2 = tr ? tr.stats : S2;
+    $('chattr').innerHTML = statRows([['Force', S2.str, dv(S2.str, T2.str)], ['Endurance', S2.sta, dv(S2.sta, T2.sta)], ['Intelligence', S2.int, dv(S2.int, T2.int)], ['Agilité', S2.agi, dv(S2.agi, T2.agi)], ['Armure', S2.armor, dv(S2.armor, T2.armor)]]);
+    const P = (x) => Math.round(x * 100);
+    $('chstats').innerHTML = statRows([['Attaque', Math.round(now.atk), tr ? dv(now.atk, tr.atk) : 0], ['Points de vie', now.maxhp, tr ? dv(now.maxhp, tr.maxhp) : 0], ['Points de mana', now.maxmp, tr ? dv(now.maxmp, tr.maxmp) : 0], ['Critique', P(now.crit), tr ? P(tr.crit) - P(now.crit) : 0, ' %'], ['Réduction', P(now.red), tr ? P(tr.red) - P(now.red) : 0, ' %'], ['Vitesse', P(now.speed), tr ? P(tr.speed) - P(now.speed) : 0, ' %']]);
     $('abil').innerHTML = [Object.assign({ lvl: 1, desc: 'Attaque de base.' }, K0.basic), ...K0.ab].map(A => `<li class="${me.lvl < A.lvl ? 'lock' : ''}"><img src="${ART.icons['a_' + A.icon].toDataURL()}" alt=""><div><b>${A.name}</b><small>${me.lvl < A.lvl ? 'Niveau ' + A.lvl + ' · ' : ''}${A.mp ? A.mp + ' PM · ' : ''}${A.cd ? 'recharge ' + A.cd + ' s · ' : ''}${A.desc}</small></div></li>`).join('');
-    $('bagn').textContent = bag.length + ' / ' + C.BAG_SIZE;
-    let cells = ''; for (let i = 0; i < C.BAG_SIZE; i++) { const it = bag[i]; cells += it ? `<button type="button" class="slot r${it[1]}${sel && sel.from === 'bag' && sel.i === i ? ' sel' : ''}" data-bag="${i}" aria-label="${C.ITEMS[it[0]].n}"><img src="${iconURL(it[0])}" alt=""></button>` : '<span class="slot empty"></span>'; }
+    $('bagn').textContent = bag.length + '/' + C.BAG_SIZE;
+    const pass = it => { const sl = C.ITEMS[it[0]].slot; return bagFilter === 'all' || (bagFilter === 'armor' ? ARMOR.includes(sl) : sl === bagFilter); };
+    let cells = ''; for (let i = 0; i < C.BAG_SIZE; i++) { const it = bag[i]; cells += it ? `<button type="button" class="slot r${it[1]}${sel && sel.from === 'bag' && sel.i === i ? ' sel' : ''}${pass(it) ? '' : ' dim'}${me.lvl < C.ITEMS[it[0]].lvl ? ' low' : ''}" data-bag="${i}" aria-label="${C.ITEMS[it[0]].n}"><img src="${iconURL(it[0])}" alt=""></button>` : '<span class="slot empty"></span>'; }
     $('bag').innerHTML = cells;
+    for (const b of $('bagf').children) b.classList.toggle('on', b.dataset.f === bagFilter);
+    for (const b of document.querySelectorAll('#char .tabs button')) { const on = b.dataset.tab === charTab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); $('tab-' + b.dataset.tab).hidden = !on; }
     let inst = null, equipped = false;
     if (sel && sel.from === 'bag') inst = bag[sel.i]; else if (sel && sel.slot) { inst = me.equip && me.equip[sel.slot]; equipped = true; }
     $('tip').hidden = !inst; if (inst) $('tip').innerHTML = tipHTML(inst, equipped);
+    // aperçu : le héros porte l'objet essayé
+    prevSet = te && sel.from === 'bag' ? ARTAPI.charSet(look, C.gearStr(te)) : null;
+    $('trying').textContent = prevSet ? 'Essayage' : '';
   }
   $('char').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
-    if (b.dataset.bag != null) { sel = { from: 'bag', i: +b.dataset.bag }; renderChar(); return; }
-    if (b.dataset.slot != null) { sel = me.equip && me.equip[b.dataset.slot] ? { slot: b.dataset.slot } : null; renderChar(); return; }
+    if (b.id === 'chclose') { $('char').hidden = true; sel = null; prevSet = null; return; }
+    if (b.id === 'rotl' || b.id === 'rotr') { prevDir = (prevDir + (b.id === 'rotr' ? 1 : 3)) % 4; return; }
+    if (b.dataset.tab) { charTab = b.dataset.tab; renderChar(); return; }
+    if (b.dataset.f) { bagFilter = b.dataset.f; renderChar(); return; }
+    if (b.dataset.bag != null) { const i = +b.dataset.bag; sel = sel && sel.from === 'bag' && sel.i === i ? null : { from: 'bag', i }; sellArm = false; renderChar(); return; }
+    if (b.dataset.slot != null) { const sl = b.dataset.slot; sel = me.equip && me.equip[sl] && !(sel && sel.slot === sl) ? { slot: sl } : null; sellArm = false; if (!sel && !(me.equip && me.equip[sl])) { charTab = 'bag'; bagFilter = sl === 'weapon' ? 'weapon' : sl === 'trinket' ? 'trinket' : 'armor'; } renderChar(); return; }
     if (b.dataset.act && link && sel) {
+      if (b.dataset.act === 'sell') { const inst = (me.bag || [])[sel.i]; if (inst && inst[1] >= 2 && !sellArm) { sellArm = true; renderChar(); return; } link.send({ t: 'sell', b: sel.i }); }
       if (b.dataset.act === 'equip') link.send({ t: 'equip', b: sel.i });
-      if (b.dataset.act === 'sell') link.send({ t: 'sell', b: sel.i });
       if (b.dataset.act === 'unequip') link.send({ t: 'unequip', s: sel.slot });
-      sel = null; charSig = '';
+      sel = null; sellArm = false; prevSet = null; charSig = '';
     }
-    if (b.id === 'chclose') { $('char').hidden = true; }
   });
   const chp = $('chprev').getContext('2d'); chp.imageSmoothingEnabled = false;
-  function drawCharPreview() { if ($('char').hidden || !me.set) return; chp.clearRect(0, 0, 32, 32); const fr = Math.floor(time * 2) % 4 === 0 ? (me.set.blinkF || me.set.front[0]) : me.set.front[0]; chp.fillStyle = 'rgba(24,16,48,.3)'; chp.fillRect(10, 29, 12, 2); chp.drawImage(fr, 4, -1); }
+  function drawCharPreview() {
+    if ($('char').hidden || !me.set) return;
+    const set = prevSet || me.set, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 5) % 4;
+    const img = d === 'sideL' ? set.sideL[fr] : d === 'side' ? set.side[fr] : set[d][Math.floor(time * 2) % 4 === 0 && d === 'front' ? 0 : fr];
+    chp.clearRect(0, 0, 32, 34); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(10, 31, 12, 2); chp.drawImage(img, 4, 1);
+  }
   const STEPS = window.EtheriaSteps || { native: false, collect: async () => 0 };
   function openWalk() { walkSig = ''; renderWalk(); $('walk').hidden = false; input.atkBtn = false; joy.active = false; }
   function renderWalk() {

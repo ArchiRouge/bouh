@@ -121,6 +121,7 @@ Apple exige, pour une app avec du contenu généré par les joueurs (tchat) :
 ## Systèmes de jeu
 
 - **Équipement façon WoW** : 6 emplacements (tête, torse, jambes, pieds, arme, bijou), 20 objets, 4 raretés (commun, inhabituel, rare, épique), caractéristiques Force / Endurance / Intelligence / Agilité / Armure, butin personnel sur les monstres, comparaison avec l'objet équipé. Touche **I** ou le bouton sac.
+- **Page personnage** (bouton sac, portrait en haut à gauche, ou touche I) : équipement sur 6 emplacements, aperçu du héros qui tourne, **essayage** d'un objet du sac avec gains/pertes de stats en vert/rouge, onglets Stats / Sac (filtres armes, armures, bijoux) / Compétences, confirmation avant de vendre un objet rare ou mieux.
 - **Équipement visible** : casque, capuche ou couronne, torse (tunique ou plastron avec épaulières), jambes, bottes et arme en main sont dessinés sur le héros, dans les 4 directions et pour les autres joueurs. Les objets rares et plus ont des finitions dorées, les armes épiques et uniques scintillent.
 - **Direction artistique** : pixel art 16 bits façon JRPG, couleurs franches, contours sombres, fenêtres bleues à bord blanc.
 - **Marche réelle → cueillette** : 100 pas = 1 Éther (12 000 pas/jour max, +15 Éther offerts chaque jour). L'Éther sert à récolter herbes, bois et quartz ; le métier de cueillette monte de niveau et débloque les recettes de Mira et Bran.

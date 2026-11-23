@@ -59,10 +59,21 @@ h2{margin:0;font-size:24px;color:#ffe27a;font-weight:600}#drole{margin:0;font-si
 .stat{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:16px}.stat b{color:#bfe6ff;font-weight:600}
 .meter{height:10px;margin-top:6px;background:#141c5c;border:2px solid #1a0f1c}.meter i{display:block;height:100%;background:linear-gradient(#a8dcff,#5a98d8);width:0}.meter.g i{background:linear-gradient(#c8f0a0,#6ac050)}
 .swatches{display:flex;gap:8px}.sw{width:32px;height:32px;border:2px solid #1a0f1c;cursor:pointer;padding:0}.sw.on{box-shadow:0 0 0 2px #ffe27a}
-.charcard{width:min(380px,100%)}
+.page{place-items:start center;overflow:auto;background:rgba(6,8,30,.72)}
+.charcard{width:min(420px,100%);max-height:none;min-height:calc(100% - 4px);box-sizing:border-box;background:linear-gradient(180deg,#283ab0,#121a68)}
+.chhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.chhead .muted{margin-top:2px}
+.xbtn{flex:none;width:44px;height:44px;font:inherit;font-size:28px;line-height:1;color:var(--ink);background:#2c3c9a;border:2px solid #0a0c2a;border-radius:6px;cursor:pointer}
+.xp{position:relative;height:14px;margin-top:8px;background:#141c5c;border:2px solid #0a0c2a}.xp i{display:block;height:100%;width:0;background:linear-gradient(#c8f0a0,#6ac050)}.xp span{position:absolute;inset:0;font-size:11px;line-height:12px;text-align:center;color:#fff;text-shadow:0 1px 0 #0a0c2a}
+.stage{display:grid;justify-items:center;gap:4px}
+.turn{display:flex;align-items:center;gap:6px}.turn button{width:36px;height:32px;font:inherit;font-size:20px;color:var(--ink);background:#2c3c9a;border:2px solid #0a0c2a;cursor:pointer}
+#trying{min-width:64px;text-align:center;font-size:12px;color:#ffe27a}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:12px}.tabs button{min-height:40px;font:inherit;font-size:15px;color:#c8d0f0;background:#141c5c;border:2px solid #0a0c2a;cursor:pointer}.tabs button.on{color:#2a1a10;background:linear-gradient(#ffe27a,#e0a83a);font-weight:600}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 8px}.filters button{min-height:34px;padding:0 10px;font:inherit;font-size:14px;color:#c8d0f0;background:#141c5c;border:2px solid #0a0c2a;cursor:pointer}.filters button.on{color:#fff;border-color:#f4f6ff}
+.cstats .up{color:#9cf07a}.cstats .down{color:#ff8a7a}.cstats em{font-style:normal;font-size:13px;margin-left:4px}
+.slot.dim{opacity:.35}.slot.low{box-shadow:inset 0 0 0 2px #1a0f1c,inset 0 0 0 30px rgba(255,60,60,.18)}
 .doll{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:10px}
 .doll .col{display:grid;gap:4px;justify-items:center}.doll .col span{font-size:12px;color:#b8b0c8;margin-bottom:4px}
-#chprev{position:static;width:100%;max-width:128px;aspect-ratio:1;justify-self:center;background:radial-gradient(circle at 50% 75%,#4a6a7a 0 30%,#33405a 31% 46%,transparent 47%)}
+#chprev{position:static;width:128px;height:136px;justify-self:center;background:radial-gradient(circle at 50% 75%,#4a6a7a 0 30%,#33405a 31% 46%,transparent 47%)}
 .slot{width:48px;height:48px;padding:0;display:grid;place-items:center;background:#141c5c;border:2px solid #6a7ad0;box-shadow:inset 0 0 0 2px #1a0f1c;cursor:pointer}
 .slot img{width:42px;height:42px;image-rendering:pixelated}.slot.empty{cursor:default;opacity:.55}
 .slot.r0{border-color:#ece8f4}.slot.r1{border-color:#5ee870}.slot.r2{border-color:#5aa8ff}.slot.r3{border-color:#c47cff;box-shadow:inset 0 0 0 2px #1a0f1c,0 0 8px #c47cff}
@@ -141,18 +152,34 @@ h3{margin:14px 0 6px;font-size:18px;color:#ffe27a;font-weight:600}h3 span{font-s
     <button id="wclose" type="button" class="link">Fermer</button>
   </div>
 </div>
-<div id="char" class="overlay" hidden>
-  <div class="card panel2 charcard" role="dialog" aria-labelledby="chtitle">
-    <h2 id="chtitle">Personnage</h2>
-    <p id="chsub" class="muted"></p>
-    <div class="doll"><div class="col" id="slotsL"></div><canvas id="chprev" width="32" height="32"></canvas><div class="col" id="slotsR"></div></div>
+<div id="char" class="overlay page" hidden>
+  <div class="card charcard" role="dialog" aria-labelledby="chtitle">
+    <header class="chhead">
+      <div><h2 id="chtitle">Personnage</h2><p id="chsub" class="muted"></p></div>
+      <button id="chclose" type="button" class="xbtn" aria-label="Fermer">×</button>
+    </header>
+    <div class="xp"><i id="chxp"></i><span id="chxpt"></span></div>
+    <div class="doll">
+      <div class="col" id="slotsL"></div>
+      <div class="stage">
+        <canvas id="chprev" width="32" height="34"></canvas>
+        <div class="turn"><button type="button" id="rotl" aria-label="Tourner à gauche">‹</button><span id="trying"></span><button type="button" id="rotr" aria-label="Tourner à droite">›</button></div>
+      </div>
+      <div class="col" id="slotsR"></div>
+    </div>
     <div id="tip" class="tip" hidden></div>
-    <div id="chstats" class="cstats"></div>
-    <h3>Compétences</h3>
-    <ul id="abil" class="abil"></ul>
-    <h3>Sac <span id="bagn"></span></h3>
-    <div id="bag" class="bag"></div>
-    <button id="chclose" type="button" class="link">Fermer</button>
+    <nav class="tabs" role="tablist">
+      <button type="button" role="tab" data-tab="stats" class="on">Stats</button>
+      <button type="button" role="tab" data-tab="bag">Sac <span id="bagn"></span></button>
+      <button type="button" role="tab" data-tab="skills">Compétences</button>
+    </nav>
+    <section id="tab-stats"><h3>Attributs</h3><div id="chattr" class="cstats"></div><h3>Combat</h3><div id="chstats" class="cstats"></div></section>
+    <section id="tab-bag" hidden>
+      <div class="filters" id="bagf"><button type="button" data-f="all" class="on">Tout</button><button type="button" data-f="weapon">Armes</button><button type="button" data-f="armor">Armures</button><button type="button" data-f="trinket">Bijoux</button></div>
+      <div id="bag" class="bag"></div>
+      <p class="muted small">Touche un objet pour l'essayer : ton héros le porte en aperçu et les stats montrent le gain ou la perte.</p>
+    </section>
+    <section id="tab-skills" hidden><ul id="abil" class="abil"></ul></section>
   </div>
 </div>
 <div id="chatbox" hidden><input id="chatin" maxlength="80" placeholder="Message pour tous…" enterkeyhint="send"><button id="chatsend" type="button">OK</button><button id="chatclose" type="button" aria-label="Fermer">×</button></div>
