@@ -203,7 +203,7 @@
   function itemRamp(hex) {
     let r = rampCache.get(hex); if (r) return r;
     const b = rgb(hex), sh = [26, 20, 70], li = [255, 250, 230];
-    r = [mix(mul(b, 0.5), sh, 0.35), mix(mul(b, 0.75), sh, 0.15), b, mix(b, li, 0.45)].map(c => c.map(Math.round));
+    r = [mix(mul(b, 0.42), sh, 0.38), mix(mul(b, 0.72), sh, 0.16), b, mix(b, li, 0.52)].map(c => c.map(Math.round));
     rampCache.set(hex, r); return r;
   }
   const metal = (hex, k) => itemRamp(hex).map(c => mix(c, STEEL[Math.min(4, 1 + Math.floor(k))], 0.35).map(Math.round));
@@ -340,7 +340,15 @@
     // arme en main (devant le corps)
     if (wpI && dir === 'front') paintWeapon(P, wpI.icon, wpI.c, gr('weapon'), 4, 20 + step, false);
     if (wpI && dir === 'side') paintWeapon(P, wpI.icon, wpI.c, gr('weapon'), 9 + step, 20, true);
-    P0.outline(0.3, [18, 10, 34]);
+    // lumière de contour (haut-gauche) : détache les formes
+    { const d = P0.d, w = P0.w, h = P0.h, A = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : d[(y * w + x) * 4 + 3], lit = [];
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (A(x, y) && (!A(x - 1, y) || !A(x, y - 1))) lit.push(y * w + x);
+      for (const k of lit) { const q = k * 4; d[q] = Math.min(255, d[q] * 0.78 + 255 * 0.22); d[q + 1] = Math.min(255, d[q + 1] * 0.78 + 250 * 0.22); d[q + 2] = Math.min(255, d[q + 2] * 0.78 + 235 * 0.22); } }
+    P0.outline(0, [30, 16, 40]);
+    // halo sombre semi-transparent autour du contour : le héros ressort sur tous les sols
+    { const d = P0.d, w = P0.w, h = P0.h, A = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : d[(y * w + x) * 4 + 3], halo = [];
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!A(x, y) && (A(x + 1, y) > 200 || A(x - 1, y) > 200 || A(x, y + 1) > 200 || A(x, y - 1) > 200)) halo.push(y * w + x);
+      for (const k of halo) { const q = k * 4; d[q] = 16; d[q + 1] = 10; d[q + 2] = 26; d[q + 3] = 70; } }
     return P0.done();
   }
   const charCache = new Map();

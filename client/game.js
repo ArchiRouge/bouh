@@ -587,16 +587,17 @@
     r = r || 10; const n = 12, span = 2.4 * Math.min(1, prog * 1.6);
     for (let i = 0; i <= n; i++) { const a = ang - 1.2 + span * i / n; g.fillStyle = '#fffbe0'; g.fillRect(Math.round(cx + Math.cos(a) * r), Math.round(cy + Math.sin(a) * r * 0.7), 1, 1); g.fillStyle = 'rgba(255,210,80,.8)'; g.fillRect(Math.round(cx + Math.cos(a) * (r + 1)), Math.round(cy + Math.sin(a) * (r + 1) * 0.7), 1, 1); g.fillStyle = 'rgba(255,255,255,.5)'; g.fillRect(Math.round(cx + Math.cos(a) * (r - 1)), Math.round(cy + Math.sin(a) * (r - 1) * 0.7), 1, 1); }
   }
-  function drawScarf(e, sx, sy) {
+  function drawScarf(e, sx, sy, ck) {
+    ck = ck || 1;
     let dx = -(e.svx || 0), dy = -(e.svy || 0); const sp = Math.hypot(dx, dy);
     if (sp < 6) { dx = e.face === 'side' && !e.flip ? -1 : 1; dy = 0.15 + Math.sin(time * 1.3 + (e.bph || 0)) * 0.25; } else { dx /= sp; dy /= sp; }
     const m = Math.hypot(dx, dy); dx /= m; dy /= m;
-    const side = dx >= 0 ? 1 : -1, ny = sy - 10;
+    const side = dx >= 0 ? 1 : -1, ny = sy - Math.round(10 * ck);
     // nœud autour du cou
     const SCc = C.SCARVES[e.scarf || 0] || C.SCARVES[0];
-    if (e.face !== 'back') { g.fillStyle = SCc[0]; g.fillRect(sx - 3, ny, 6, 2); g.fillStyle = SCc[1]; g.fillRect(sx - 3, ny, 6, 1); }
-    else { g.fillStyle = SCc[2]; g.fillRect(sx - 3, ny, 6, 2); }
-    const L = 9 + Math.min(6, sp / 8), ax = sx + side * 3, ay = ny + 1;
+    if (e.face !== 'back') { g.fillStyle = SCc[0]; g.fillRect(sx - 2 * ck, ny, 4 * ck, 1); g.fillStyle = SCc[1]; g.fillRect(sx - 2 * ck, ny, 2 * ck, 1); }
+    else { g.fillStyle = SCc[2]; g.fillRect(sx - 2 * ck, ny, 4 * ck, 1); }
+    const L = 8 + Math.min(5, sp / 8), ax = sx + side * Math.round(3 * ck), ay = ny + 1;
     for (let k = 0; k <= L; k++) {
       const wave = Math.sin(time * 9 - k * 0.75 + (e.bph || 0)) * k * 0.14;
       const x = sx + Math.round(ax - sx + dx * k - dy * wave), y = sy + Math.round(ay - sy + dy * k * 0.7 + dx * wave * side + k * 0.15);
@@ -631,20 +632,23 @@
       default: return drawChar(e, sx, sy);
     }
   }
+  // échelle des personnages : ~1,2× quand la résolution le permet sans casser la grille de pixels
+  function charK() { const v = Math.round(RQ * 1.2) / RQ; return v > 1 && v <= 1.25 ? v : 1; }
   function drawChar(e, sx, sy) {
     if (!e.set) return;
-    if (e.dead) { g.globalAlpha = 0.45; g.drawImage(e.set.front[0], sx - 12, sy - 30); g.globalAlpha = 1; labels.push({ x: sx, y: sy - 32, t: e.name, c: '#a8a8b8' }); return; }
-    g.drawImage(SHADOW, sx - 7, sy - 3, 14, 5);
+    const ck = charK();
+    if (e.dead) { g.globalAlpha = 0.45; g.drawImage(e.set.front[0], sx - 12 * ck, sy - 30 * ck, 24 * ck, 31 * ck); g.globalAlpha = 1; labels.push({ x: sx, y: sy - 32 * ck, t: e.name, c: '#a8a8b8' }); return; }
+    g.drawImage(SHADOW, sx - 7 * ck, sy - 3, 14 * ck, 5);
     const scarf = e.kind !== 'npc';
     const bob = e.moving && Math.floor(e.anim) % 2 === 1 ? -1 : 0;
-    if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e), sx - 12, sy - 30 + bob);
-    if (e.set.glint && ((time * 1.7 + (e.x || 0)) % 2.2) < 0.25) { const s2 = e.face === 'front' || (e.face === 'side' && e.flip) ? -1 : 1, gx = sx + s2 * 9, gy = sy - 17 + bob; g.fillStyle = e.set.glint; g.fillRect(gx - 1, gy, 3, 1); g.fillRect(gx, gy - 1, 1, 3); g.fillStyle = '#ffffff'; g.fillRect(gx, gy, 1, 1); }
-    if (scarf && e.set) drawScarf(e, sx, sy + bob);
+    if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e), sx - 12 * ck, sy - 30 * ck + bob, 24 * ck, 31 * ck);
+    if (e.set.glint && ((time * 1.7 + (e.x || 0)) % 2.2) < 0.25) { const s2 = e.face === 'front' || (e.face === 'side' && e.flip) ? -1 : 1, gx = Math.round(sx + s2 * 9 * ck), gy = Math.round(sy - 17 * ck + bob); g.fillStyle = e.set.glint; g.fillRect(gx - 1, gy, 3, 1); g.fillRect(gx, gy - 1, 1, 3); g.fillStyle = '#ffffff'; g.fillRect(gx, gy, 1, 1); }
+    if (scarf && e.set) drawScarf(e, sx, sy + bob, ck);
     if (e === me && me.buff > 0) for (let k = 0; k < 4; k++) { const a = time * 4 + k * 1.57; g.fillStyle = k % 2 ? '#ff9a6a' : '#ffd060'; g.fillRect(Math.round(sx + Math.cos(a) * 8), Math.round(sy - 10 + Math.sin(a) * 4), 1, 1); }
-    if (e.slash > 0) drawSlash(sx, sy - 11, e.slashAng, 1 - e.slash / 0.18);
+    if (e.slash > 0) drawSlash(sx, sy - 11 * ck, e.slashAng, 1 - e.slash / 0.18);
     if (e.spin > 0) { const pr = 1 - e.spin / 0.35; for (let k = 0; k < 3; k++) drawSlash(sx, sy - 8, time * 18 + k * 2.09, 1, 11 + pr * 14); }
-    if (e.kind === 'npc') { labels.push({ x: sx, y: sy - 33, t: e.name, c: '#ffe27a', npc: e }); return; }
-    labels.push({ x: sx, y: sy - 33, t: e === me ? me.name : e.name, c: e === me ? '#a8f080' : '#cfe4ff', lv: e === me ? null : e.lvl });
+    if (e.kind === 'npc') { labels.push({ x: sx, y: sy - 33 * ck, t: e.name, c: '#ffe27a', npc: e }); return; }
+    labels.push({ x: sx, y: sy - 33 * ck, t: e === me ? me.name : e.name, c: e === me ? '#a8f080' : '#cfe4ff', lv: e === me ? null : e.lvl });
   }
   function drawMob(m, sx, sy) {
     const sc = m.scale; let lx = 0, ly = 0;
