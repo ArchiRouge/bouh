@@ -1,8 +1,8 @@
 {
-  "name": "etheria-server",
+  "name": "pixels-worlds-server",
   "version": "0.2.0",
   "private": true,
-  "description": "Serveur multijoueur d'Etheria Online",
+  "description": "Serveur multijoueur d'Pixels Worlds",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

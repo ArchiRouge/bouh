@@ -1,4 +1,4 @@
-# Etheria Online — bêta
+# Pixels Worlds — bêta
 
 MMORPG mobile collaboratif en pixel art 2.5D peint, dans l'esprit de Tree of Savior.
 Le jeu est en HTML5 (canvas), le serveur en Node.js (WebSocket), et l'app iOS est produite avec Capacitor.
@@ -40,11 +40,11 @@ Le projet Xcode (`ios/`) est déjà prêt dans le dépôt. Deux façons d'instal
 | Limite | l'app expire au bout de 7 jours (relancer ▶ suffit) | 90 jours par version, mises à jour en un clic |
 
 **Ta progression est conservée dans les deux cas** : chaque mise à jour garde la sauvegarde tant que l'identifiant de l'app
-(`appId` dans `capacitor.config.json`, `com.etheria.online`) ne change pas. Dans l'app, la sauvegarde est recopiée dans les
+(`appId` dans `capacitor.config.json`, `com.pixelsworlds.app`) ne change pas. Dans l'app, la sauvegarde est recopiée dans les
 préférences natives de l'iPhone (`client/persist.js`), qui font partie des sauvegardes iCloud. Seule la suppression de l'app l'efface.
 
 Pour la voie B, une seule fois :
-1. Sur appstoreconnect.apple.com → Apps → **+** : crée l'app avec le Bundle ID `com.etheria.online` (ou change `appId` s'il est pris).
+1. Sur appstoreconnect.apple.com → Apps → **+** : crée l'app avec le Bundle ID `com.pixelsworlds.app` (ou change `appId` s'il est pris).
 2. Users and Access → Integrations → App Store Connect API : crée une clé avec le rôle **Admin**, télécharge le `.p8`.
 3. Sur GitHub, Settings → Secrets and variables → Actions, ajoute `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (le contenu du `.p8`).
 4. Facultatif : la variable `TESTFLIGHT_ON_PUSH` = `true` envoie une nouvelle version sur TestFlight à chaque push.
@@ -91,7 +91,7 @@ Prérequis :
    npm run ios:open      # ouvre Xcode
    ```
 3. Dans Xcode :
-   - App → Signing & Capabilities : choisis ton équipe Apple et un Bundle ID unique (par défaut `com.etheria.online`, à changer s'il est déjà pris) ;
+   - App → Signing & Capabilities : choisis ton équipe Apple et un Bundle ID unique (par défaut `com.pixelsworlds.app`, à changer s'il est déjà pris) ;
    - General → Deployment Info : coche uniquement **Portrait** ;
    - Product → Archive, puis Distribute App → **TestFlight & App Store**.
 4. Sur appstoreconnect.apple.com :

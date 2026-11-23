@@ -1,6 +1,6 @@
 {
-  "appId": "com.etheria.online",
-  "appName": "Etheria Online",
+  "appId": "com.pixelsworlds.app",
+  "appName": "Pixels Worlds",
   "webDir": "client",
   "backgroundColor": "#2462a0",
   "ios": {

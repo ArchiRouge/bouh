@@ -1,4 +1,4 @@
-/* Etheria Online — client (rendu, interface, entrées, réseau) */
+/* Pixels Worlds — client (rendu, interface, entrées, réseau) */
 (function () {
   'use strict';
   const C = window.EtheriaCore, ARTAPI = window.EtheriaArt;
@@ -211,7 +211,7 @@
     input.atkBtn = false; joy.active = false;
     const Q = C.QUESTS[me.q], N = C.NPCS[n.id];
     let txt, obj = '', rew = '', ok = 'Au revoir', act = null, later = false;
-    if (!Q) txt = "Etheria te doit beaucoup, gardien. Reviens nous voir quand la suite de l'histoire s'écrira.";
+    if (!Q) txt = "Pixels Worlds te doit beaucoup, gardien. Reviens nous voir quand la suite de l'histoire s'écrira.";
     else if (Q.giver !== n.id) txt = N.idle[Math.floor(Math.random() * N.idle.length)] + (me.qs === 0 ? ' ' + C.NPCS[Q.giver].name + ' te cherchait, je crois.' : '');
     else if (me.qs === 0) { txt = Q.intro; obj = Q.obj; rew = Q.xp + ' XP · ' + Q.gold + ' PO' + (Q.pot ? ' · ' + Q.pot + ' potion' + (Q.pot > 1 ? 's' : '') : '') + (Q.reward ? ' · ' + C.ITEMS[Q.reward[0]].n + ' (' + C.RARITY[Q.reward[1]][0].toLowerCase() + ')' : ''); ok = 'Accepter'; act = 'talk'; later = true; }
     else if (me.qs === 1) { txt = Q.wait; obj = Q.short + ' : ' + me.qn + ' / ' + Q.n; ok = "J'y retourne"; }
@@ -824,7 +824,7 @@
     // héros déjà créé : écran « Continuer » au lieu de la création
     const setResume = on => {
       $('resume').hidden = !on; $('namebox').hidden = on; $('looks').hidden = on; $('edit').hidden = !on;
-      $('play').textContent = on ? 'Continuer l\'aventure' : 'Entrer dans Etheria';
+      $('play').textContent = on ? 'Continuer l\'aventure' : 'Entrer dans Pixels Worlds';
     };
     if (prefs.name) {
       let lvl = 0; try { const s = JSON.parse(localStorage.getItem('etheria_solo') || 'null'); if (s && s.lvl) lvl = s.lvl; } catch (e) { /* ignore */ }

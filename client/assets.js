@@ -1,4 +1,4 @@
-/* Etheria Online — direction artistique procédurale
+/* Pixels Worlds — direction artistique procédurale
    Pixel art 16 bits façon JRPG : couleurs franches et saturées, ombrage en aplats (tramage léger),
    lumière venant du haut-gauche, contours sombres bien lisibles, héros chibi dont l'équipement se voit. */
 (function () {

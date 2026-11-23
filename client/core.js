@@ -1,4 +1,4 @@
-/* Etheria Online — cœur partagé client / serveur
+/* Pixels Worlds — cœur partagé client / serveur
    Génération déterministe du monde + simulation autoritaire (monstres, combat, progression).
    Utilisé par le serveur Node (require) et par le client en mode solo (window.EtheriaCore). */
 (function (root, factory) {
@@ -173,8 +173,8 @@
       done: "Les éclats murmurent un nom… le Roi Gelée. C'est lui qui a brisé le cristal pour se nourrir de son Éther." },
     { giver: 'elya', reward: [19, 3], title: 'Le Roi Gelée', type: 'kill', mob: 'boss', n: 1, short: 'Roi Gelée', obj: 'Vaincre le Roi Gelée au bout de l\'île (en groupe !)', xp: 600, gold: 250, pot: 5,
       intro: "Il dort au bout de l'île, gorgé d'Éther. Seul, tu n'as aucune chance : rassemble d'autres aventuriers et terrassez-le ensemble. Chaque héros qui le frappe sera récompensé.",
-      wait: "Appelle à l'aide dans le tchat. Etheria se défend à plusieurs.",
-      done: "Le cristal… il recommence à chanter ! Grâce à toi et à tes compagnons, Etheria respire de nouveau. Merci, gardien. Ce n'est que le début de l'histoire." }
+      wait: "Appelle à l'aide dans le tchat. Pixels Worlds se défend à plusieurs.",
+      done: "Le cristal… il recommence à chanter ! Grâce à toi et à tes compagnons, Pixels Worlds respire de nouveau. Merci, gardien. Ce n'est que le début de l'histoire." }
   ];
 
   /* ---------------- monde ---------------- */
@@ -303,7 +303,7 @@
       this.newDay(p);
       this.recalc(p, true); p.lookStr = p.look.join('');
       this.players.set(id, p);
-      this.ev({ e: 'ch', s: 1, t: p.name + ' a rejoint Etheria.' });
+      this.ev({ e: 'ch', s: 1, t: p.name + ' a rejoint Pixels Worlds.' });
       return p;
     }
     removePlayer(id) {

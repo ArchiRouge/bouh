@@ -1,4 +1,4 @@
-/* Etheria Online — serveur multijoueur
+/* Pixels Worlds — serveur multijoueur
    - sert le client web (dossier ../client)
    - WebSocket sur /ws : simulation autoritaire à 10 Hz (monstres, combat, XP, tchat)
    - sauvegarde des héros dans data/players.json (clé = jeton anonyme de l'appareil) */
@@ -117,4 +117,4 @@ setInterval(() => {
 function shutdown() { for (const [id, c] of clients) { const p = sim.players.get(id); if (p) db[c.token] = sim.saveData(p); } dirty = true; persist(); setTimeout(() => process.exit(0), 300); }
 process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
 
-server.listen(PORT, () => console.log(`Etheria Online — serveur v${Core.VERSION} sur http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Pixels Worlds — serveur v${Core.VERSION} sur http://localhost:${PORT}`));

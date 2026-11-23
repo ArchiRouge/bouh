@@ -1,6 +1,6 @@
-# Etheria Online — instructions for Claude Code
+# Pixels Worlds — instructions for Claude Code
 
-You are helping Archibald build and run **Etheria Online** (a cosy pixel-art 2.5D mobile MMORPG) as a
+You are helping Archibald build and run **Pixels Worlds** (a cosy pixel-art 2.5D mobile MMORPG) as a
 **native iOS app on his Mac**, using Capacitor. The game itself is finished HTML5 in `client/`; your job
 is the native wrapper, the step counter plugin, and getting it running on the iOS Simulator and on his iPhone.
 Talk to him in French, keep explanations short, and ask before anything that costs money or changes his Apple account.
@@ -13,7 +13,7 @@ Talk to him in French, keep explanations short, and ask before anything that cos
 - `tools/add_ios_files.rb` — copies those Swift files into the Xcode project and adds them to the App target.
 - `server/` — optional multiplayer server (Node + ws). Not needed for a solo local build.
 - `assets/` — 1024px icon + splash used by `@capacitor/assets`.
-- `capacitor.config.json` — appId `com.etheria.online`, appName `Etheria Online`.
+- `capacitor.config.json` — appId `com.pixelsworlds.app`, appName `Pixels Worlds`.
 
 ## Goal 1 — run the app in the iOS Simulator
 The Xcode project in `ios/` is already generated and configured (committed): `MainViewController` registers the
@@ -33,6 +33,7 @@ and `@capacitor/preferences` is linked through Swift Package Manager (`ios/App/C
    customModuleProvider="target"`) and Info.plist edits listed above.
 
 ## Saves (progress must never be lost)
+- The game was renamed from "Etheria Online" to **Pixels Worlds**. Internal names (`etheria_*` storage keys, `EtheriaCore`, `EtheriaArt`, `ETHERIA_CONFIG`) were kept on purpose: renaming the storage keys would orphan existing saves. The in-game resource "Éther" is a game mechanic, not the old name.
 - The game saves every 5 s and when the app goes to the background, into localStorage keys `etheria_*`.
 - In the native app, `client/persist.js` mirrors every `etheria_*` key to native Preferences (UserDefaults, included in
   iCloud/Finder backups) and restores them before `game.js` starts. That's what survives iOS purging WebView storage.
@@ -43,7 +44,7 @@ and `@capacitor/preferences` is linked through Swift Package Manager (`ios/App/C
 1. Ask him to plug in the iPhone, unlock it, trust the Mac, and enable Developer Mode (Settings → Privacy & Security).
 2. Signing: open `ios/App/App.xcodeproj` (or `.xcworkspace`) with `npx cap open ios`, then guide him to
    Signing & Capabilities → Team → his Apple ID (Personal Team). Change the bundle id if Xcode says it's taken
-   (e.g. `com.<hisname>.etheria`) — also update `appId` in `capacitor.config.json` to match.
+   (e.g. `com.<hisname>.pixelsworlds`) — also update `appId` in `capacitor.config.json` to match.
 3. Run on the device (`npx cap run ios --target <device id>` or the ▶ button in Xcode).
 4. On the phone: Settings → General → VPN & Device Management → trust the developer certificate.
 5. Real steps work on the device: open the in-game blue Ether icon → "Synchroniser mes pas" (iOS asks for Motion & Fitness permission).

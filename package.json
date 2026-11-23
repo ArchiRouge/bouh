@@ -1,8 +1,8 @@
 {
-  "name": "etheria-online",
+  "name": "pixels-worlds",
   "version": "0.2.0",
   "private": true,
-  "description": "Etheria Online — MMORPG mobile collaboratif en pixel art 2.5D",
+  "description": "Pixels Worlds — MMORPG mobile collaboratif en pixel art 2.5D",
   "scripts": {
     "serve": "cd server && npm install && npm start",
     "ios:add": "npx cap add ios",

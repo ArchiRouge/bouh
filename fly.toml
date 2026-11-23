@@ -1,5 +1,5 @@
 # Déploiement Fly.io — une seule machine (le monde vit en mémoire sur le serveur)
-app = "etheria-online"
+app = "pixels-worlds"
 primary_region = "cdg"
 
 [http_service]

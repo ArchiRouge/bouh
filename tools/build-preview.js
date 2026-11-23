@@ -9,5 +9,5 @@ html = html.replace('<script src="config.js"></script>', '<script>window.ETHERIA
 for (const f of ['core.js', 'assets.js', 'steps.js']) html = html.replace(`<script src="${f}"></script>`, inline(f));
 html = html.replace('<script src="persist.js"></script>', inline('game.js')); // persist.js ne sert que dans l'app iOS
 fs.mkdirSync(path.join(__dirname, '..', 'dist'), { recursive: true });
-fs.writeFileSync(path.join(__dirname, '..', 'dist', 'etheria-preview.html'), html);
-console.log('dist/etheria-preview.html', (html.length / 1024).toFixed(0) + ' Ko');
+fs.writeFileSync(path.join(__dirname, '..', 'dist', 'pixels-worlds-preview.html'), html);
+console.log('dist/pixels-worlds-preview.html', (html.length / 1024).toFixed(0) + ' Ko');
