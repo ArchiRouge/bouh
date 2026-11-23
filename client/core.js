@@ -127,6 +127,10 @@
   const dayKey = () => new Date().toISOString().slice(0, 10);
   const xpNeed = l => Math.floor(18 * Math.pow(l, 1.6));
   const LOOK_MAX = [3, 7, 7, 3, 4]; // coiffure, couleur cheveux, tenue, peau, chapeau
+  /* Apparence de l'équipement (visible en jeu) : tête, torse, jambes, pieds, arme → « t.r » par emplacement, « - » si vide. */
+  const GEAR_SLOTS = ['head', 'chest', 'legs', 'feet', 'weapon'];
+  function gearStr(equip) { return GEAR_SLOTS.map(sl => { const it = equip && equip[sl]; return it && ITEMS[it[0]] ? it[0] + '.' + it[1] : '-'; }).join(','); }
+  function parseGear(str) { const o = {}; String(str || '').split(',').forEach((v, i) => { const m = /^(\d+)\.(\d)$/.exec(v); if (m && GEAR_SLOTS[i] && ITEMS[+m[1]] && ITEMS[+m[1]].slot === GEAR_SLOTS[i]) o[GEAR_SLOTS[i]] = [+m[1], +m[2]]; }); return o; }
   function cleanLook(l) { const a = Array.isArray(l) ? l : []; return LOOK_MAX.map((m, i) => { const v = a[i] | 0; return v >= 0 && v < m ? v : 0; }); }
   function cleanName(n) { const s = String(n || '').replace(/[^A-Za-z0-9_\- àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/g, '').trim().slice(0, 12); return s || 'Aventurier'; }
   const BAD = ['merde', 'pute', 'connard', 'connasse', 'encule', 'enculé', 'salope', 'fuck', 'shit', 'bitch', 'nigger', 'nazi'];
@@ -558,7 +562,7 @@
     }
     publicState() {
       const p = [], m = [];
-      for (const q of this.players.values()) p.push([q.id, q.name, q.lookStr, +q.x.toFixed(2), +q.y.toFixed(2), q.face, q.flip, q.moving, Math.ceil(q.hp), q.maxhp, q.lvl, q.dead ? 1 : 0, q.scarf, q.cls, q.equip && q.equip.feet && ITEMS[q.equip.feet[0]].fx === 'void' ? 1 : 0]);
+      for (const q of this.players.values()) p.push([q.id, q.name, q.lookStr, +q.x.toFixed(2), +q.y.toFixed(2), q.face, q.flip, q.moving, Math.ceil(q.hp), q.maxhp, q.lvl, q.dead ? 1 : 0, q.scarf, q.cls, q.equip && q.equip.feet && ITEMS[q.equip.feet[0]].fx === 'void' ? 1 : 0, gearStr(q.equip)]);
       for (const q of this.mobs) m.push([+q.x.toFixed(2), +q.y.toFixed(2), Math.max(0, Math.ceil(q.hp)), q.alive ? 1 : 0, q.target != null ? 1 : 0, q.moving ? 1 : 0, q.stunT > this.t ? 1 : q.slowT > this.t ? 2 : 0]);
       return { p, m };
     }
@@ -568,5 +572,5 @@
     }
   }
 
-  return { CLASSES, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook };
+  return { CLASSES, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
 });

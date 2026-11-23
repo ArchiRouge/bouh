@@ -58,6 +58,11 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - Multiplayer needs the server online (see README.md: Fly.io). Then set `client/config.js` to
   `window.ETHERIA_CONFIG = { server: 'wss://<app>.fly.dev/ws' };` and `npx cap sync ios`.
 
+## Art & visible gear
+- Art direction: bright 16-bit JRPG pixel art (saturated palettes, flat shading with light dithering, dark outlines, blue windows with white borders). All art is procedural in `client/assets.js`.
+- Equipped gear is painted onto the character sprite (`paintChibi(look, dir, frame, blink, gear)`); sprites are 24×31 with the body offset by `CHAR_OX/CHAR_OY` = 4.
+- `C.gearStr(equip)` encodes head/chest/legs/feet/weapon; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
+
 ## Rules
 - Player progress must survive updates: never rename or remove fields of `saveData()` in `client/core.js`; new fields need a default in `addPlayer`.
 - After any change in `client/`, run `npx cap sync ios` before rebuilding.
