@@ -12,7 +12,7 @@
 
   /* ---------- canvases : monde (pixels fins) + interface (pixels plus gros) ---------- */
   const cvW = $('world'), cvU = $('ui'), g = cvW.getContext('2d'), u = cvU.getContext('2d');
-  let ST = 0, SB = 0, S = 4, SU = 6, VW = 300, VH = 600, UW = 200, UH = 400, K = S / SU, dpr = 1, grade = null, vign = null, sea = null;
+  let ST = 0, SB = 0, S = 4, SU = 6, VW = 300, VH = 600, UW = 200, UH = 400, K = S / SU, dpr = 1, grade = null, vign = null, sea = null, OVERLAY = null;
   function resize() {
     dpr = window.devicePixelRatio || 1;
     const pw = Math.round(innerWidth * dpr), ph = Math.round(innerHeight * dpr), pm = Math.min(pw, ph);
@@ -26,6 +26,7 @@
     grade.addColorStop(0, 'rgba(255,220,170,0.16)'); grade.addColorStop(0.5, 'rgba(255,250,235,0)'); grade.addColorStop(1, 'rgba(80,90,220,0.14)');
     vign = g.createRadialGradient(VW / 2, VH / 2, Math.min(VW, VH) * 0.35, VW / 2, VH / 2, Math.max(VW, VH) * 0.75);
     vign.addColorStop(0, 'rgba(20,30,90,0)'); vign.addColorStop(1, 'rgba(20,30,90,0.22)');
+    OVERLAY = document.createElement('canvas'); OVERLAY.width = VW; OVERLAY.height = VH; { const o = OVERLAY.getContext('2d'); o.fillStyle = grade; o.fillRect(0, 0, VW, VH); o.fillStyle = vign; o.fillRect(0, 0, VW, VH); }
     sea = g.createLinearGradient(0, 0, 0, VH); sea.addColorStop(0, '#3e9cee'); sea.addColorStop(0.45, '#2a72d8'); sea.addColorStop(1, '#1c4ab0');
   }
   window.addEventListener('resize', resize); resize();
@@ -70,24 +71,7 @@
 
   /* ---------- décor statique trié par diagonale ---------- */
   const STATIC = Array.from({ length: NB }, () => []), LAMPS = [], CHIMNEYS = [], BLOSSOMS = [], FLIES = [];
-  let WASH = null, PAPER = null;
-  function makeWash() {
-    const N = 64, per = 8, c = document.createElement('canvas'); c.width = c.height = N; const x2 = c.getContext('2d'), im = x2.createImageData(N, N);
-    const pn = (x, y, s) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, u0 = xf * xf * (3 - 2 * xf), v0 = yf * yf * (3 - 2 * yf); const H = (a, b) => C.hash(((a % per) + per) % per, ((b % per) + per) % per, s); const t = H(xi, yi) + (H(xi + 1, yi) - H(xi, yi)) * u0, b = H(xi, yi + 1) + (H(xi + 1, yi + 1) - H(xi, yi + 1)) * u0; return t + (b - t) * v0; };
-    const A = [255, 178, 150], B = [176, 160, 255], Cc = [150, 220, 210];
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-      const n = pn(x / 8, y / 8, 91) * 0.7 + pn(x / 4, y / 4, 92) * 0.3, m = pn(x / 8 + 3, y / 8 + 5, 93);
-      const col = n < 0.5 ? A.map((v, i) => v + (B[i] - v) * n * 2) : B.map((v, i) => v + (Cc[i] - v) * (n - 0.5) * 2);
-      const k = (y * N + x) * 4; im.data[k] = col[0]; im.data[k + 1] = col[1]; im.data[k + 2] = col[2]; im.data[k + 3] = Math.round(120 + 120 * m);
-    }
-    x2.putImageData(im, 0, 0); return c;
-  }
-  function makePaper() {
-    const N = 96, c = document.createElement('canvas'); c.width = c.height = N; const x2 = c.getContext('2d'), im = x2.createImageData(N, N);
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const v = 200 + Math.round((C.hash(x, y, 501) - 0.5) * 70 + (C.vnoise(x / 6, y / 6, 502) - 0.5) * 50); const k = (y * N + x) * 4; im.data[k] = v; im.data[k + 1] = v - 4; im.data[k + 2] = v + 6; im.data[k + 3] = 255; }
-    x2.putImageData(im, 0, 0); return c;
-  }
-  let SHADOW = null, GLOW = null, MINICOL = null;
+  let SHADOW = null, GLOW = null, MINICOL = null, CLOUD9 = null, miniT = 0;
   const NPCS = [];
   let nearNpc = null, nearNode = null, talkRect = null;
   const NODES = W.nodes.map(n => ({ kind: 'node', k: n.k, res: n.res, x: n.x, y: n.y, z: W.hAt(n.x, n.y) })), nodeCd = {};
@@ -115,7 +99,6 @@
       }
     }
     for (const b of STATIC) b.sort((a, c) => (a.x + a.y) - (c.x + c.y));
-    WASH = makeWash(); PAPER = makePaper();
     for (let i = 0; i < 14; i++) FLIES.push({ x: 0, y: 0, ph: Math.random() * TAU, col: pick(['#ffd6e6', '#fff2a8', '#cfe6ff', '#ffffff', '#ffc9a8']), init: false });
     // ombre portée douce
     SHADOW = document.createElement('canvas'); SHADOW.width = 16; SHADOW.height = 6; const sg = SHADOW.getContext('2d');
@@ -664,9 +647,7 @@
   function render() {
     labels.length = 0;
     g.fillStyle = sea; g.fillRect(0, 0, VW, VH);
-    { g.imageSmoothingEnabled = true; g.globalAlpha = 0.35; const T2 = 64 * 12, bx = ((-camX * 0.4 + time * 4) % T2 + T2) % T2 - T2, by = ((-camY * 0.4) % T2 + T2) % T2 - T2;
-      for (let x = bx; x < VW; x += T2) for (let y = by; y < VH; y += T2) g.drawImage(ART.cloud, x, y, T2, T2);
-      g.globalAlpha = 1; g.imageSmoothingEnabled = false; }
+    // (reflets de nuages sur la mer retirés : coûteux sur mobile)
     const shx = shake > 0 ? Math.round((Math.random() - .5) * 3) : 0, shy = shake > 0 ? Math.round((Math.random() - .5) * 3) : 0;
     const ox = Math.round(VW / 2 - camX) + shx, oy = Math.round(VH / 2 - camY) + shy; lastOX = ox; lastOY = oy;
     for (const b of DYN) b.length = 0;
@@ -704,9 +685,9 @@
     // papillons
     for (const f of FLIES) { const x = Math.round(f.x - camX + VW / 2), y = Math.round(f.y - camY + VH / 2); if (x < 0 || y < 0 || x > VW || y > VH) continue; const open = Math.sin(time * 22 + f.ph) > 0; g.fillStyle = f.col; if (open) { g.fillRect(x - 1, y, 1, 1); g.fillRect(x + 1, y, 1, 1); g.fillRect(x - 1, y - 1, 1, 1); g.fillRect(x + 1, y - 1, 1, 1); } else { g.fillRect(x, y - 1, 1, 2); } g.fillStyle = '#5a4a6a'; g.fillRect(x, y, 1, 1); }
     // ombres de nuages qui dérivent
-    const T = 64 * 9; g.imageSmoothingEnabled = true; g.globalAlpha = 0.5;
+    const T = 64 * 9; if (!CLOUD9) { CLOUD9 = document.createElement('canvas'); CLOUD9.width = CLOUD9.height = T; const c9 = CLOUD9.getContext('2d'); c9.imageSmoothingEnabled = true; c9.drawImage(ART.cloud, 0, 0, T, T); } g.globalAlpha = 0.5;
     const cx = ((ox + time * 7) % T + T) % T - T, cy = ((oy + time * 3.5) % T + T) % T - T;
-    for (let x = cx; x < VW; x += T) for (let y = cy; y < VH; y += T) g.drawImage(ART.cloud, x, y, T, T);
+    for (let x = Math.round(cx); x < VW; x += T) for (let y = Math.round(cy); y < VH; y += T) g.drawImage(CLOUD9, x, y);
     g.globalAlpha = 1;
     // halos des lanternes
     g.globalCompositeOperation = 'lighter';
@@ -716,12 +697,8 @@
     g.globalCompositeOperation = 'source-over';
     for (const l of LAMPS) { const sx = ox + (l.x - l.y) * 16, sy = oy + (l.x + l.y) * 8 - l.z * 8 - 26; for (let k = 0; k < 3; k++) { const a = time * (0.7 + k * 0.3) + k * 2.1 + l.x; g.globalAlpha = 0.5 + 0.5 * Math.sin(time * 5 + k * 3 + l.y); g.fillStyle = '#fff4a8'; g.fillRect(Math.round(sx + Math.cos(a) * (9 + k * 3)), Math.round(sy + 6 + Math.sin(a * 1.3) * 7), 1, 1); } }
     g.globalAlpha = 1;
-    // lavis d'aquarelle + grain du papier (inspiration GRIS)
-    g.imageSmoothingEnabled = true; g.globalCompositeOperation = 'soft-light'; g.globalAlpha = 0.38;
-    { const T3 = 64 * 10, wx = ((ox * 0.6 + time * 2) % T3 + T3) % T3 - T3, wy = ((oy * 0.6 + time * 1.2) % T3 + T3) % T3 - T3; for (let x = wx; x < VW; x += T3) for (let y = wy; y < VH; y += T3) g.drawImage(WASH, x, y, T3, T3); }
-    g.globalAlpha = 1; g.imageSmoothingEnabled = false; g.fillStyle = grade; g.fillRect(0, 0, VW, VH);
-    g.globalCompositeOperation = 'multiply'; g.globalAlpha = 0.09; for (let x = 0; x < VW; x += 96) for (let y = 0; y < VH; y += 96) g.drawImage(PAPER, x, y); g.globalAlpha = 1;
-    g.globalCompositeOperation = 'source-over'; g.fillStyle = vign; g.fillRect(0, 0, VW, VH);
+    // étalonnage + vignette : précalculés une fois par taille d'écran (un seul dessin par image)
+    g.drawImage(OVERLAY, 0, 0);
     g.imageSmoothingEnabled = false;
     // pollen
     for (const m of motes) {
@@ -741,6 +718,7 @@
   const mini = document.createElement('canvas'); mini.width = mini.height = 46; const mg = mini.getContext('2d'), mimg = mg.createImageData(46, 46);
   function drawMinimap(cx, cy) {
     const d = mimg.data, Q = 5;
+    if (time - miniT > 0.1 || time < miniT) { miniT = time;
     for (let my = 0; my < 46; my++) for (let mx = 0; mx < 46; mx++) {
       const dx = mx - 23, dy = my - 23, k = (my * 46 + mx) * 4;
       if (dx * dx + dy * dy > 22 * 22) { d[k + 3] = 0; continue; }
@@ -748,7 +726,7 @@
       const c = W.inb(i, j) ? MINICOL[idx(i, j)] : [36, 98, 160];
       d[k] = c[0]; d[k + 1] = c[1]; d[k + 2] = c[2]; d[k + 3] = 255;
     }
-    mg.putImageData(mimg, 0, 0);
+    mg.putImageData(mimg, 0, 0); }
     pcircle(cx, cy, 24, '#1a0f1c'); u.drawImage(mini, cx - 23, cy - 23); pring(cx, cy, 23, '#f4f6ff'); pring(cx, cy, 24, '#0a0c2a');
     const toMini = (x, y) => { const ddx = x - me.x, ddy = y - me.y, sx = (ddx - ddy) * 16 / Q, sy = (ddx + ddy) * 8 / Q; return [Math.round(cx + sx), Math.round(cy + sy)]; };
     for (const m of mobs) { if (!m.alive) continue; const [x, y] = toMini(m.x, m.y); if ((x - cx) ** 2 + (y - cy) ** 2 > 21 * 21) continue; u.fillStyle = m.type === 'boss' ? '#c890ff' : m.aggro ? '#ff5a5a' : '#ffb04a'; u.fillRect(x, y, m.type === 'boss' ? 2 : 1, m.type === 'boss' ? 2 : 1); }
