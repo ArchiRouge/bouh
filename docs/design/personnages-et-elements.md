@@ -1,18 +1,36 @@
 # Pixels Worlds — design des personnages, monstres et éléments
 
-Statut : **maquette v3, en attente de validation** (v2 validée sur le fond ; v3 = nouveau style + progression sans classes). Rien de ce document n'est encore codé dans le jeu.
+Statut : **maquette v4 (personnages), en attente de validation**. Rien de ce document n'est encore codé dans le jeu.
 Règle de travail : on valide le design ici (maquettes en images), puis un plan d'implémentation, puis seulement le code.
 
-Références : **Monster Strike et Grow Stone Online** pour le design des personnages et des monstres
-(couleurs franches, contraste fort, ombrage en aplats, armures ornementées, visages d'anime héroïques).
-De Gris, on garde **seulement l'aspect éthéré** : lueurs, gemmes et armes qui rayonnent, étincelles flottantes, auras translucides, rais de lumière.
-Le côté « poétique » (pastel délavé, ambiance contemplative) est abandonné.
+## Direction des personnages : Grow Stone Online (sprites en jeu)
+
+Les maquettes v1 à v3 (héros « héroïques » de 3,5 têtes, style aquarelle puis Monster Strike) sont **abandonnées pour le design
+des personnages** : elles partaient d'une mauvaise idée de la référence. La v4 part de **vraies captures** de Grow Stone Online.
+
+Ce qu'on reprend de Grow Stone Online :
+- format **compact, environ 2,4 têtes** (≈ 35 pixels de jeu), grosse masse de cheveux ;
+- **visages sérieux** : peau claire, petits yeux (1–2 pixels), pas de joues roses ;
+- **palette sombre gothique** : noir, marine, violet, rouge sang, or vieilli ;
+- **contour quasi noir**, ombrage en 3 tons ;
+- **grosses silhouettes** : capuches, chapeaux de sorcière, ailes dans le dos, armes surdimensionnées, capes ;
+- **boss menaçants** (silhouette encapuchonnée, ailes, yeux brûlants) ; petits monstres simples et lisibles ;
+- le côté flashy vient des **effets de sorts**, pas des vêtements.
+
+Illustrations type Monster Strike / portraits de compagnons : **plus tard** (page personnage, dialogues, intro des boss).
+
+![Personnages v4](img/v4-personnages.png)
+
+![Monstres v4](img/v4-monstres.png)
+
+Écarts restants avec la référence : poses de 3/4 vivantes (les maquettes sont de face, raides), variété de corps
+(vieux mage voûté, carrures), pixels plus doux avec plis de vêtements.
 
 ## Décisions validées
 
 | Sujet | Décision |
 |---|---|
-| Proportions | Héros « héroïques », environ 3,5 têtes (≈ 48 pixels de jeu de haut au lieu de 27), visage adulte |
+| Proportions | ~~3,5 têtes~~ → **compact ≈ 2,4 têtes façon Grow Stone Online** (v4) |
 | Emplacements d'équipement | On ajoute **Épaules** et **Mains** : tête, épaules, torse, mains, jambes, pieds, arme, bijou (8) |
 | Ornementation | Elle **monte avec la rareté** : commun sobre → rare liserés et cape → épique plaques sculptées et gemme → légendaire silhouette spectaculaire (ailes, aura) |
 | Éléments | **Visuels et gameplay** : Feu, Eau, Bois, Lumière, Ténèbres (proposition de règles ci-dessous, à valider) |
@@ -22,7 +40,7 @@ Le côté « poétique » (pastel délavé, ambiance contemplative) est abandonn
 | Maîtrise | Gagnée **en utilisant l'arme** (coups portés, monstres vaincus) |
 | Barre d'actions | Attaque de base = celle de l'arme ; **3 techniques au choix** parmi celles débloquées pour cette arme |
 | Points de caractéristiques | Donnés à chaque niveau, répartis librement ; **réinitialisation chez un PNJ contre de l'or** |
-| Style | Personnages façon Monster Strike / Grow Stone ; seulement l'éthéré de Gris |
+| Style | **Sprites façon Grow Stone Online** (v4) ; portraits illustrés plus tard |
 
 ## Maquettes v2
 

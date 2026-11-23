@@ -1,0 +1,151 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#16141e">
+<canvas id="out"></canvas>
+<script>
+/* Maquette v4 — sprites façon Grow Stone Online (référence : captures réelles du jeu).
+   Pixels réels du jeu (1×) : toile 32×40, personnage ≈ 2,4 têtes (~35 px de haut), vue de face légèrement plongeante.
+   Palette sombre gothique, contour quasi noir, ombrage 3 tons, visages sérieux (petits yeux), grosses silhouettes. */
+const rgb=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+const R=a=>a.map(rgb), mix=(a,b,t)=>[0,1,2].map(i=>Math.round(a[i]+(b[i]-a[i])*t)), clamp=(v,a,b)=>v<a?a:v>b?b:v;
+class Pix{constructor(w,h){this.w=w;this.h=h;this.c=document.createElement('canvas');this.c.width=w;this.c.height=h;this.g=this.c.getContext('2d');this.im=this.g.createImageData(w,h);this.d=this.im.data;}
+  set(x,y,c,a){x=Math.floor(x);y=Math.floor(y);if(x<0||y<0||x>=this.w||y>=this.h||!c)return;const k=(y*this.w+x)*4;this.d[k]=c[0];this.d[k+1]=c[1];this.d[k+2]=c[2];this.d[k+3]=a==null?255:a;}
+  blend(x,y,c,al){x=Math.floor(x);y=Math.floor(y);if(x<0||y<0||x>=this.w||y>=this.h)return;const k=(y*this.w+x)*4,a0=this.d[k+3]/255,a=al+a0*(1-al);if(a<=0)return;for(let i=0;i<3;i++)this.d[k+i]=Math.round((c[i]*al+this.d[k+i]*a0*(1-al))/a);this.d[k+3]=Math.round(a*255);}
+  a(x,y){return x<0||y<0||x>=this.w||y>=this.h?0:this.d[(y*this.w+x)*4+3];}
+  done(){this.g.putImageData(this.im,0,0);return this.c;}}
+// ombrage 3 tons + reflet, lumière haut-gauche
+const tone=(r,v)=>r[clamp(Math.round(v*(r.length-1)),0,r.length-1)];
+function ell(P,cx,cy,rx,ry,fn){for(let y=Math.floor(cy-ry-1);y<=Math.ceil(cy+ry+1);y++)for(let x=Math.floor(cx-rx-1);x<=Math.ceil(cx+rx+1);x++){const nx=(x+.5-cx)/rx,ny=(y+.5-cy)/ry;if(nx*nx+ny*ny<=1){const c=fn(x,y,nx,ny);if(c)P.set(x,y,c);}}}
+function poly(P,pts,fn){let y0=1e9,y1=-1e9;for(const p of pts){y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}for(let y=Math.floor(y0);y<=Math.ceil(y1);y++){const yc=y+.5,xs=[];for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];if((a[1]<=yc&&b[1]>yc)||(b[1]<=yc&&a[1]>yc))xs.push(a[0]+(yc-a[1])/(b[1]-a[1])*(b[0]-a[0]));}if(xs.length<2)continue;const xa=Math.min(...xs),xb=Math.max(...xs);for(let x=Math.ceil(xa-.5);x<=Math.floor(xb-.5);x++){const c=fn(x,y,(x+.5-xa)/Math.max(1,xb-xa));if(c)P.set(x,y,c);}}}
+const rect=(P,x0,y0,x1,y1,fn)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const c=fn(x,y,(x-x0)/Math.max(1,x1-x0),(y-y0)/Math.max(1,y1-y0));if(c)P.set(x,y,c);}};
+const shade=(r,t,top)=>tone(r,(top?0.85:0.62)-t*0.6); // t = 0 gauche (éclairé) → 1 droite (ombre)
+function outline(P,col){const w=P.w,h=P.h,add=[];for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(P.a(x,y)>150)continue;if(P.a(x+1,y)>150||P.a(x-1,y)>150||P.a(x,y+1)>150||P.a(x,y-1)>150)add.push([x,y]);}for(const [x,y] of add)P.set(x,y,col||rgb('#120c14'));return P;}
+function glow(P,cx,cy,r,col,a){for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){const d=Math.hypot(x+.5-cx,y+.5-cy)/r;if(d<1)P.blend(x,y,col,a*(1-d)*(1-d));}}
+
+/* ---------- palettes sombres gothiques ---------- */
+const SKIN=R(['#5a3a3a','#b88c80','#e8ccbc','#fbeee4']), SKIN2=R(['#3a2420','#7a4e3a','#a87250','#c89670']);
+const EYE=rgb('#1e121c');
+const BLACK=R(['#141018','#221c28','#342c3c','#4a4056']);
+const NAVY=R(['#0e1224','#1a2440','#2a3a62','#42588a']);
+const PURPLE=R(['#1c1028','#2e1a44','#46286a','#66409a']);
+const RED=R(['#2a0a10','#5a141c','#8e2028','#c03a36']);
+const GOLD=R(['#4a3010','#8a6020','#c89838','#f0d27a']);
+const STEEL=R(['#2a2c3a','#4e5268','#848aa4','#c4cade']);
+const LEATHER=R(['#24160e','#46281a','#6a4026','#8e5c36']);
+const WHITE=R(['#5a5a6a','#9a9aac','#d0d0dc','#f4f4fa']);
+const HAIR={noir:R(['#0e0e18','#1c1e30','#2e3450','#46507a']),sarcelle:R(['#0e2228','#1a3e48','#2a5e6a','#4a8a90']),argent:R(['#3a3e4a','#6a7080','#a4aab8','#dfe2ea']),
+            violet:R(['#141230','#22205a','#343494','#5a5ac8']),roux:R(['#2a0e0a','#5a1e12','#8e3a1e','#c4602e']),blanc:R(['#4a4a5a','#8a8a9c','#c8c8d6','#f4f4fa'])};
+const LEAF=R(['#1e3a24','#3a6a3a','#6a9a58','#a4cc86']);
+
+/* ---------- corps de base (face) ---------- */
+// repères : tête (visage) centre (16,13), menton y 18, épaules y 19, taille 25, jambes 28→34, bottes 34→37, sol 38
+function body(P,o){
+  const SK=o.skin||SKIN;
+  // jambes
+  for(const x0 of [13,17]) rect(P,x0,27,x0+2,34,(x,y,t)=>shade(o.legs||BLACK,t));
+  // bottes
+  for(const x0 of [12,17]) rect(P,x0,33,x0+3,37,(x,y,t)=>y===37?tone(o.boots||LEATHER,0.1):shade(o.boots||LEATHER,t*0.8,y===33));
+  // bras (manches)
+  for(const [x0,x1,dk] of [[9,11,0],[21,23,1]]) rect(P,x0,19,x1,26,(x,y,t)=>shade(o.sleeve||o.torso,dk?0.6+t*0.4:t*0.5));
+  // mains
+  for(const x of [10,22]) { P.set(x,27,tone(o.gloves||SK,0.6)); P.set(x+1,27,tone(o.gloves||SK,0.4)); P.set(x,28,tone(o.gloves||SK,0.4)); }
+  // torse
+  poly(P,[[11,18],[22,18],[21,27],[12,27]],(x,y,t)=>shade(o.torso,t,y<20));
+  if(o.skirt) poly(P,[[11,25],[22,25],[23,31],[10,31]],(x,y,t)=>shade(o.skirt,t));
+  // ceinture
+  if(o.belt) for(let x=12;x<=21;x++){ P.set(x,25,tone(o.belt,0.55)); } if(o.buckle) P.set(16,25,tone(o.buckle,0.9));
+  // cou
+  P.set(15,18,tone(SK,0.3)); P.set(16,18,tone(SK,0.2)); P.set(17,18,tone(SK,0.15));
+}
+function head(P,o){
+  const SK=o.skin||SKIN, H=HAIR[o.hair||'noir'];
+  // cheveux arrière / longs
+  if(o.long) poly(P,[[8,8],[24,8],[25,25],[7,25]],(x,y,t)=>shade(H,0.35+t*0.4));
+  if(o.pony) { poly(P,[[20,6],[24,4],[27,12],[25,22],[22,14]],(x,y,t)=>shade(H,0.3+t*0.4)); }
+  // visage
+  ell(P,16,13,5.6,5.4,(x,y,nx,ny)=>tone(SK,0.78-nx*0.25-(ny>0.6?0.25:0)));
+  // yeux : petits, sérieux (1×2 px, reflet discret)
+  if(!o.hideEyes){ for(const ex of [13,18]){ P.set(ex,13,EYE); P.set(ex,14,EYE); P.set(ex+1,13,o.eyeCol?tone(o.eyeCol,0.7):EYE); } if(o.brows) for(const ex of [13,18]) { P.set(ex,11,tone(H,0.2)); P.set(ex+1,11,tone(H,0.2)); } }
+  if(o.mouth) P.set(16,16,tone(SK,0.25));
+  // masse de cheveux (grosse silhouette) + frange
+  if(!o.hood) {
+    ell(P,16,9.5,8.2,6.8,(x,y,nx,ny)=>(y<=10||x<=9||x>=23)?tone(H,0.75-nx*0.3-ny*0.35):null);
+    // mèches de frange
+    for(const [x0,x1,tip,tx] of [[9,13,14,10],[12,17,12,15],[16,21,13,19],[20,24,15,23]]) poly(P,[[x0,9],[x1,9],[tx,tip]],(x,y,t)=>tone(H,0.55-t*0.2));
+    // côtés qui descendent le long du visage
+    for(const [x0,x1] of [[8,10],[22,24]]) rect(P,x0,10,x1,o.long?22:16,(x,y,t)=>tone(H,x0<16?0.55:0.3));
+    // reflet
+    for(const [x,y] of [[12,5],[13,4],[14,4],[15,4],[16,4]]) P.set(x,y,tone(H,1));
+  }
+}
+
+/* ---------- accessoires et armes ---------- */
+const parts={
+  witchHat:(P,c)=>{ ell(P,16,8,11,2.6,(x,y,nx,ny)=>tone(c,0.55-nx*0.3)); poly(P,[[10,8],[22,8],[18,-1],[24,-3]],(x,y,t)=>shade(c,t,y<2)); for(let x=11;x<=21;x++) P.set(x,7,tone(GOLD,0.6)); },
+  hood:(P,c)=>{ ell(P,16,11,9,9,(x,y,nx,ny)=>y<=19?((Math.abs(nx)<0.62&&y>=9&&y<=17)?null:tone(c,0.7-nx*0.3-ny*0.3)):null); rect(P,10,9,22,9,(x,y)=>tone(c,0.2)); },
+  scarf:(P,c)=>{ rect(P,11,15,21,18,(x,y,t)=>y===15?tone(c,0.85):shade(c,t)); poly(P,[[19,17],[23,17],[25,26],[21,24]],(x,y,t)=>shade(c,0.4+t*0.4)); },
+  plume:(P,c)=>{ poly(P,[[15,2],[18,2],[22,-4],[19,-5]],(x,y,t)=>tone(c,0.8-t*0.4)); },
+  helm:(P,c)=>{ ell(P,16,10,7.5,7,(x,y,nx,ny)=>(y<=11||Math.abs(nx)>0.72)&&y<=17?tone(c,0.8-nx*0.35-ny*0.3):null); for(let x=9;x<=23;x++) P.set(x,11,tone(GOLD,0.6)); P.set(16,12,tone(c,0.3)); P.set(16,13,tone(c,0.3)); },
+  pauldrons:(P,c,trim)=>{ for(const [cx,dk] of [[9.5,0],[22.5,1]]) { ell(P,cx,19.5,3.8,3,(x,y,nx,ny)=>tone(c,0.85-(dk?0.35:0)-nx*0.2-ny*0.3)); if(trim) for(let x=Math.ceil(cx-3.5);x<=cx+3;x++) P.set(x,21,tone(trim,0.7)); } },
+  chestplate:(P,c,trim)=>{ poly(P,[[11,18],[22,18],[21,25],[12,25]],(x,y,t)=>shade(c,t,y<20)); for(let y=19;y<=24;y++) P.set(16,y,tone(c,0.95)); if(trim){ for(let x=11;x<=22;x++) P.set(x,18,tone(trim,0.75)); P.set(16,21,tone(RED,0.9)); } },
+  cape:(P,c)=>{ poly(P,[[10,18],[23,18],[25,36],[8,36]],(x,y,t)=>shade(c,0.3+t*0.5)); },
+  wings:(P,c)=>{ for(const s of [-1,1]) for(let k=0;k<5;k++){ const cx=16+s*(8+k*1.6), cy=14+k*1.2; ell(P,cx,cy,3.4,7-k*0.6,(x,y,nx,ny)=>tone(c,0.85-k*0.12-(ny>0.3?0.2:0)+(s<0?0.05:-0.1))); } },
+  sword:(P,x,y0,len,blade,guard)=>{ for(let y=y0;y<y0+len;y++){ P.set(x,y,tone(blade,0.95)); P.set(x+1,y,tone(blade,0.45)); } P.set(x,y0-1,tone(blade,0.8)); for(let k=-2;k<=3;k++) P.set(x+k,y0+len,tone(guard,0.75)); P.set(x,y0+len+1,tone(LEATHER,0.6)); P.set(x,y0+len+2,tone(LEATHER,0.6)); P.set(x,y0+len+3,tone(guard,0.9)); },
+  greatsword:(P,blade,guard)=>{ // lame plus grande que le héros, tenue en diagonale
+    for(let k=0;k<30;k++){ const x=Math.round(24+k*0.12), y=33-k; P.set(x,y,tone(blade,0.95)); P.set(x+1,y,tone(blade,0.6)); P.set(x+2,y,tone(blade,0.3)); }
+    for(let k=-3;k<=4;k++) P.set(24+k,33,tone(guard,0.8)); P.set(24,34,tone(LEATHER,0.5)); P.set(24,35,tone(LEATHER,0.5)); P.set(24,36,tone(guard,0.95)); },
+  shield:(P,c,trim)=>{ ell(P,7.5,24,4.6,5.4,(x,y,nx,ny)=>Math.hypot(nx,ny)>0.82?tone(trim,0.7):tone(c,0.65-nx*0.25-ny*0.2)); P.set(7,24,tone(trim,0.95)); P.set(8,23,tone(trim,0.8)); },
+  staff:(P,orb)=>{ for(let y=4;y<=37;y++){ P.set(25,y,tone(LEATHER,0.75)); } poly(P,[[23,4],[27,4],[26,0],[24,0]],()=>null); ell(P,25.5,3,2.2,2.2,(x,y,nx,ny)=>tone(orb,0.95-nx*0.2-ny*0.3)); for(const [x,y] of [[23,5],[28,5],[23,1],[28,1]]) P.set(x,y,tone(GOLD,0.6)); },
+  daggers:(P,c)=>{ for(const x0 of [9,23]){ for(let y=29;y<=34;y++){ P.set(x0,y,tone(c,0.95)); P.set(x0+1,y,tone(c,0.45)); } P.set(x0-1,28,tone(GOLD,0.6)); P.set(x0+2,28,tone(GOLD,0.6)); } },
+  bow:(P,c)=>{ for(let y=12;y<=36;y++){ const x=Math.round(6-3.5*Math.sin(Math.PI*(y-12)/24)); P.set(x,y,tone(c,0.75)); P.set(x+1,y,tone(c,0.4)); } for(let y=12;y<=36;y++) P.set(7,y,rgb('#d8d0c0')); }
+};
+
+/* ---------- les six personnages ---------- */
+function make(fn){ const P=new Pix(36,42); const Q={set:(x,y,c,a)=>P.set(x+2,y+3,c,a),blend:(x,y,c,a)=>P.blend(x+2,y+3,c,a),a:(x,y)=>P.a(x+2,y+3)}; fn(Q); outline(P); return P; }
+const CHARS=[
+  ['Épéiste','Épée à une main + bouclier · rare',Q=>{ body(Q,{torso:NAVY,sleeve:NAVY,legs:BLACK,boots:LEATHER,belt:LEATHER,buckle:GOLD,gloves:LEATHER}); for(let y=19;y<=24;y++) Q.set(16,y,tone(STEEL,0.8));
+     head(Q,{hair:'noir',brows:1}); parts.sword(Q,24,16,11,STEEL,GOLD); parts.shield(Q,RED,GOLD); }],
+  ['Sorcière','Bâton · Eau',Q=>{ body(Q,{torso:BLACK,sleeve:BLACK,skirt:BLACK,legs:BLACK,boots:BLACK,belt:PURPLE,buckle:GOLD});
+     head(Q,{hair:'sarcelle',long:1}); parts.witchHat(Q,PURPLE); parts.staff(Q,R(['#0e3a5a','#2a7ab0','#6ac0f0','#d0f4ff'])); }],
+  ['Ombre','Dagues · Ténèbres',Q=>{ parts.cape(Q,BLACK); body(Q,{torso:PURPLE,sleeve:BLACK,legs:BLACK,boots:BLACK,belt:LEATHER,gloves:BLACK});
+     head(Q,{hair:'argent',hood:1}); parts.hood(Q,BLACK); parts.scarf(Q,RED); parts.daggers(Q,STEEL); }],
+  ['Chevalier','Épée à deux mains · Feu · épique',Q=>{ parts.cape(Q,RED); body(Q,{torso:RED,sleeve:STEEL,legs:STEEL,boots:STEEL,gloves:STEEL});
+     parts.chestplate(Q,RED,GOLD); parts.pauldrons(Q,RED,GOLD); head(Q,{hair:'roux',hideEyes:0}); parts.helm(Q,STEEL); parts.plume(Q,RED); parts.greatsword(Q,STEEL,GOLD); }],
+  ['Élue','Épée à une main · Lumière · légendaire',Q=>{ parts.wings(Q,LEAF); body(Q,{torso:WHITE,sleeve:WHITE,legs:BLACK,boots:WHITE,belt:GOLD,buckle:GOLD});
+     for(let y=19;y<=24;y++) Q.set(16,y,tone(GOLD,0.8)); head(Q,{hair:'blanc'}); parts.plume(Q,R(['#2a5a7a','#5aa0c8','#a8dcf0','#f0fcff'])); parts.sword(Q,24,14,13,R(['#7a6a3a','#d8c48a','#fff4c8','#ffffff']),GOLD); }],
+  ['Archère','Arc · Bois',Q=>{ body(Q,{torso:WHITE,sleeve:WHITE,skirt:NAVY,legs:NAVY,boots:BLACK,belt:RED});
+     head(Q,{hair:'violet',pony:1}); parts.bow(Q,R(['#1a2a14','#3a5a2a','#6a8a4a','#a4c47a'])); }]
+];
+/* ---------- monstres ---------- */
+function slime(pal,deco){ const P=new Pix(26,22); ell(P,13,14,11,7.5,(x,y,nx,ny)=>y>20?null:tone(pal,0.8-nx*0.2-ny*0.4)); for(const ex of [9,16]){ P.set(ex,13,EYE);P.set(ex,14,EYE);} P.set(8,10,tone(pal,1));P.set(9,9,tone(pal,1)); if(deco) deco(P); return outline(P); }
+function champi(){ const P=new Pix(26,28); rect(P,9,15,16,24,(x,y,t)=>shade(R(['#4a4040','#8a7a74','#c4b4aa','#e8dcd2']),t)); ell(P,13,11,12,7,(x,y,nx,ny)=>ny>0.75?null:tone(PURPLE,0.85-nx*0.2-ny*0.4)); for(const [x,y] of [[7,8],[13,6],[18,9]]){ P.set(x,y,rgb('#c890ff')); P.set(x+1,y,rgb('#e8d0ff')); } for(const ex of [10,15]){ P.set(ex,18,EYE); P.set(ex,19,EYE);} P.set(9,17,EYE);P.set(16,17,EYE); return outline(P); }
+function reaper(){ // boss : faucheur encapuchonné ailé, yeux brûlants (style boss de Grow Stone)
+  const P=new Pix(80,70);
+  for(const s of [-1,1]) for(let k=0;k<6;k++) poly(P,[[40+s*8,22+k*3],[40+s*(30+k*2),8+k*4],[40+s*(34+k*1.5),18+k*5],[40+s*10,32+k*3]],(x,y,t)=>tone(BLACK,0.85-k*0.1-t*0.3));
+  poly(P,[[28,26],[52,26],[58,66],[22,66]],(x,y,t)=>shade(R(['#1a1418','#3a2e30','#5a4a4a','#7a6664']),t));
+  for(let y=30;y<=66;y+=1){ P.set(39,y,tone(RED,0.6)); P.set(41,y,tone(RED,0.6)); }
+  ell(P,40,20,11,12,(x,y,nx,ny)=>tone(R(['#1a1418','#3a2e30','#5a4a4a','#7a6664']),0.8-nx*0.3-ny*0.3));
+  ell(P,40,22,6,6.5,()=>rgb('#0a0608'));
+  for(const ex of [37,43]){ P.set(ex,22,rgb('#ffd060')); P.set(ex+1,22,rgb('#ff8a3a')); P.set(ex,23,rgb('#ff8a3a')); }
+  ell(P,40,12,2,2,()=>rgb('#c83030'));
+  for(let k=0;k<40;k++){ const x=Math.round(60-k*0.4), y=30+k; P.set(x,y,tone(LEATHER,0.6)); } poly(P,[[56,26],[74,22],[70,30],[58,32]],(x,y,t)=>tone(STEEL,0.9-t*0.6));
+  outline(P); glow(P,40,22,8,[255,120,60],0.45); return P; }
+
+/* ---------- planches ---------- */
+const out=document.getElementById('out'),o=out.getContext('2d');
+function label(t,x,y,size,col){o.fillStyle=col||'#f0d8a8';o.font=(size>15?'600 ':'')+size+'px sans-serif';o.fillText(t,x,y);}
+window.sheetChars=(oldSrc)=>new Promise(res=>{ out.width=1640;out.height=560;o.imageSmoothingEnabled=false;o.fillStyle='#16141e';o.fillRect(0,0,out.width,out.height);
+  const SC=6, base=440; o.fillStyle='rgba(240,216,168,.12)';o.fillRect(0,base+1,out.width,1);
+  label('Maquette v4 — sprites façon Grow Stone Online (vrais pixels du jeu, agrandis ×6)',20,30,18);
+  const img=new Image(); img.onload=()=>{ label('Actuel',20,70,16); o.drawImage(img,4,0,24,31,20,base-30*SC+0,24*SC,31*SC);
+    CHARS.forEach(([n,d,fn],i)=>{ const P=make(fn), c=P.done(), x0=200+i*240; label(n,x0,70,17); label(d,x0,92,12,'#b8b0c8'); o.fillStyle='rgba(0,0,0,.35)'; o.beginPath(); o.ellipse(x0+18*SC,base-2,9*SC,2*SC,0,0,6.3); o.fill(); o.drawImage(c,x0,base-41*SC,36*SC,42*SC);
+      // taille réelle approximative sur iPhone
+      o.drawImage(c,x0+10,base+40,36*1.67,42*1.67); });
+    label('taille réelle ↓',20,base+60,12,'#9890a8'); o.drawImage(img,4,0,24,31,110,base+45,24*1.67,31*1.67);
+    res(out.toDataURL()); }; img.src=oldSrc; });
+window.sheetMonsters=()=>{ out.width=1300;out.height=520;o.imageSmoothingEnabled=false;o.fillStyle='#16141e';o.fillRect(0,0,out.width,out.height);
+  const SC=5,base=440; o.fillStyle='rgba(240,216,168,.12)';o.fillRect(0,base+1,out.width,1);
+  const hero=make(CHARS[0][2]).done(); o.drawImage(hero,20,base-41*SC,36*SC,42*SC); label('Héros (échelle)',20,40,16);
+  const mons=[['Gelée verte',slime(R(['#14301a','#2a5a2a','#4a8a3e','#86c06a']),P=>{P.set(13,6,rgb('#6aa04a'));P.set(12,5,rgb('#8ac860'));P.set(14,5,rgb('#8ac860'));})],['Champi des ombres',champi()],['Gelée de braise',slime(R(['#3a0a0a','#7a1a14','#c03a1e','#f08030']),P=>{for(const x of [7,11,15,19]){P.set(x,7,rgb('#ffb040'));P.set(x,6,rgb('#ffe080'));}})]];
+  mons.forEach(([n,P],i)=>{ const c=P.done(),x0=230+i*190; label(n,x0,40,16); o.drawImage(c,x0,base-P.h*SC,P.w*SC,P.h*SC); });
+  const b=reaper(); label('BOSS — Gardien déchu (faucheur ailé)',820,40,16,'#ffb090'); o.drawImage(b.done(),800,base-b.h*SC+20,b.w*SC*0.95,b.h*SC*0.95);
+  return out.toDataURL(); };
+</script>
