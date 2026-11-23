@@ -1,10 +1,12 @@
 # Pixels Worlds — design des personnages, monstres et éléments
 
-Statut : **maquette v2, en attente de validation**. Rien de ce document n'est encore codé dans le jeu.
+Statut : **maquette v3, en attente de validation** (v2 validée sur le fond ; v3 = nouveau style + progression sans classes). Rien de ce document n'est encore codé dans le jeu.
 Règle de travail : on valide le design ici (maquettes en images), puis un plan d'implémentation, puis seulement le code.
 
-Références : Grow Stone Online (héros et armures), Monster Strike (armures ornementées, éléments, monstres),
-en gardant la direction artistique « aquarelle 16 bits » du jeu (palette pastel harmonisée, contours prune, lumière de contour, couleur par zone).
+Références : **Monster Strike et Grow Stone Online** pour le design des personnages et des monstres
+(couleurs franches, contraste fort, ombrage en aplats, armures ornementées, visages d'anime héroïques).
+De Gris, on garde **seulement l'aspect éthéré** : lueurs, gemmes et armes qui rayonnent, étincelles flottantes, auras translucides, rais de lumière.
+Le côté « poétique » (pastel délavé, ambiance contemplative) est abandonné.
 
 ## Décisions validées
 
@@ -16,6 +18,11 @@ en gardant la direction artistique « aquarelle 16 bits » du jeu (palette paste
 | Éléments | **Visuels et gameplay** : Feu, Eau, Bois, Lumière, Ténèbres (proposition de règles ci-dessous, à valider) |
 | Monstres | **Petits monstres mignons, boss épiques** |
 | Méthode | Maquettes d'abord, validation, puis implémentation |
+| Classes | **Aucune.** L'arme en main définit les attaques et les sorts ; sa maîtrise débloque ses techniques |
+| Maîtrise | Gagnée **en utilisant l'arme** (coups portés, monstres vaincus) |
+| Barre d'actions | Attaque de base = celle de l'arme ; **3 techniques au choix** parmi celles débloquées pour cette arme |
+| Points de caractéristiques | Donnés à chaque niveau, répartis librement ; **réinitialisation chez un PNJ contre de l'or** |
+| Style | Personnages façon Monster Strike / Grow Stone ; seulement l'éthéré de Gris |
 
 ## Maquettes v2
 
@@ -41,6 +48,63 @@ en gardant la direction artistique « aquarelle 16 bits » du jeu (palette paste
 ![Scène](img/v2-scene.png)
 
 Le prototype qui génère ces images est dans `prototype/maquette-v2.html` (hors jeu).
+
+## Maquette v3 — style Monster Strike / Grow Stone + éthéré
+
+Changements par rapport à la v2 : couleurs saturées, ombrage en aplats francs (3 tons, sans tramage), contour sombre net,
+**trait intérieur entre chaque pièce** (épaulières, plastron, gantelets se détachent), yeux d'anime et sourcils marqués,
+mèches en pointes avec reflet ; touches éthérées : gemmes qui rayonnent, étincelles flottantes selon la rareté, aura légendaire.
+
+![Raretés v3](img/v3-raretes.png)
+
+**Les six familles d'armes** (sans classes) :
+
+![Armes v3](img/v3-armes.png)
+
+![Monstres v3](img/v3-monstres.png)
+
+![Corps v3](img/v3-corps.png)
+
+Aperçu du décor avec des couleurs plus franches (moins pastel), personnages v3 à l'échelle :
+
+![Scène v3](img/v3-scene.png)
+
+Prototype : `prototype/maquette-v3.html`.
+
+## Progression sans classes (à valider)
+
+**Niveau du personnage** : l'XP donne des niveaux ; chaque niveau donne **3 points** à répartir entre Force, Agilité, Intelligence, Endurance.
+Les points sont réinitialisables chez un PNJ du bourg contre de l'or (prix croissant).
+
+| Caractéristique | Effet |
+|---|---|
+| Force | dégâts des épées, haches, lances |
+| Agilité | dégâts des dagues et arcs, critique, vitesse d'attaque |
+| Intelligence | dégâts des bâtons et des sorts, mana |
+| Endurance | points de vie, efficacité du blocage |
+
+**Maîtrise d'arme** : chaque famille a un niveau de maîtrise de 1 à 20, qui monte en l'utilisant. Elle débloque des **techniques** (actives),
+des **passifs** (+dégâts, +critique) et des **capacités** (porter un bouclier, bloquer, manier deux armes).
+L'élément de l'arme colore ses techniques (bâton de Feu → boule de feu ; bâton d'Eau → lance d'eau).
+
+| Maîtrise | Épée à une main | Deux mains / hache | Dagues | Arc | Bâton | Lance |
+|---|---|---|---|---|---|---|
+| 1 | Frappe | Coup lourd | Coups rapides | Tir | Trait de l'élément | Estoc (portée) |
+| 3 | Taillade | Tourbillon | Saignement | Volée | Projectile de l'élément | Coup de hampe |
+| 5 | **Port du bouclier** | +10 % dégâts | Double maniement amélioré | Recul en tirant | Soin léger | Balayage (4) |
+| 8 | **Blocage** | Fendoir | Pas de l'ombre (7) | Flèche perçante (6) | Nova (6) | Saut |
+| 12 | Charge au bouclier | Brise-garde (10) | Coup dans le dos | Piège | Bouclier d'éther (10) | Empalement |
+| 16 | Riposte | Cri de guerre (14) | Poison | Pluie de flèches (14) | Zone de l'élément | Mur de lances (14) |
+| 20 | Lame élémentaire | Rage | Danse des lames | Flèche élémentaire | Météore / déluge / ronces | Tempête de lances |
+
+**Emplacement main gauche** : bouclier (si maîtrise d'épée à une main ≥ 5), dague secondaire, orbe ou carquois selon l'arme.
+Total des emplacements : tête, épaules, torse, mains, jambes, pieds, arme, main gauche, bijou.
+
+**Sauvegardes existantes** : les classes disparaissent sans perte. Le niveau est gardé ; les points sont répartis automatiquement
+selon l'ancienne classe (réinitialisables gratuitement une fois) ; la maîtrise de l'arme de l'ancienne classe démarre au niveau correspondant
+(Archi404, ancien Guerrier niveau 8 → maîtrise Épée à une main 8).
+
+Questions ouvertes : vitesse de gain de maîtrise, nombre de techniques par arme au lancement, armes à deux mains et bouclier incompatibles (oui, par défaut).
 
 ## Système de couches (paper doll)
 
