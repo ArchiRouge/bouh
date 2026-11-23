@@ -534,7 +534,9 @@
     let tx, ty;
     if (mode !== 'play') { const [cx, cy] = ePx({ x: W.CX, y: W.CY, z: 1 }); tx = cx + Math.cos(time * 0.12) * 70; ty = cy + Math.sin(time * 0.12) * 36; }
     else { [tx, ty] = ePx(me); ty -= 10; }
-    const k = Math.min(1, dt * 8); camX += (tx - camX) * k; camY += (ty - camY) * k;
+    // caméra : verrouillée au pixel sur le héros (pas de tremblement), glisse seulement sur les grands sauts
+    if (mode === 'play' && Math.hypot(tx - camX, ty - camY) < 24) { camX = Math.round(tx); camY = Math.round(ty); }
+    else { const k = Math.min(1, dt * 8); camX += (tx - camX) * k; camY += (ty - camY) * k; }
   }
 
   /* ---------- rendu du monde ---------- */
@@ -919,6 +921,6 @@
   }
   const saveOnLeave = () => { if (link) link.saveNow(); };
   addEventListener('pagehide', saveOnLeave); document.addEventListener('visibilitychange', () => { if (document.hidden) saveOnLeave(); });
-  window.__etheria = { me, mobs, others, get link() { return link; }, get mode() { return mode; }, play, input, W, get ART() { return ART; } };
+  window.__etheria = { get cam() { return [camX, camY, lastOX, lastOY, VW, VH]; }, me, mobs, others, get link() { return link; }, get mode() { return mode; }, play, input, W, get ART() { return ART; } };
   boot();
 })();
