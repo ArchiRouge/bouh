@@ -340,9 +340,9 @@
   const chp = $('chprev').getContext('2d'); chp.imageSmoothingEnabled = false;
   function drawCharPreview() {
     if ($('char').hidden || !me.set) return;
-    const set = prevSet || me.set, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 5) % 4;
+    const set = (prevSet || me.set).hd, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 5) % 4;
     const img = d === 'sideL' ? set.sideL[fr] : d === 'side' ? set.side[fr] : set[d][Math.floor(time * 2) % 4 === 0 && d === 'front' ? 0 : fr];
-    chp.clearRect(0, 0, 32, 34); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(10, 31, 12, 2); chp.drawImage(img, 4, 1);
+    chp.clearRect(0, 0, 64, 68); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(20, 62, 24, 4); chp.drawImage(img, 8, 2);
   }
   const STEPS = window.EtheriaSteps || { native: false, collect: async () => 0 };
   function openWalk() { walkSig = ''; renderWalk(); $('walk').hidden = false; input.atkBtn = false; joy.active = false; }
@@ -606,7 +606,7 @@
       if (e.scarf === 2 && ((time * 4 + k) % 5) < 0.4) { g.fillStyle = '#ffffff'; g.fillRect(x, y - 1, 1, 1); }
     }
   }
-  function frameOf(e) { const f = Math.floor(e.anim) % 4; if (!e.moving && e.set.blinkF && ((time + (e.bph || e.x)) % 3.4) < 0.14) { if (e.face === 'front') return e.set.blinkF; if (e.face === 'side') return e.flip ? e.set.blinkSL : e.set.blinkS; } if (e.face === 'side') return (e.flip ? e.set.sideL : e.set.side)[f]; return e.set[e.face][f]; }
+  function frameOf(e, set) { set = set || e.set; const f = Math.floor(e.anim) % 4; if (!e.moving && set.blinkF && ((time + (e.bph || e.x)) % 3.4) < 0.14) { if (e.face === 'front') return set.blinkF; if (e.face === 'side') return e.flip ? set.blinkSL : set.blinkS; } if (e.face === 'side') return (e.flip ? set.sideL : set.side)[f]; return set[e.face][f]; }
   function drawEntity(e, ox, oy) {
     const fine = e.kind === 'char' || e.kind === 'npc' || e.kind === 'mob', snap = v => fine ? Math.round(v * RQ) / RQ : Math.round(v);
     const sx = snap(ox + (e.x - e.y) * 16), sy = snap(oy + (e.x + e.y) * 8 - e.z * 8);
@@ -636,12 +636,12 @@
   function charK() { const v = Math.round(RQ * 1.2) / RQ; return v > 1 && v <= 1.25 ? v : 1; }
   function drawChar(e, sx, sy) {
     if (!e.set) return;
-    const ck = charK();
-    if (e.dead) { g.globalAlpha = 0.45; g.drawImage(e.set.front[0], sx - 12 * ck, sy - 30 * ck, 24 * ck, 31 * ck); g.globalAlpha = 1; labels.push({ x: sx, y: sy - 32 * ck, t: e.name, c: '#a8a8b8' }); return; }
+    const ck = charK(), cs = RQ >= 2 ? e.set.hd : e.set; // HD dès que l'écran peut montrer le détail
+    if (e.dead) { g.globalAlpha = 0.45; g.drawImage(cs.front[0], sx - 12 * ck, sy - 30 * ck, 24 * ck, 31 * ck); g.globalAlpha = 1; labels.push({ x: sx, y: sy - 32 * ck, t: e.name, c: '#a8a8b8' }); return; }
     g.drawImage(SHADOW, sx - 7 * ck, sy - 3, 14 * ck, 5);
     const scarf = e.kind !== 'npc';
     const bob = e.moving && Math.floor(e.anim) % 2 === 1 ? -1 : 0;
-    if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e), sx - 12 * ck, sy - 30 * ck + bob, 24 * ck, 31 * ck);
+    if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e, cs), sx - 12 * ck, sy - 30 * ck + bob, 24 * ck, 31 * ck);
     if (e.set.glint && ((time * 1.7 + (e.x || 0)) % 2.2) < 0.25) { const s2 = e.face === 'front' || (e.face === 'side' && e.flip) ? -1 : 1, gx = Math.round(sx + s2 * 9 * ck), gy = Math.round(sy - 17 * ck + bob); g.fillStyle = e.set.glint; g.fillRect(gx - 1, gy, 3, 1); g.fillRect(gx, gy - 1, 1, 3); g.fillStyle = '#ffffff'; g.fillRect(gx, gy, 1, 1); }
     if (scarf && e.set) drawScarf(e, sx, sy + bob, ck);
     if (e === me && me.buff > 0) for (let k = 0; k < 4; k++) { const a = time * 4 + k * 1.57; g.fillStyle = k % 2 ? '#ff9a6a' : '#ffd060'; g.fillRect(Math.round(sx + Math.cos(a) * 8), Math.round(sy - 10 + Math.sin(a) * 4), 1, 1); }
