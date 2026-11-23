@@ -1,0 +1,291 @@
+<!doctype html><meta charset="utf-8"><body style="margin:0;background:#1e2036">
+<canvas id="out"></canvas>
+<script>
+/* Maquette v2 — héros « héroïques » (≈3,5 têtes) à couches + éléments, monstres. Prototype hors jeu.
+   Grille HD 48×96 pour les héros (24×48 pixels de jeu affichés en 2×). */
+const rgb = h => [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+const R = a => a.map(rgb), mix = (a,b,t) => [0,1,2].map(i => Math.round(a[i]+(b[i]-a[i])*t));
+const clamp = (v,a,b) => v<a?a:v>b?b:v;
+const BAY = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v => (v+.5)/16-.5);
+const ramp = (r,v,x,y) => r[clamp(Math.round(clamp(v,0,1)*(r.length-1)+BAY[((y&3)<<2)|(x&3)]*0.35),0,r.length-1)];
+class Pix { constructor(w,h){this.w=w;this.h=h;this.c=document.createElement('canvas');this.c.width=w;this.c.height=h;this.g=this.c.getContext('2d');this.im=this.g.createImageData(w,h);this.d=this.im.data;}
+  set(x,y,c,a){x=Math.floor(x);y=Math.floor(y);if(x<0||y<0||x>=this.w||y>=this.h||!c)return;const k=(y*this.w+x)*4;this.d[k]=c[0];this.d[k+1]=c[1];this.d[k+2]=c[2];this.d[k+3]=a==null?255:a;}
+  blend(x,y,c,al){x=Math.floor(x);y=Math.floor(y);if(x<0||y<0||x>=this.w||y>=this.h)return;const k=(y*this.w+x)*4,a0=this.d[k+3]/255,a=al+a0*(1-al);if(a<=0)return;for(let i=0;i<3;i++)this.d[k+i]=Math.round((c[i]*al+this.d[k+i]*a0*(1-al))/a);this.d[k+3]=Math.round(a*255);}
+  a(x,y){return x<0||y<0||x>=this.w||y>=this.h?0:this.d[(y*this.w+x)*4+3];}
+  done(){this.g.putImageData(this.im,0,0);return this.c;} }
+function ell(P,cx,cy,rx,ry,fn){for(let y=Math.floor(cy-ry-1);y<=Math.ceil(cy+ry+1);y++)for(let x=Math.floor(cx-rx-1);x<=Math.ceil(cx+rx+1);x++){const nx=(x+.5-cx)/rx,ny=(y+.5-cy)/ry;if(nx*nx+ny*ny<=1){const c=fn(x,y,nx,ny);if(c)P.set(x,y,c);}}}
+function poly(P,pts,fn){let y0=1e9,y1=-1e9;for(const p of pts){y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}for(let y=Math.floor(y0);y<=Math.ceil(y1);y++){const yc=y+.5,xs=[];for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];if((a[1]<=yc&&b[1]>yc)||(b[1]<=yc&&a[1]>yc))xs.push(a[0]+(yc-a[1])/(b[1]-a[1])*(b[0]-a[0]));}if(xs.length<2)continue;const xa=Math.min(...xs),xb=Math.max(...xs);for(let x=Math.ceil(xa-.5);x<=Math.floor(xb-.5);x++){const c=fn(x,y,(x+.5-xa)/Math.max(1,xb-xa));if(c)P.set(x,y,c);}}}
+const rect=(P,x0,y0,x1,y1,fn)=>{for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){const c=fn(x,y,(x-x0)/Math.max(1,x1-x0),(y-y0)/Math.max(1,y1-y0));if(c)P.set(x,y,c);}};
+const cyl=(r,t,x,y,b)=>ramp(r,(b==null?0.62:b)-t*0.55,x,y);
+function finish(P,glowCol){ const d=P.d,w=P.w,h=P.h,A=(x,y)=>x<0||y<0||x>=w||y>=h?0:d[(y*w+x)*4+3];
+  const lit=[];for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(A(x,y)>200&&(A(x-1,y)<200||A(x,y-1)<200))lit.push(y*w+x);
+  for(const k of lit){const q=k*4;for(let i=0;i<3;i++)d[q+i]=Math.min(255,d[q+i]*.8+[255,250,235][i]*.2);}
+  const add=[];for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(A(x,y)<200&&(A(x+1,y)>200||A(x-1,y)>200||A(x,y+1)>200||A(x,y-1)>200))add.push(y*w+x);
+  for(const k of add){const q=k*4;d[q]=30;d[q+1]=16;d[q+2]=40;d[q+3]=255;}
+  return P.done(); }
+
+/* ---------- palettes ---------- */
+const SKINS={light:R(['#7a4436','#b8735c','#dca07e','#f2c4a2','#fde0c6']),tan:R(['#5a3024','#8e5440','#b87a5a','#d8a07a','#eec09a']),dark:R(['#2e1a1a','#523026','#764634','#9a6446','#b8845e'])};
+const HAIRS={brown:R(['#2a1820','#4a2a2c','#6e4232','#9a6444','#c08c62']),red:R(['#3a1418','#6a2420','#a03a28','#d0603a','#f09060']),silver:R(['#4a4a62','#7a7a96','#a8a8c4','#d4d4e6','#f4f4fc']),black:R(['#12101c','#22202e','#36324a','#4e4a66','#6e6888'])};
+const EYE=rgb('#2a1428'),WHITE=rgb('#f6f0e6'),LIP=rgb('#a45a5c'),LIPF=rgb('#c45a6a');
+const STEEL=R(['#363852','#5a5e7c','#8890ae','#bcc4da','#eef2fa']);
+const SILVER=R(['#4a4e66','#7a80a0','#aab2cc','#d6dcec','#ffffff']);
+const GOLD=R(['#6a4416','#a8721e','#e0a83a','#f8d878','#fff4c0']);
+const LINEN=R(['#5e5048','#8c7868','#b8a48a','#dccab0','#f4e8d2']);
+const LEATHER=R(['#3a2220','#5e3628','#86503a','#aa7050','#c89470']);
+const DARKL=R(['#1e1a20','#2e2830','#443a40','#5e5054']);
+const PANTS=R(['#2a2430','#3e3446','#584a5e','#76687a']);
+const MAIL=R(['#3a3c52','#5c6078','#8a90a8','#b8c0d4']);
+// éléments
+const EL={
+  eau:{main:R(['#14243e','#1e3a62','#2e5a8a','#4a86b0','#7ab4d0','#bce0ec']),trim:SILVER,gem:rgb('#6ad8f0'),glow:[120,220,255],name:'Eau',sym:'eau'},
+  feu:{main:R(['#3a1218','#6a1e22','#a03a2c','#d0603e','#f0904e','#ffc080']),trim:GOLD,gem:rgb('#ff6a3a'),glow:[255,140,80],name:'Feu',sym:'feu'},
+  bois:{main:R(['#14301e','#1e4a2a','#2e6a36','#4a8c44','#7aae5a','#b4d47e']),trim:R(['#4a3016','#7a5226','#a87a3a','#d0a85a']),gem:rgb('#9cf070'),glow:[170,240,140],name:'Bois',sym:'bois'},
+  lumiere:{main:R(['#6a5a4a','#a89878','#d8ccb0','#f2ead6','#fffaf0','#ffffff']),trim:GOLD,gem:rgb('#fff0a0'),glow:[255,240,180],name:'Lumière',sym:'lum'},
+  tenebres:{main:R(['#120e1e','#221a36','#36284e','#4e3a6a','#6e5290','#9478b8']),trim:R(['#2a2440','#4a4468','#8a84b0','#c8c4e8']),gem:rgb('#c47cff'),glow:[190,120,255],name:'Ténèbres',sym:'ten'}
+};
+const CAPE_RED=R(['#3a0e18','#5e1624','#8a2232','#b4384a']);
+
+/* ---------- corps ---------- */
+const BODY={
+  homme:{sh:[13,35],arm:5,waist:[16,32],hip:[16,32],legs:[[17,23],[25,31]],neck:[21,27],head:[8.2,11],skin:'light',hair:'brown',hairStyle:'court'},
+  femme:{sh:[15,33],arm:4,waist:[18,30],hip:[15,33],legs:[[17,22],[26,31]],neck:[22,26],head:[7.7,10.4],skin:'tan',hair:'red',hairStyle:'long',fem:1},
+  carrure:{sh:[11,37],arm:6,waist:[14,34],hip:[15,33],legs:[[16,23],[25,32]],neck:[20,28],head:[8.6,10.8],skin:'dark',hair:'black',hairStyle:'rase',beard:1}
+};
+function armRanges(B){ return [[B.sh[0]-B.arm+1,B.sh[0]+1],[B.sh[1]-1,B.sh[1]+B.arm-1]]; }
+
+/* ---------- héros de face ---------- */
+function heroFront(P,B,O){
+  const SK=SKINS[B.skin],HA=HAIRS[B.hair],arms=armRanges(B);
+  // aura (légendaire)
+  if(O.aura) for(let y=0;y<96;y++)for(let x=0;x<48;x++){const d=Math.hypot((x-24)/20,(y-46)/42);if(d<1)P.blend(x,y,O.aura,0.22*(1-d));}
+  // cape (derrière)
+  if(O.cape) poly(P,[[B.sh[0]+1,30],[B.sh[1]-1,30],[B.sh[1]+3,86],[B.sh[0]-3,86]],(x,y,t)=>ramp(O.cape,0.55-t*0.4-(y>80?0.15:0),x,y));
+  // cheveux longs (derrière)
+  if(B.hairStyle==='long') poly(P,[[15,12],[33,12],[35,44],[13,44]],(x,y,t)=>ramp(HA,0.6-t*0.4-(y-12)/80,x,y));
+  // jambes (peau puis pantalon/armure)
+  for(const [x0,x1] of B.legs) rect(P,x0,54,x1,84,(x,y,t)=>cyl(O.legs||PANTS,t,x,y));
+  if(O.knee) for(const [x0,x1] of B.legs) ell(P,(x0+x1)/2,67,(x1-x0)/2+1.2,3.4,(x,y,nx,ny)=>ramp(O.knee,0.65-nx*0.3-ny*0.3,x,y));
+  if(O.greaveTrim) for(const [x0,x1] of B.legs){ for(let x=x0;x<=x1;x++) P.set(x,71,O.greaveTrim[2]); }
+  // pieds
+  for(const [x0,x1] of B.legs){ rect(P,x0-1,O.tallBoots?73:79,x1+1,87,(x,y,t)=>cyl(O.feet||DARKL,t,x,y,y>84?0.35:0.62)); for(let x=x0-1;x<=x1+1;x++)P.set(x,88,(O.feet||DARKL)[0]); if(O.bootTrim) for(let x=x0-1;x<=x1+1;x++)P.set(x,O.tallBoots?73:79,O.bootTrim[2]); }
+  // bras (peau)
+  for(const [x0,x1] of arms) rect(P,x0,31,x1,51,(x,y,t)=>cyl(SK,t,x,y,0.6));
+  // torse (peau)
+  poly(P,[[B.sh[0],30],[B.sh[1],30],[B.waist[1],50],[B.hip[1],54],[B.hip[0],54],[B.waist[0],50]],(x,y,t)=>cyl(SK,t,x,y));
+  // haut du corps : tunique / mailles / plastron
+  const C=O.chest;
+  const bodyPts=[[B.sh[0],29],[B.sh[1],29],[B.waist[1]+1,50],[B.hip[1]+1,C.skirt||56],[B.hip[0]-1,C.skirt||56],[B.waist[0]-1,50]];
+  poly(P,bodyPts,(x,y,t)=>{ if(C.type==='mail'){ const ring=((x+(y>>1))&1)?0.55:0.75; return ramp(C.pal,ring-t*0.4,x,y);} return cyl(C.pal,t,x,y,0.66); });
+  if(B.fem && C.type!=='plate') for(const cx of [20,28]) ell(P,cx,37,3.2,2.6,(x,y,nx,ny)=>ny>0.2?ramp(C.pal,0.35,x,y):null);
+  if(C.type==='tunic'){ poly(P,[[21,29],[27,29],[24,35]],()=>SK[2]); for(let y=36;y<=(C.skirt||56);y++)P.set(24,y,C.pal[1]); if(C.embroid) for(let x=bodyPts[4][0]+1;x<bodyPts[3][0];x++) if((x&1)) P.set(x,(C.skirt||56)-1,C.embroid[2]); }
+  if(C.tabard){ poly(P,[[19,34],[29,34],[29,62],[24,66],[19,62]],(x,y,t)=>cyl(C.tabard,t*0.6,x,y,0.62)); for(let y=34;y<=62;y++){P.set(19,y,C.trim[3]);P.set(29,y,C.trim[2]);} // motif vague
+    for(let k=0;k<3;k++){const yy=44+k*5;for(let x=20;x<=28;x++)P.set(x,yy+Math.round(Math.sin((x+k)*1.2)),C.trim[3]);} }
+  if(C.type==='plate'){
+    for(let y=31;y<=50;y++){P.set(24,y,C.pal[4]);P.set(25,y,C.pal[1]);}
+    ell(P,19,37,3,4,()=>C.pal[3]);
+    // filigrane
+    for(let x=B.sh[0]+1;x<=B.sh[1]-1;x++) P.set(x,29,C.trim[2]);
+    if(C.filigree){ for(let y=30;y<=48;y+=3){ P.set(20,y,C.trim[3]); P.set(28,y,C.trim[3]); P.set(21,y+1,C.trim[2]); P.set(27,y+1,C.trim[2]); } }
+    if(C.flames){ for(let x=17;x<=31;x++){ const yy=48-Math.abs(((x*3)%7)-3); P.set(x,yy,C.trim[2]); } }
+  }
+  if(C.gem){ ell(P,24.5,33,1.8,1.8,()=>C.gem); P.set(24,32,WHITE); }
+  // tassettes
+  if(O.tassets) for(const [a,b] of [[B.hip[0]-1,23],[25,B.hip[1]+1]]) poly(P,[[a,53],[b,53],[b-1,63],[a+1,63]],(x,y,t)=>cyl(O.tassets,t,x,y,0.7));
+  // ceinture
+  rect(P,B.waist[0]-1,50,B.waist[1]+1,53,(x,y)=>ramp(O.belt||LEATHER,y===50?0.85:0.45,x,y));
+  if(O.buckle) rect(P,22,50,26,53,(x,y)=>ramp(O.buckle,(x===22||y===50)?0.95:0.55,x,y));
+  // manches
+  for(const [x0,x1] of arms) rect(P,x0-1,30,x1+1,O.sleeveEnd||42,(x,y,t)=>O.sleeve?cyl(O.sleeve,t,x,y):null);
+  // mains / gantelets
+  if(O.hands) for(const [x0,x1] of arms){ rect(P,x0-1,43,x1+1,51,(x,y,t)=>cyl(O.hands,t,x,y,y<45?0.9:0.62)); if(O.handTrim) for(let x=x0-1;x<=x1+1;x++)P.set(x,43,O.handTrim[2]); }
+  for(const [x0,x1] of arms) ell(P,(x0+x1)/2,53.5,(x1-x0)/2+0.8,3.3,(x,y,nx,ny)=>ramp(O.hands||SK,0.6-nx*0.3-ny*0.2,x,y));
+  // épaulières
+  if(O.shoulders){ const S=O.shoulders; for(const [cx,s] of [[(arms[0][0]+arms[0][1])/2,-1],[(arms[1][0]+arms[1][1])/2,1]]){
+      const big=S.size||1; ell(P,cx,33,5.5*big+B.arm*0.4,4.2*big+1,(x,y,nx,ny)=>ny<0.6?ramp(S.pal,0.75-nx*0.3-ny*0.35,x,y):null);
+      if(S.layers) for(let k=1;k<=S.layers;k++) ell(P,cx+s*k,33+k*4,(5.5*big+B.arm*0.4)-k*1.2,3,(x,y,nx,ny)=>ny<0.4?ramp(S.pal,0.6-k*0.08-nx*0.3,x,y):null);
+      if(S.trim){ const rx=5.5*big+B.arm*0.4; for(let x=Math.ceil(cx-rx);x<=Math.floor(cx+rx);x++){ const yy=Math.round(33-(4.2*big+1)*Math.sqrt(Math.max(0,1-((x+.5-cx)/rx)**2))); P.set(x,yy,S.trim[2]); } }
+      if(S.spike) for(let k=0;k<5;k++){ P.set(cx+s*2,26+k,S.trim?S.trim[3-(k>2?1:0)]:S.pal[4]); if(k<3)P.set(cx+s*2+s,27+k,S.pal[3]); }
+      if(S.gem) ell(P,cx,32,1.4,1.4,()=>S.gem);
+  } }
+  // tête
+  const [hrx,hry]=B.head;
+  rect(P,B.neck[0],24,B.neck[1],30,(x,y)=>ramp(SK,y<27?0.35:0.5,x,y));
+  ell(P,24,15,hrx,hry,(x,y,nx,ny)=>ramp(SK,0.68-nx*0.25-ny*0.12-(ny>0.55?0.12:0),x,y));
+  for(let y=19;y<=25;y++) for(let x=27;x<=32;x++) if(P.a(x,y)&&((x-24)/hrx)**2+((y-15)/hry)**2>0.62) P.set(x,y,SK[1]);
+  P.set(24,25,SK[3]);
+  if(!O.closedHelm){
+    for(const ex of [19,27]){ P.set(ex,15,EYE);P.set(ex+1,15,EYE);P.set(ex+2,15,EYE);P.set(ex,16,WHITE);P.set(ex+1,16,O.eyeCol||rgb('#3e6a8c'));P.set(ex+2,16,EYE); if(B.fem){P.set(ex-1+(ex>24?4:0),14,EYE);} }
+    for(const ex of [19,27]) for(let k=0;k<3;k++) P.set(ex+k,13,mix(HA[1],SK[1],.2));
+    P.set(24,17,SK[3]);P.set(24,18,SK[2]);P.set(25,19,SK[1]);P.set(24,19,SK[2]);
+    if(B.fem){P.set(23,21,LIPF);P.set(24,21,LIPF);} else {P.set(23,21,LIP);P.set(24,21,LIP);P.set(25,21,mix(LIP,SK[2],.5));}
+    if(B.beard) ell(P,24,22.5,6.5,4.2,(x,y,nx,ny)=>ny>-0.4?ramp(HA,0.5-nx*0.3,x,y):null), P.set(23,21,LIP),P.set(24,21,LIP);
+  }
+  // cheveux
+  if(!O.helm || O.helm.type==='circlet'){
+    if(B.hairStyle==='rase') ell(P,24,9,8.6,6,(x,y,nx,ny)=>y<=10?ramp(HA,0.6-nx*0.35-ny*0.3,x,y):null);
+    else { ell(P,24,10,9,7.6,(x,y,nx,ny)=>y<=12||(x<17||x>31)&&y<=(B.hairStyle==='long'?26:17)?ramp(HA,0.7-nx*0.35-ny*0.3,x,y):null);
+      for(let x=17;x<=23;x++) P.set(x,13+((x-17)>>2),ramp(HA,0.55,x,13)); }
+  }
+  // couvre-chef
+  if(O.helm){ const H=O.helm;
+    if(H.type==='circlet'){ for(let x=16;x<=32;x++)P.set(x,10,H.trim[2]); ell(P,24.5,10,1.6,1.6,()=>H.gem||H.trim[3]); }
+    if(H.type==='helm'||H.type==='winged'){
+      ell(P,24,12,hrx+1.6,hry-0.5,(x,y,nx,ny)=>(y<=12||x<=18||x>=30)&&y<=22?ramp(H.pal,0.72-nx*0.3-ny*0.3,x,y):null);
+      for(let y=12;y<=19;y++){P.set(24,y,H.pal[Math.min(4,H.pal.length-2)]);P.set(25,y,H.pal[1]);}
+      for(let x=15;x<=33;x++) P.set(x,12,H.trim[2]);
+      if(H.crest) rect(P,22,0,26,4,(x,y)=>ramp(H.crest,0.75-(x-22)*0.12,x,y));
+      if(H.type==='winged') for(const s of [-1,1]) for(let k=0;k<9;k++){ const x=24+s*(10+k), y0=10-k; for(let y=y0;y<=y0+3+Math.floor(k/3);y++) P.set(x,y,ramp(H.trim,0.85-k*0.05-(y-y0)*0.1,x,y)); }
+      if(H.gem){ ell(P,24.5,9,1.5,1.5,()=>H.gem); }
+    }
+  }
+  // arme
+  if(O.weapon) O.weapon(P);
+}
+
+/* ---------- héros de profil (vers la droite) ---------- */
+function heroSide(P,B,O){
+  const SK=SKINS[B.skin],HA=HAIRS[B.hair],C=O.chest,shade=(r)=>r.map(c=>mix(c,[20,14,30],0.3));
+  if(O.aura) for(let y=0;y<96;y++)for(let x=0;x<48;x++){const d=Math.hypot((x-24)/20,(y-46)/42);if(d<1)P.blend(x,y,O.aura,0.22*(1-d));}
+  if(O.cape) poly(P,[[17,30],[22,30],[18,86],[9,86]],(x,y,t)=>ramp(O.cape,0.45-t*0.3,x,y));
+  if(B.hairStyle==='long') poly(P,[[16,12],[24,12],[22,44],[14,44]],(x,y,t)=>ramp(HA,0.55-t*0.3,x,y));
+  // bras arrière
+  rect(P,19,31,23,50,(x,y,t)=>ramp(shade(O.sleeve||SK),0.5,x,y));
+  // jambes : arrière plus sombre, avant éclairée
+  rect(P,19,54,24,84,(x,y)=>ramp(shade(O.legs||PANTS),0.45,x,y));
+  rect(P,24,54,30,84,(x,y,t)=>cyl(O.legs||PANTS,t,x,y));
+  if(O.knee) ell(P,28.5,67,3.6,3.6,(x,y,nx,ny)=>ramp(O.knee,0.65-nx*0.3-ny*0.3,x,y));
+  for(const [x0,dark] of [[18,1],[23,0]]) rect(P,x0,O.tallBoots?74:80,x0+9,87,(x,y)=>ramp(dark?shade(O.feet||DARKL):(O.feet||DARKL),y>84?0.35:0.62,x,y)), rect(P,x0+7,84,x0+11,87,(x,y)=>ramp(dark?shade(O.feet||DARKL):(O.feet||DARKL),0.4,x,y));
+  if(O.tassets) poly(P,[[19,53],[31,53],[31,63],[20,63]],(x,y,t)=>cyl(O.tassets,t,x,y,0.7));
+  poly(P,[[18,29],[30,29],[32,40],[30,C.skirt||55],[19,C.skirt||55]],(x,y,t)=>{ if(C.type==='mail'){const ring=((x+(y>>1))&1)?0.55:0.75;return ramp(C.pal,ring-t*0.4,x,y);} return cyl(C.pal,t,x,y,0.66); });
+  if(B.fem&&C.type!=='plate') ell(P,30,37,2.4,2.8,(x,y,nx)=>nx>-0.2?ramp(C.pal,0.5,x,y):null);
+  if(C.tabard) rect(P,27,34,31,62,(x,y,t)=>cyl(C.tabard,t,x,y,0.6));
+  if(C.type==='plate'){ for(let y=30;y<=50;y++)P.set(31,y,C.pal[4]); for(let y=29;y<=29;y++)for(let x=18;x<=30;x++)P.set(x,y,C.trim[2]); }
+  rect(P,19,50,31,53,(x,y)=>ramp(O.belt||LEATHER,y===50?0.85:0.45,x,y));
+  // tête de profil
+  rect(P,21,24,27,30,(x,y)=>ramp(SK,0.45,x,y));
+  ell(P,25,15,B.head[0]-0.2,B.head[1],(x,y,nx,ny)=>ramp(SK,0.68-nx*0.25-ny*0.12,x,y));
+  P.set(33,17,SK[3]);P.set(33,18,SK[2]);P.set(34,18,SK[2]);
+  for(let y=20;y<=25;y++)for(let x=27;x<=32;x++) if(P.a(x,y)&&((x-25)/8)**2+((y-15)/11)**2>0.6) P.set(x,y,SK[1]);
+  if(!O.closedHelm){ P.set(29,15,EYE);P.set(30,15,EYE);P.set(29,16,O.eyeCol||rgb('#3e6a8c'));P.set(30,16,EYE); for(let k=0;k<3;k++)P.set(28+k,13,mix(HA[1],SK[1],.2)); P.set(31,21,B.fem?LIPF:LIP); P.set(20,16,SK[1]);P.set(20,17,SK[1]); }
+  if(B.beard) ell(P,28,22,4.5,4,(x,y,nx,ny)=>ny>-0.4?ramp(HA,0.5,x,y):null);
+  if(!O.helm||O.helm.type==='circlet'){ if(B.hairStyle==='rase') ell(P,24,9,8.4,6,(x,y,nx,ny)=>y<=10?ramp(HA,0.6-nx*0.35,x,y):null); else ell(P,23,10,9,7.6,(x,y,nx,ny)=>y<=12||x<=22&&y<=(B.hairStyle==='long'?26:19)?ramp(HA,0.7-nx*0.35-ny*0.3,x,y):null); }
+  if(O.helm){ const H=O.helm;
+    if(H.type==='circlet') for(let x=17;x<=32;x++)P.set(x,10,H.trim[2]);
+    else { ell(P,24.5,12,9.6,10.5,(x,y,nx,ny)=>(y<=12||x<=27)&&y<=22?ramp(H.pal,0.72-nx*0.3-ny*0.3,x,y):null); for(let x=16;x<=33;x++)P.set(x,12,H.trim[2]);
+      if(H.crest) rect(P,17,0,23,5,(x,y)=>ramp(H.crest,0.7-(x-17)*0.1,x,y));
+      if(H.type==='winged') for(let k=0;k<10;k++){ const x=17-k,y0=9-k; for(let y=y0;y<=y0+3+(k>>2);y++)P.set(x,y,ramp(H.trim,0.85-k*0.05-(y-y0)*0.1,x,y)); } }
+  }
+  // bras avant
+  rect(P,22,31,27,O.sleeveEnd||42,(x,y,t)=>cyl(O.sleeve||SK,t,x,y));
+  rect(P,22,(O.sleeveEnd||42),27,51,(x,y,t)=>cyl(O.hands||SK,t,x,y,y===(O.sleeveEnd||42)?0.9:0.6));
+  ell(P,24.5,53.5,3.2,3.2,(x,y,nx,ny)=>ramp(O.hands||SK,0.6-nx*0.3-ny*0.2,x,y));
+  if(O.shoulders){ const S=O.shoulders,big=S.size||1; ell(P,24.5,33,6.5*big,4.6*big+0.6,(x,y,nx,ny)=>ny<0.6?ramp(S.pal,0.75-nx*0.3-ny*0.35,x,y):null); if(S.layers) for(let k=1;k<=S.layers;k++) ell(P,25,33+k*4,6.5*big-k,3,(x,y,nx,ny)=>ny<0.4?ramp(S.pal,0.6-nx*0.3,x,y):null); if(S.trim) for(let x=18;x<=31;x++) P.set(x,Math.round(33-(4.6*big+0.6)*Math.sqrt(Math.max(0,1-((x+.5-24.5)/(6.5*big))**2))),S.trim[2]); }
+  if(O.weaponSide) O.weaponSide(P);
+}
+
+/* ---------- armes ---------- */
+const swordV=(x,y0,y1,pal,guard,glow)=>P=>{ for(let y=y0;y<=y1;y++){P.set(x,y,pal[4]||pal[3]);P.set(x+1,y,pal[2]);P.set(x+2,y,pal[1]);} P.set(x+1,y0-1,pal[3]); for(let k=-4;k<=6;k++)P.set(x+k,y1+1,guard[2]); for(let y=y1+2;y<=y1+6;y++)P.set(x+1,y,LEATHER[2]); P.set(x+1,y1+7,guard[3]); if(glow) for(let y=y0;y<=y1;y+=2){P.blend(x-1,y,glow,0.5);P.blend(x+3,y,glow,0.5);} };
+const staff=(x)=>P=>{ for(let y=8;y<=88;y++){P.set(x,y,LEATHER[3]);P.set(x+1,y,LEATHER[1]);} ell(P,x+0.5,7,3,3,(xx,yy,nx,ny)=>ramp(R(['#2a5a6a','#4a8aa0','#8cd0d8','#e0f8f8']),0.7-nx*0.3-ny*0.4,xx,yy)); };
+const spear=(x,el)=>P=>{ for(let y=4;y<=88;y++){P.set(x,y,LEATHER[3]);P.set(x+1,y,LEATHER[1]);} poly(P,[[x-2,10],[x+3,10],[x+0.5,0]],(xx,yy,t)=>ramp(SILVER,0.85-t*0.5,xx,yy)); for(let k=-2;k<=3;k++)P.set(x+k,11,el.trim[2]); P.set(x,13,el.gem); };
+
+/* ---------- tenues : 4 raretés ---------- */
+const FIT={
+  commun:{chest:{type:'tunic',pal:LINEN,skirt:58,embroid:R(['#5a2a2a','#8a3a3a','#b85a4a'])},legs:PANTS,feet:DARKL,belt:LEATHER,sleeve:LINEN,sleeveEnd:41,weapon:staff(40),weaponSide:staff(32)},
+  rare:{chest:{type:'mail',pal:MAIL,tabard:EL.eau.main,trim:SILVER},legs:PANTS,knee:LEATHER,feet:LEATHER,tallBoots:1,bootTrim:SILVER,belt:DARKL,buckle:SILVER,sleeve:MAIL,sleeveEnd:43,hands:LEATHER,handTrim:SILVER,
+        shoulders:{pal:LEATHER,trim:SILVER,size:1},cape:EL.eau.main,helm:{type:'circlet',trim:SILVER,gem:EL.eau.gem},weapon:spear(41,EL.eau),weaponSide:spear(33,EL.eau)},
+  epique:{chest:{type:'plate',pal:EL.feu.main,trim:GOLD,gem:EL.feu.gem,flames:1},legs:STEEL,knee:EL.feu.main,feet:STEEL,tallBoots:1,tassets:EL.feu.main,belt:STEEL,buckle:GOLD,sleeve:STEEL,sleeveEnd:43,hands:EL.feu.main,handTrim:GOLD,
+        shoulders:{pal:EL.feu.main,trim:GOLD,size:1.25,layers:1,spike:1},cape:CAPE_RED,helm:{type:'helm',pal:STEEL,trim:GOLD,crest:EL.feu.main},weapon:swordV(41,10,57,STEEL,GOLD),weaponSide:swordV(33,12,55,STEEL,GOLD),greaveTrim:GOLD},
+  legendaire:{chest:{type:'plate',pal:EL.lumiere.main,trim:GOLD,gem:EL.lumiere.gem,filigree:1},legs:EL.lumiere.main,knee:GOLD,feet:EL.lumiere.main,tallBoots:1,bootTrim:GOLD,tassets:EL.lumiere.main,belt:GOLD,buckle:GOLD,sleeve:EL.lumiere.main,sleeveEnd:43,hands:EL.lumiere.main,handTrim:GOLD,
+        shoulders:{pal:EL.lumiere.main,trim:GOLD,size:1.45,layers:2,gem:EL.lumiere.gem},cape:R(['#5a4a6a','#8a7aa8','#c0b4dc','#ece4fa']),helm:{type:'winged',pal:EL.lumiere.main,trim:GOLD,gem:EL.lumiere.gem},aura:[255,236,170],
+        weapon:swordV(41,4,57,R(['#a89878','#e8dcc0','#fff8e8','#ffffff','#ffffff']),GOLD,[255,240,170]),weaponSide:swordV(33,6,55,R(['#a89878','#e8dcc0','#fff8e8','#ffffff','#ffffff']),GOLD,[255,240,170]),greaveTrim:GOLD,eyeCol:rgb('#c89a2a')}
+};
+
+/* ---------- monstres ---------- */
+function slimeBois(){ const P=new Pix(40,36), M=EL.bois.main;
+  ell(P,20,24,16,11,(x,y,nx,ny)=>y>33?null:ramp(M,0.62-nx*0.25-ny*0.35+(Math.hypot(nx+0.3,ny+0.4)<0.35?0.25:0),x,y));
+  for(let x=6;x<=34;x++) if(P.a(x,33)) P.set(x,34,M[0]);
+  // pousse de feuilles
+  poly(P,[[20,14],[13,8],[19,10]],(x,y)=>M[4]); poly(P,[[21,14],[28,6],[22,10]],(x,y)=>M[3]); for(let y=10;y<=15;y++)P.set(20,y,M[1]);
+  // yeux brillants, bouche
+  for(const ex of [14,24]){ rect(P,ex,22,ex+2,26,(x,y)=>EYE); P.set(ex,22,WHITE); P.set(ex+1,23,WHITE); }
+  P.set(19,28,M[0]);P.set(20,29,M[0]);P.set(21,28,M[0]); ell(P,11,27,1.6,1,()=>rgb('#f0a0a8')); ell(P,29,27,1.6,1,()=>rgb('#f0a0a8'));
+  ell(P,12,18,3,2,()=>rgb('#f0ffe0'));
+  return finish(P); }
+function champiTen(){ const P=new Pix(40,46), M=EL.tenebres.main;
+  rect(P,14,26,26,40,(x,y,t)=>cyl(R(['#7a6a7e','#a89aa8','#d0c4cc','#f0e6ea']),t,x,y));
+  for(const [x0] of [[13],[23]]) rect(P,x0,40,x0+4,44,(x,y)=>ramp(DARKL,0.5,x,y));
+  ell(P,20,18,18,11,(x,y,nx,ny)=>ny>0.75?null:ramp(M,0.7-nx*0.25-ny*0.4,x,y));
+  for(let x=3;x<=37;x++) if(P.a(x,26)) P.set(x,27,M[1]);
+  for(const [cx,cy,r] of [[11,14,2.4],[22,10,3],[30,17,2],[16,21,1.6]]) ell(P,cx,cy,r,r,(x,y,nx,ny)=>ny<0?rgb('#e8c8ff'):EL.tenebres.gem);
+  // sourcils froncés, yeux
+  for(const ex of [15,23]){ rect(P,ex,31,ex+2,34,(x,y)=>EYE); P.set(ex,31,WHITE); }
+  P.set(14,29,EYE);P.set(15,29,EYE);P.set(16,30,EYE); P.set(26,29,EYE);P.set(25,29,EYE);P.set(24,30,EYE);
+  P.set(19,37,EYE);P.set(20,37,EYE);P.set(21,37,EYE);
+  return finish(P); }
+function slimeFeu(){ const P=new Pix(40,42), M=EL.feu.main;
+  ell(P,20,30,16,11,(x,y,nx,ny)=>y>39?null:ramp(M,0.6-nx*0.25-ny*0.35,x,y));
+  // fissures de lave
+  for(const [x0,y0,dx] of [[10,30,1],[27,28,-1],[18,36,1]]) for(let k=0;k<5;k++) P.set(x0+k*dx,y0+(k%2),rgb('#ffe08a'));
+  // couronne de flammes
+  for(let k=0;k<6;k++){ const fx=8+k*5, fh=6+((k*7)%5); poly(P,[[fx-2,22],[fx+3,22],[fx+0.5,22-fh]],(x,y,t)=>ramp(R(['#d04028','#f08030','#ffc050','#fff0a0']),0.4+(22-y)/fh*0.6,x,y)); }
+  for(const ex of [14,24]){ rect(P,ex,28,ex+2,31,(x,y)=>rgb('#ffe9a0')); P.set(ex+1,29,EYE); }
+  P.set(18,34,EYE);P.set(19,35,EYE);P.set(20,35,EYE);P.set(21,34,EYE);
+  return finish(P); }
+function roiGelee(){ // boss Eau : grande gelée royale, cœur de cristal, couronne ornée, collerette de joyaux, orbes d'eau
+  const P=new Pix(110,104), M=EL.eau.main;
+  for(const [ox,oy] of [[10,40],[100,34],[18,14]]) ell(P,ox,oy,5,5,(x,y,nx,ny)=>ramp(M,0.75-nx*0.3-ny*0.4,x,y));
+  ell(P,55,66,44,32,(x,y,nx,ny)=>y>97?null:ramp(M,0.6-nx*0.25-ny*0.35,x,y));
+  for(let x=12;x<=98;x++) if(P.a(x,97)) P.set(x,98,M[0]);
+  // cœur de cristal
+  poly(P,[[55,56],[64,70],[55,86],[46,70]],(x,y,t)=>ramp(R(['#3a8ab0','#7ad0e8','#c8f4ff','#ffffff']),0.9-t*0.6,x,y));
+  for(let y=58;y<=84;y++) P.set(55,y,rgb('#ffffff'));
+  // reflet
+  ell(P,32,52,8,5,()=>rgb('#d8f4ff')); ell(P,28,50,3,2,()=>WHITE);
+  // yeux royaux, sourcils
+  for(const [ex,s] of [[36,1],[66,-1]]){ ell(P,ex+4,62,5,4,(x,y,nx,ny)=>ny<-0.3?EYE:rgb('#fff4d0')); ell(P,ex+4,63,2.2,2.6,()=>rgb('#c83a5a')); P.set(ex+3,61,WHITE); for(let k=0;k<9;k++)P.set(ex+k,56-(s>0?(k>>2):(2-(k>>2))),EYE); }
+  for(let x=46;x<=64;x++) P.set(x,76+Math.round(Math.abs(x-55)/5),EYE);
+  // collerette de joyaux
+  for(let x=20;x<=90;x+=2){ const yy=86+Math.round(Math.sin(x*0.3)*1.5); P.set(x,yy,GOLD[2]); if(x%10===0) ell(P,x,yy+2,1.8,1.8,()=>EL.eau.gem); }
+  // couronne
+  rect(P,32,30,78,38,(x,y,t)=>ramp(GOLD,0.85-t*0.5-(y-30)*0.04,x,y));
+  for(const px of [34,45,55,65,76]) poly(P,[[px-4,31],[px+4,31],[px,18+(px===55?-6:0)]],(x,y,t)=>ramp(GOLD,0.9-t*0.5,x,y));
+  for(const [gx,c] of [[40,rgb('#ff5a7a')],[55,EL.eau.gem],[70,rgb('#7aff9a')]]) ell(P,gx,34,2.4,2.4,()=>c);
+  ell(P,55,13,2.6,2.6,()=>rgb('#ffffff'));
+  return finish(P); }
+// icône d'élément
+function elemIcon(el){ const P=new Pix(16,16), E=EL[el]; ell(P,8,8,7,7,(x,y,nx,ny)=>ramp(E.main,0.75-nx*0.3-ny*0.3,x,y));
+  const W2=E.trim[3]||WHITE;
+  if(el==='feu') poly(P,[[5,12],[11,12],[8,3]],()=>W2); if(el==='eau') ell(P,8,9,3,3.5,(x,y,nx,ny)=>W2), poly(P,[[6,8],[10,8],[8,3]],()=>W2);
+  if(el==='bois') poly(P,[[4,11],[8,3],[12,11]],()=>W2); if(el==='lumiere') { ell(P,8,8,2.5,2.5,()=>W2); for(const [a,b] of [[8,2],[8,14],[2,8],[14,8]]) P.set(a,b,W2); }
+  if(el==='tenebres') { ell(P,8,8,4,4,()=>W2); ell(P,9.5,7,3.5,3.5,()=>E.main[1]); }
+  return finish(P); }
+
+/* ---------- rendu des planches ---------- */
+const out=document.getElementById('out'),o=out.getContext('2d');
+function label(t,x,y,size,col){o.fillStyle=col||'#f3d9a4';o.font=(size>16?'600 ':'')+size+'px sans-serif';o.fillText(t,x,y);}
+function hero(B,fit,side){const P=new Pix(48,96);(side?heroSide:heroFront)(P,BODY[B],fit);return finish(P);}
+window.sheetTiers=()=>{ out.width=1640;out.height=640;o.imageSmoothingEnabled=false;o.fillStyle='#1e2036';o.fillRect(0,0,out.width,out.height);
+  const base=520,SC=4; o.fillStyle='rgba(239,227,200,.15)';o.fillRect(0,base+2,out.width,1);
+  [['Commun','neutre','Tunique brodée · braies · bâton',FIT.commun,null],['Rare','Eau','Mailles · tabard à vagues · cape · diadème · lance',FIT.rare,'eau'],['Épique','Feu','Plaques sculptées · flammes · épaulières à pointe · cape',FIT.epique,'feu'],['Légendaire','Lumière','Ivoire et or · filigrane · heaume ailé · aura',FIT.legendaire,'lumiere']].forEach(([n,el,desc,fit,elk],i)=>{
+    const x0=20+i*410; label(n,x0,40,22); label(el,x0+150,40,16,'#a8d4cc'); if(elk) o.drawImage(elemIcon(elk),x0+120,24,16,16); label(desc,x0,64,13,'#c8c0d8');
+    o.drawImage(hero('homme',fit),x0,base-88*SC,48*SC,96*SC); o.drawImage(hero('homme',fit,1),x0+200,base-88*SC,48*SC,96*SC);
+    label('taille réelle :',x0,base+70,12,'#9a90b0'); o.drawImage(hero('homme',fit),x0+90,base+28,40,80); o.drawImage(hero('homme',fit,1),x0+135,base+28,40,80); });
+  return out.toDataURL(); };
+window.sheetBodies=()=>{ out.width=1640;out.height=620;o.imageSmoothingEnabled=false;o.fillStyle='#1e2036';o.fillRect(0,0,out.width,out.height);
+  const base=500,SC=4; o.fillStyle='rgba(239,227,200,.15)';o.fillRect(0,base+2,out.width,1);
+  [['Homme','commun',FIT.commun],['Femme','rare (Eau)',FIT.rare],['Femme','épique (Feu)',FIT.epique],['Carrure','rare (Eau)',FIT.rare],['Carrure','légendaire',FIT.legendaire]].forEach(([b,t,fit],i)=>{
+    const x0=20+i*325,key=b==='Homme'?'homme':b==='Femme'?'femme':'carrure'; label(b,x0,40,22); label(t,x0,64,13,'#c8c0d8');
+    o.drawImage(hero(key,fit),x0,base-88*SC,48*SC,96*SC); o.drawImage(hero(key,fit,1),x0+150,base-88*SC+40,48*SC*0.8,96*SC*0.8); });
+  label('Les mêmes pièces d\'équipement s\'adaptent à chaque corps (épaules, taille, hanches, jambes).',20,base+60,15,'#c8c0d8');
+  return out.toDataURL(); };
+window.sheetMonsters=()=>{ out.width=1400;out.height=600;o.imageSmoothingEnabled=false;o.fillStyle='#1e2036';o.fillRect(0,0,out.width,out.height);
+  const base=470,SC=4; o.fillStyle='rgba(239,227,200,.15)';o.fillRect(0,base+2,out.width,1);
+  o.drawImage(hero('homme',FIT.rare),20,base-88*SC,48*SC,96*SC); label('Héros (échelle)',20,40,18);
+  const mons=[['Gelée verte','bois',slimeBois(),'mignonne, pousse de feuilles'],['Champi des ombres','tenebres',champiTen(),'mignon mais grognon, spores luisantes'],['Gelée de braise','feu',slimeFeu(),'couronne de flammes, fissures de lave']];
+  mons.forEach(([n,el,img,desc],i)=>{ const x0=240+i*240; label(n,x0,40,18); o.drawImage(elemIcon(el),x0,52,16,16); label(EL[el].name,x0+22,65,13,'#a8d4cc'); label(desc,x0,88,12,'#c8c0d8'); o.drawImage(img,x0,base-img.height*SC+4,img.width*SC,img.height*SC); });
+  const boss=roiGelee(); label('BOSS — Roi Gelée',960,40,20,'#ffd0a0'); o.drawImage(elemIcon('eau'),960,52,16,16); label('Eau · cœur de cristal, couronne ornée, orbes',982,65,13,'#a8d4cc');
+  o.drawImage(boss,940,base-boss.height*4+8,boss.width*4,boss.height*4);
+  return out.toDataURL(); };
+window.sprites=()=>({ hero:hero('homme',FIT.epique).toDataURL(), heroF:hero('femme',FIT.rare).toDataURL(), slime:slimeBois().toDataURL(), champi:champiTen().toDataURL(), feu:slimeFeu().toDataURL(), boss:roiGelee().toDataURL() });
+</script>
