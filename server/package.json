@@ -1,0 +1,14 @@
+{
+  "name": "etheria-server",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Serveur multijoueur d'Etheria Online",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "etheria-online",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Etheria Online — MMORPG mobile collaboratif en pixel art 2.5D",
+  "scripts": {
+    "serve": "cd server && npm install && npm start",
+    "ios:add": "npx cap add ios",
+    "ios:assets": "npx capacitor-assets generate --ios",
+    "ios:sync": "npx cap sync ios",
+    "ios:open": "npx cap open ios",
+    "build:preview": "node tools/build-preview.js"
+  },
+  "dependencies": {
+    "@capacitor/core": "^8.6.2",
+    "@capacitor/ios": "^8.6.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.2"
+  }
+}

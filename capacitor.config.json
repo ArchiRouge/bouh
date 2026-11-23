@@ -1,0 +1,10 @@
+{
+  "appId": "com.etheria.online",
+  "appName": "Etheria Online",
+  "webDir": "client",
+  "backgroundColor": "#2462a0",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false
+  }
+}

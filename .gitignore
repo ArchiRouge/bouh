@@ -1,0 +1,18 @@
+node_modules/
+server/node_modules/
+server/data/
+dist/
+.DS_Store
+# Capacitor generated (rebuilt by `npx cap sync ios`)
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/App/config.xml
+ios/App/build/
+ios/App/DerivedData/
+xcuserdata/
+*.xcuserstate
+# Signing material — never commit
+*.p8
+*.p12
+*.mobileprovision
+*.cer
