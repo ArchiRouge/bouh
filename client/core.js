@@ -163,13 +163,27 @@
   function mTotal(l) { let t = 0; for (let k = 1; k < l; k++) t += mNeed(k); return t; }
   const MAST_CAP = mTotal(MAST_MAX);
   function mLevel(total) { let lv = 1, t = total | 0; while (lv < MAST_MAX && t >= mNeed(lv)) { t -= mNeed(lv); lv++; } return { lv, cur: t, need: lv < MAST_MAX ? mNeed(lv) : 0 }; }
+  /* ---------------- rangs de compétence : chaque technique progresse en l'utilisant ----------------
+     Rang 1 à 10 ; du rang r au rang r+1 : 26 × r^1,6 points (environ 1 200 utilisations utiles pour le rang 10).
+     Plafond tenu par le niveau du héros : rang max = 1 + niveau / 5 (rang 10 au niveau 45). Au plafond, l'expérience
+     remplit encore le rang suivant (« prête à monter ») et la compétence monte dès le niveau requis.
+     Chaque rang : +5 % de puissance (dégâts, soins, durées) et −2 % de recharge. Paliers aux rangs 4 et 8 (à venir). */
+  const SK_MAX = 10, skNeed = r => Math.round(26 * Math.pow(r, 1.6));
+  function skTotal(r) { let t = 0; for (let k = 1; k < r; k++) t += skNeed(k); return t; }
+  const skCap = lvl => Math.min(SK_MAX, 1 + Math.floor(Math.max(1, lvl) / 5)), skLvlFor = r => 5 * (r - 1);
+  function skRank(total, cap) { let r = 1; while (r < SK_MAX && total >= skTotal(r + 1)) r++; return Math.min(r, cap || SK_MAX); }
+  function skInfo(total, lvl) {
+    const cap = skCap(lvl), raw = skRank(total), r = Math.min(raw, cap), next = r < SK_MAX ? skTotal(r + 1) : 0;
+    return { r, cap, cur: r < SK_MAX ? total - skTotal(r) : 0, need: r < SK_MAX ? skNeed(r) : 0, ready: r < SK_MAX && total >= next, lvlNext: r < SK_MAX ? skLvlFor(r + 1) : 0 };
+  }
   function weaponFam(equip) { const w = equip && equip.weapon, T = w && ITEMS[w[0]]; return T ? (FAM_OF[T.icon] || 'sword') : 'none'; }
-  function kitOf(equip, mast, bar) {
-    const fam = weaponFam(equip), F = FAMS[fam], ml = mLevel((mast || {})[fam] || 0).lv, T = F.tech;
+  function kitOf(equip, mast, bar, sk, lvl) {
+    const fam = weaponFam(equip), F = FAMS[fam], ml = mLevel((mast || {})[fam] || 0).lv, T = F.tech, cap = skCap(lvl || 1);
+    const ranked = i => { const r = skRank(((sk || {})[fam + ':' + i]) || 0, cap); return Object.assign({ ti: i, rank: r, pw: 1 + 0.05 * (r - 1) }, T[i], { cd: Math.round(T[i].cd * (1 - 0.02 * (r - 1)) * 10) / 10 }); };
     const open = T.map((A, i) => i).filter(i => T[i].m <= ml), want = (bar && bar[fam]) || [], pick = [];
     for (const i of want) if (open.includes(i) && !pick.includes(i) && pick.length < 3) pick.push(i);
     for (const i of open) if (!pick.includes(i) && pick.length < 3) pick.push(i);
-    const ab = pick.map(i => Object.assign({ ti: i }, T[i]));
+    const ab = pick.map(ranked);
     for (let i = 0; i < T.length && ab.length < 3; i++) if (!pick.includes(i)) ab.push(Object.assign({ ti: i, locked: 1 }, T[i]));
     while (ab.length < 3) ab.push({ ti: -1, name: '—', icon: 'slash', m: 99, mp: 0, cd: 1, locked: 1, desc: '' });
     return { fam, F, ml, name: F.name, basic: F.basic, ab };
@@ -470,6 +484,7 @@
       if (freePts(p.lvl, p.pts) < 0) p.pts = { str: 0, sta: 0, int: 0, agi: 0 };
       p.bar = {}; if (s.bar && typeof s.bar === 'object') for (const f in FAMS) if (Array.isArray(s.bar[f])) p.bar[f] = s.bar[f].slice(0, 3).map(v => clampInt(v, 0, 9));
       p.fr = s.fr == null ? 1 : clampInt(s.fr, 0, 1); // une réinitialisation gratuite des points
+      p.sk = {}; if (s.sk && typeof s.sk === 'object') for (const k in s.sk) if (/^[a-z]+:(\d|block)$/.test(k)) p.sk[k] = clampInt(s.sk[k], 0, skTotal(SK_MAX));
       // voyage : île actuelle, îles découvertes ; « arr » = on vient de traverser, on apparaît au bout du Pont d'Éther
       p.isle = cleanIsle(s.isle); p.isles = clampInt(s.isles, 0, 1 << 20) | 1; p.arr = 0;
       if (s.arr && this.W.bridges) { const b = this.W.bridges.find(o => o.kind === 'ether') || this.W.bridges[0]; if (b) { p.x = b.ix; p.y = b.iy; } }
@@ -492,7 +507,7 @@
     }
     /* Format de sauvegarde : ne JAMAIS renommer ni retirer un champ (les héros existants doivent survivre aux mises à jour).
        Ajouter un champ = lui donner une valeur par défaut dans addPlayer. */
-    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr, isle: p.isle, isles: p.isles, arr: p.arr }; }
+    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr, isle: p.isle, isles: p.isles, arr: p.arr, sk: p.sk }; }
     grantFounder(p) {
       if (p.gifts & 1) return false;
       const wpn = [[5, 3], [23, 3], [4, 3], [29, 3], [31, 3], [3, 3]], k = p.cls < wpn.length ? p.cls : 0;
@@ -559,7 +574,7 @@
           break;
         }
         case 'ab': {
-          const i = m.a | 0, A = kitOf(p.equip, p.mast, p.bar).ab[i];
+          const K = kitOf(p.equip, p.mast, p.bar, p.sk, p.lvl), i = m.a | 0, A = K.ab[i];
           if (!A || A.locked || p.dead || p.abCd[i] > this.t || p.mp < A.mp) return;
           let tgt = null;
           if (A.kind === 'aoeTarget' || A.kind === 'single' || A.kind === 'charge') {
@@ -567,21 +582,24 @@
             if (!tgt || !tgt.alive || Math.hypot(tgt.x - p.x, tgt.y - p.y) > A.range + 0.8) return;
           }
           p.mp -= A.mp; p.abCd[i] = this.t + A.cd - 0.1;
-          const roll = () => (0.9 + Math.random() * 0.2) * this.buffMul(p);
+          const pw = A.pw || 1, roll = () => (0.9 + Math.random() * 0.2) * this.buffMul(p) * pw;
           const around = (cx, cy, r) => this.mobs.filter(o => o.alive && Math.hypot(o.x - cx, o.y - cy) <= r);
-          if (A.kind === 'aoeSelf') for (const o of around(p.x, p.y, A.r)) { this.hitMob(o, Math.round(p.atk * A.mult * roll()), p, false); if (A.stun && o.alive) o.stunT = this.t + A.stun; }
-          else if (A.kind === 'aoeTarget') for (const o of around(tgt.x, tgt.y, A.r)) this.hitMob(o, Math.round(p.atk * A.mult * roll()), p, false);
-          else if (A.kind === 'single') { this.hitMob(tgt, Math.round(p.atk * A.mult * roll()), p, Math.random() < p.crit); if (A.slow && tgt.alive) tgt.slowT = this.t + A.slow; if (A.stun && tgt.alive) tgt.stunT = this.t + A.stun; }
+          let hits = 0, kills = 0; const hit = (o, dmg, crit) => { hits++; this.hitMob(o, dmg, p, crit); if (!o.alive) kills++; };
+          if (A.kind === 'aoeSelf') for (const o of around(p.x, p.y, A.r)) { hit(o, Math.round(p.atk * A.mult * roll()), false); if (A.stun && o.alive) o.stunT = this.t + A.stun * pw; }
+          else if (A.kind === 'aoeTarget') for (const o of around(tgt.x, tgt.y, A.r)) hit(o, Math.round(p.atk * A.mult * roll()), false);
+          else if (A.kind === 'single') { hit(tgt, Math.round(p.atk * A.mult * roll()), Math.random() < p.crit); if (A.slow && tgt.alive) tgt.slowT = this.t + A.slow * pw; if (A.stun && tgt.alive) tgt.stunT = this.t + A.stun * pw; }
           else if (A.kind === 'charge') {
             const d = Math.hypot(tgt.x - p.x, tgt.y - p.y) || 1, nx = tgt.x - (tgt.x - p.x) / d * 0.8, ny = tgt.y - (tgt.y - p.y) / d * 0.8;
             if (this.W.walkable(Math.floor(nx), Math.floor(ny))) { p.x = nx; p.y = ny; p.lastMv = this.t; this.ev({ e: 'tp', id, x: p.x, y: p.y, dash: 1 }); }
-            this.hitMob(tgt, Math.round(p.atk * A.mult * roll()), p, false); if (tgt.alive) tgt.stunT = this.t + A.stun;
+            hit(tgt, Math.round(p.atk * A.mult * roll()), false); if (tgt.alive) tgt.stunT = this.t + A.stun * pw;
           }
-          else if (A.kind === 'buff') p.buffT = this.t + A.dur;
+          else if (A.kind === 'buff') { p.buffT = this.t + A.dur * pw; hits = 1; }
           else if (A.kind === 'heal') {
-            const h = Math.round(p.maxhp * 0.4); p.hp = Math.min(p.maxhp, p.hp + h); this.ev({ e: 'heal', id, v: h });
-            for (const o of this.players.values()) if (o !== p && !o.dead && Math.hypot(o.x - p.x, o.y - p.y) <= 4) { const h2 = Math.round(o.maxhp * 0.25); o.hp = Math.min(o.maxhp, o.hp + h2); this.ev({ e: 'heal', id: o.id, v: h2, by: id }); }
+            const h = Math.round(p.maxhp * 0.4 * pw); if (p.hp < p.maxhp) hits++; p.hp = Math.min(p.maxhp, p.hp + h); this.ev({ e: 'heal', id, v: h });
+            for (const o of this.players.values()) if (o !== p && !o.dead && Math.hypot(o.x - p.x, o.y - p.y) <= 4) { if (o.hp < o.maxhp) hits++; const h2 = Math.round(o.maxhp * 0.25 * pw); o.hp = Math.min(o.maxhp, o.hp + h2); this.ev({ e: 'heal', id: o.id, v: h2, by: id }); }
           }
+          // expérience de compétence : rien si la technique ne sert à rien (lancée dans le vide, soin à pleine vie)
+          if (hits && A.ti >= 0) this.addSk(p, K.fam + ':' + A.ti, A.kind === 'buff' ? 2 : 1 + Math.min(3, hits) + 2 * kills);
           this.ev({ e: 'ab', id, c: p.cls, a: i, m: tgt ? tgt.k : -1, fx: A.fx, n: A.name, r: A.r || 0 });
           break;
         }
@@ -700,6 +718,11 @@
         }
       }
     }
+    addSk(p, key, v) {
+      const cap = skCap(p.lvl), before = skRank(p.sk[key] || 0, cap);
+      p.sk[key] = Math.min(skTotal(Math.min(SK_MAX, cap + 1)), (p.sk[key] || 0) + v); // réserve : au plus un rang d'avance
+      const after = skRank(p.sk[key], cap); if (after > before) this.ev({ e: 'skr', id: p.id, k: key, r: after });
+    }
     addMast(p, v) {
       const fam = weaponFam(p.equip); if (fam === 'none') return;
       const before = mLevel(p.mast[fam] || 0).lv; p.mast[fam] = Math.min(MAST_CAP, (p.mast[fam] || 0) + v);
@@ -748,12 +771,15 @@
       while (p.xp >= xpNeed(p.lvl)) {
         p.xp -= xpNeed(p.lvl); p.lvl++; this.recalc(p, true);
         this.ev({ e: 'lv', id: p.id, lv: p.lvl });
+        // le plafond monte : les compétences « prêtes » passent leur rang
+        for (const k in p.sk) { const a = skRank(p.sk[k], skCap(p.lvl - 1)), b = skRank(p.sk[k], skCap(p.lvl)); if (b > a) this.ev({ e: 'skr', id: p.id, k, r: b }); }
       }
     }
     hurt(p, dmg, m) {
       if (p.dead) return;
       dmg = Math.max(1, Math.round(dmg * (0.85 + Math.random() * 0.3) * (1 - (p.red || 0)) * (p.buffT > this.t ? 0.7 : 1)));
-      const blk = p.equip.offhand && weaponFam(p.equip) === 'sword' && mLevel(p.mast.sword || 0).lv >= 8 && Math.random() < 0.25;
+      const blk = p.equip.offhand && weaponFam(p.equip) === 'sword' && mLevel(p.mast.sword || 0).lv >= 8 && Math.random() < 0.25 + 0.01 * (skRank(p.sk['sword:block'] || 0, skCap(p.lvl)) - 1);
+      if (blk) this.addSk(p, 'sword:block', 2);
       if (blk) dmg = Math.max(1, Math.round(dmg * 0.25));
       p.hp -= dmg; p.lastHit = 0;
       this.ev({ e: 'hp', id: p.id, v: dmg, m: m.k, b: blk ? 1 : 0 });
@@ -821,9 +847,9 @@
     }
     meState(id) {
       const p = this.players.get(id); if (!p) return null;
-      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed, cls: p.cls, mast: p.mast, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
+      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed, cls: p.cls, mast: p.mast, sk: p.sk, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
     }
   }
 
-  return { ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
+  return { SK_MAX, skNeed, skTotal, skCap, skRank, skInfo, skLvlFor, ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
 });

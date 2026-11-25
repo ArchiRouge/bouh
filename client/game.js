@@ -201,7 +201,7 @@
 
   /* ---------- entrées ---------- */
   const input = { atkBtn: false, atkKey: false, ab: -1, pot: false };
-  const CL = () => C.kitOf(me.equip, me.mast, me.bar); // arme en main → attaque de base + 3 techniques
+  const CL = () => C.kitOf(me.equip, me.mast, me.bar, me.sk, me.lvl); // arme en main → attaque de base + 3 techniques
   const localAbCd = [0, 0, 0];
   const joy = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0 }, keys = {}, pointers = new Map(), btnDown = {};
   function btns() { const b = UH - 12 - SB, K0 = CL(); return { atk: { x: UW - 27, y: b - 18, r: 18, icon: 'a_' + K0.basic.icon }, s0: { x: UW - 62, y: b - 6, r: 12, icon: 'a_' + K0.ab[0].icon, ab: 0 }, s1: { x: UW - 59, y: b - 38, r: 12, icon: 'a_' + K0.ab[1].icon, ab: 1 }, s2: { x: UW - 31, y: b - 57, r: 12, icon: 'a_' + K0.ab[2].icon, ab: 2 }, pot: { x: UW - 91, y: b - 4, r: 10, icon: 'potion' }, chat: { x: UW - 64, y: 16 + ST, r: 9, icon: 'chat' }, bag: { x: UW - 64, y: 38 + ST, r: 9, icon: 'bag' }, zoom: { x: UW - 64, y: 60 + ST, r: 9, icon: 'zoom' } }; }
@@ -336,7 +336,7 @@
   }
   function statRows(rows) { return rows.map(([k, v, d, unit]) => `<div><span>${k}</span><b>${v == null ? '–' : v + (unit || '')}${d ? `<em class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}${unit || ''}</em>` : ''}</b></div>`).join(''); }
   function renderChar() {
-    const sig = JSON.stringify([me.equip, me.bag, me.lvl, me.xp, me.gold, sel, charTab, bagFilter, sellArm, me.mast, me.pts, me.bar, me.free, me.fr]); if (sig === charSig) return; charSig = sig;
+    const sig = JSON.stringify([me.equip, me.bag, me.lvl, me.xp, me.gold, sel, charTab, bagFilter, sellArm, me.mast, me.pts, me.bar, me.free, me.fr, me.sk]); if (sig === charSig) return; charSig = sig;
     const K0 = CL(), bag = me.bag || [];
     $('chtitle').textContent = me.name; $('chsub').textContent = 'Niveau ' + me.lvl + ' · ' + K0.name + ' (maîtrise ' + K0.ml + ') · ' + fmt(me.gold || 0) + ' PO';
     const xpf = me.need ? Math.min(1, (me.xp || 0) / me.need) : 0; $('chxp').style.width = (xpf * 100).toFixed(1) + '%'; $('chxpt').textContent = 'XP ' + fmt(me.xp || 0) + ' / ' + fmt(me.need || 0);
@@ -355,9 +355,14 @@
     // compétences : celles de l'arme en main, débloquées par sa maîtrise ; 3 cases dans la barre
     const M0 = C.mLevel(((me.mast || {})[K0.fam]) || 0), inBar = K0.ab.map(a => a.locked ? -1 : a.ti), ico = n => (ART.icons['a_' + n] || ART.icons.a_slash).toDataURL();
     const mbar = K0.fam === 'none' ? '<p class="muted">Équipe une arme pour débloquer des techniques.</p>' : `<div class="mast"><b>${K0.name} · maîtrise ${M0.lv}${M0.lv >= C.MAST_MAX ? ' (max)' : ''}</b><div class="xp"><i style="width:${M0.need ? (M0.cur / M0.need * 100).toFixed(1) : 100}%"></i><span>${M0.need ? M0.cur + ' / ' + M0.need : 'Maîtrise complète'}</span></div><small>Elle monte en te battant avec cette arme.</small></div>`;
-    const techs = K0.F.tech.map((A, i) => { const lock = A.m > K0.ml, slot = inBar.indexOf(i);
-      return `<li class="${lock ? 'lock' : ''}"><img src="${ico(A.icon)}" alt=""><div><b>${A.name}${slot >= 0 ? ' <span class="inbar">case ' + (slot + 1) + '</span>' : ''}</b><small>${lock ? 'Maîtrise ' + A.m + ' · ' : ''}${A.mp} PM · recharge ${A.cd} s · ${A.desc}</small>${lock ? '' : `<span class="barb">${[0, 1, 2].map(s0 => `<button type="button" data-bs="${s0}" data-bk="${i}" class="${slot === s0 ? 'on' : ''}" aria-label="Mettre en case ${s0 + 1}">${s0 + 1}</button>`).join('')}</span>`}</div></li>`; }).join('');
-    const caps = (K0.F.caps || []).map(A => `<li class="${A.m > K0.ml ? 'lock' : ''}"><img src="${ico(A.m === 5 ? 'charge' : 'shout')}" alt=""><div><b>${A.name}</b><small>${A.m > K0.ml ? 'Maîtrise ' + A.m + ' · ' : ''}${A.desc}</small></div></li>`).join('');
+    // rang de la technique : progresse en l'utilisant, plafonné par le niveau du héros
+    const rankHTML = key => { const I = C.skInfo(((me.sk || {})[key]) || 0, me.lvl);
+      const note = I.r >= C.SK_MAX ? 'Rang maximum atteint.' : I.ready ? 'Prête à monter : rang ' + (I.r + 1) + ' au niveau ' + I.lvlNext + '.' : I.r >= I.cap ? 'Rang max ' + I.cap + ' à ton niveau : rang ' + (I.r + 1) + ' au niveau ' + I.lvlNext + '.' : 'Elle progresse quand tu t\'en sers.';
+      const mile = I.r < 4 ? ' Rang 4 : un effet au choix.' : I.r < 8 ? ' Rang 8 : un second effet au choix.' : '';
+      return `<div class="skr${I.r >= C.SK_MAX ? ' max' : ''}"><b>Rang ${I.r} / ${C.SK_MAX}</b> <span>${I.r > 1 ? '+' + (I.r - 1) * 5 + ' % de puissance · −' + (I.r - 1) * 2 + ' % de recharge' : 'puissance de base'}</span><div class="xp"><i style="width:${I.need ? Math.min(100, I.cur / I.need * 100).toFixed(1) : 100}%"></i><span>${I.need ? I.cur + ' / ' + I.need : 'Max'}</span></div><small>${note}${mile}</small></div>`; };
+    const techs = K0.F.tech.map((A, i) => { const lock = A.m > K0.ml, slot = inBar.indexOf(i), rk = C.skRank(((me.sk || {})[K0.fam + ':' + i]) || 0, C.skCap(me.lvl)), cd = Math.round(A.cd * (1 - 0.02 * (rk - 1)) * 10) / 10;
+      return `<li class="${lock ? 'lock' : ''}"><img src="${ico(A.icon)}" alt=""><div><b>${A.name}${slot >= 0 ? ' <span class="inbar">case ' + (slot + 1) + '</span>' : ''}</b><small>${lock ? 'Maîtrise ' + A.m + ' · ' : ''}${A.mp} PM · recharge ${lock ? A.cd : cd} s · ${A.desc}</small>${lock ? '' : rankHTML(K0.fam + ':' + i)}${lock ? '' : `<span class="barb">${[0, 1, 2].map(s0 => `<button type="button" data-bs="${s0}" data-bk="${i}" class="${slot === s0 ? 'on' : ''}" aria-label="Mettre en case ${s0 + 1}">${s0 + 1}</button>`).join('')}</span>`}</div></li>`; }).join('');
+    const caps = (K0.F.caps || []).map(A => `<li class="${A.m > K0.ml ? 'lock' : ''}"><img src="${ico(A.m === 5 ? 'charge' : 'shout')}" alt=""><div><b>${A.name}</b><small>${A.m > K0.ml ? 'Maîtrise ' + A.m + ' · ' : ''}${A.desc}</small>${A.m === 8 && A.m <= K0.ml ? rankHTML('sword:block') : ''}</div></li>`).join('');
     const others0 = Object.keys(C.FAMS).filter(f => f !== 'none' && f !== K0.fam && (me.mast || {})[f]).map(f => C.FAMS[f].name + ' ' + C.mLevel(me.mast[f]).lv).join(' · ');
     $('abil').innerHTML = mbar + `<ul class="abil"><li><img src="${ico(K0.basic.icon)}" alt=""><div><b>${K0.basic.name}</b><small>Attaque de base · recharge ${K0.basic.cd} s · portée ${K0.basic.range}</small></div></li>${techs}${caps}</ul>` + (others0 ? `<p class="muted small">Autres maîtrises : ${others0}</p>` : '');
     $('bagn').textContent = bag.length + '/' + C.BAG_SIZE;
@@ -534,6 +539,11 @@
         joy.active = false; input.atkBtn = false;
         try { sessionStorage.setItem('etheria_autoplay', '1'); sessionStorage.setItem('etheria_arrive', JSON.stringify({ name: I.name, desc: I.desc || '', fresh: ev.fresh, col: travel.col })); } catch (e) { /* ignore */ }
         setTimeout(() => { if (link) link.saveNow(); setTimeout(() => location.reload(), 150); }, 1300);
+      } break;
+      case 'skr': if (ev.id === myId) {
+        const [f, t] = String(ev.k).split(':'), nm = t === 'block' ? 'Blocage' : ((C.FAMS[f] || {}).tech || [])[+t] ? C.FAMS[f].tech[+t].name : 'Compétence';
+        sys(nm + ' passe au rang ' + ev.r + ' !' + (ev.r === 4 || ev.r === 8 ? ' Palier atteint : un effet au choix arrive bientôt.' : ev.r >= C.SK_MAX ? ' Rang maximum !' : ''));
+        floatAt(me, nm + ' rang ' + ev.r, '#bfe6ff', true); ring(me, 1.8, '#bfe6ff', 0.5); burst(me, '#bfe6ff', 16, 40);
       } break;
       case 'imm': { const mb = mobs[ev.m]; if (mb) floatAt(mb, ev.fx === 'burn' ? 'Insensible au feu' : 'Insensible au froid', '#c8c0d8'); break; }
       case 'chest': if (ev.id === myId) { chestOpen = true; sys('Coffre de brume : +' + ev.g + ' PO et deux objets !'); floatAt(me, 'Trésor !', '#ffe27a', true); burst(me, '#ffe27a', 30, 50); } break;
@@ -869,6 +879,7 @@
     else if (b.ab != null) { const A = CL().ab[b.ab]; cd = Math.max(localAbCd[b.ab] - time, (me.abCd && me.abCd[b.ab]) || 0) / A.cd; }
     if (cd > 0) pcircle(b.x, b.y, b.r, 'rgba(10,5,20,.6)', -b.r + Math.round(2 * b.r * clamp(cd, 0, 1)));
     if (b.ab != null) { const A = CL().ab[b.ab]; if (A.locked) { pcircle(b.x, b.y, b.r, 'rgba(10,5,20,.72)'); text(u, A.m < 99 ? 'M' + A.m : '-', b.x, b.y - 3, '#c8c0d8', 'center'); } else if (me.mp < A.mp) pcircle(b.x, b.y, b.r, 'rgba(20,30,80,.45)'); }
+    if (b.ab != null) { const A = CL().ab[b.ab]; if (!A.locked && A.rank) { if (A.rank >= C.SK_MAX) pring(b.x, b.y, b.r + 1, '#ffd23f'); pcircle(b.x + b.r - 2, b.y + b.r - 3, 4, '#1a0f1c'); text(u, String(A.rank), b.x + b.r - 2, b.y + b.r - 6, A.rank >= C.SK_MAX ? '#ffd23f' : '#bfe6ff', 'center', 1, false); } }
     if (k === 'pot') { pcircle(b.x + b.r - 2, b.y + b.r - 3, 4, '#1a0f1c'); text(u, String(me.potions), b.x + b.r - 2, b.y + b.r - 6, '#ffe27a', 'center', 1, false); }
   }
   function drawVeil(f, col, top, name) {

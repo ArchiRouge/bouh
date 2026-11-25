@@ -1,76 +1,63 @@
 # Pixels Worlds — progression des compétences par l'usage
 
-Statut : **proposition, en attente de validation**. Rien n'est codé.
+Statut : **rangs, plafond et interface codés** ; **effets au choix des paliers (rangs 4 et 8) : proposition à valider**.
 
-Objectif : chaque technique (Tourbillon, Boule de feu, Volée…) progresse **en s'en servant**, lentement, et ce progrès
-reste **tenu en laisse par le niveau du héros** : on ne peut pas « farmer » une compétence jusqu'au maximum dès le début.
+Choix d'Archibald : rythme lent (rang max = 1 + niveau / 5), un **choix entre deux effets** à chaque palier,
+toutes les techniques démarrent au rang 1.
 
 ## Trois progressions qui s'emboîtent
 
 | Progression | Comment elle monte | Ce qu'elle donne |
 |---|---|---|
 | **Niveau du héros** (XP) | quêtes, monstres | points de caractéristiques, et **le rang maximum** des compétences |
-| **Maîtrise d'arme** (déjà en jeu) | se battre avec une famille d'armes | **débloque** les techniques de cette famille |
-| **Rang de compétence** (nouveau) | **utiliser** cette technique | la **rend plus forte**, avec deux paliers qui la transforment |
+| **Maîtrise d'arme** | se battre avec une famille d'armes | **débloque** les techniques de cette famille |
+| **Rang de compétence** | **utiliser** cette technique | la **rend plus forte**, avec deux paliers au choix |
 
-## Rang d'une compétence : 1 à 10
+## Rang d'une compétence : 1 à 10 (en jeu)
 
-- **Expérience de compétence** à chaque utilisation : +1 par lancer, +1 par ennemi touché (3 au plus), +2 si elle achève un ennemi
-  (un soin compte les alliés soignés). Une technique lancée dans le vide ne rapporte rien.
-- **Rangs** : du rang r au rang r+1, il faut `20 × r^1,6` points (rang 2 : 20, rang 5 : ≈ 180, rang 10 : ≈ 2 700 au total),
-  soit environ 900 utilisations utiles pour le rang 10.
-- **Plafond lié au niveau** : rang maximum = `1 + niveau / 4` (arrondi en dessous).
-  Niveau 4 → rang 2, niveau 8 → rang 3, niveau 12 → rang 4 (premier palier), niveau 28 → rang 8 (deuxième palier), niveau 36 → rang 10.
-- **Réserve** : au plafond, l'expérience continue de s'accumuler jusqu'à remplir le rang suivant ; dès que le héros prend
-  le niveau qui le permet, la compétence monte aussitôt (« prête à monter »).
-- **Effet de chaque rang** : +5 % de puissance (dégâts, soin, durée d'étourdissement) et −2 % de temps de recharge.
-  Au rang 10 : +45 % de puissance, −18 % de recharge.
-- **Rang 10** : icône à cadre doré et effet visuel plus grand.
+- **Expérience** à chaque utilisation utile : +1 par lancer, +1 par ennemi touché (3 au plus), +2 si elle achève un ennemi ;
+  un soin compte les blessés soignés, un cri de guerre rapporte 2. Lancée dans le vide : rien.
+- **Rangs** : du rang r au rang r+1, `26 × r^1,6` points (rang 2 : 26, rang 5 : ≈ 240, rang 10 : ≈ 3 500 au total),
+  soit environ 1 200 utilisations utiles.
+- **Plafond** : rang max = `1 + niveau / 5`. Niveau 5 → rang 2, niveau 15 → rang 4 (1er palier), niveau 35 → rang 8
+  (2e palier), niveau 45 → rang 10.
+- **Réserve** : au plafond, l'expérience remplit encore le rang suivant ; la technique monte dès le niveau requis.
+- **Chaque rang** : +5 % de puissance (dégâts, soins, durées d'étourdissement, de ralentissement et du cri) et −2 % de recharge.
+- **Blocage** progresse en bloquant : 25 % de chances au rang 1, +1 % par rang.
+- **Interface** : rang et barre dans l'onglet Compétences, plafond expliqué, chiffre de rang sur les boutons (doré au rang 10),
+  message à chaque montée de rang.
+- **Sauvegarde** : champ `sk` (expérience par technique, ex. `staff:1`).
 
-## Paliers : rangs 4 et 8
+## Paliers au choix (proposition à valider)
 
-Chaque technique gagne un effet supplémentaire au rang 4 et au rang 8.
+Au rang 4 puis au rang 8, la technique propose **deux effets** ; on en choisit un (modifiable chez Elya, comme les points).
 
-| Arme | Technique | Rang 4 | Rang 8 |
+| Arme | Technique | Rang 4 : A ou B | Rang 8 : A ou B |
 |---|---|---|---|
-| Épée à une main | Tourbillon | rayon +0,6 | attire les ennemis vers toi |
-| | Taillade | fait saigner 3 s | coup critique garanti sur une cible ralentie ou étourdie |
-| | Charge | portée +2 | étourdit aussi les ennemis autour de l'impact |
-| | Cri de guerre | durée +3 s | profite aussi aux alliés proches |
-| Deux mains | Moulinet | rayon +0,6 | frappe deux fois |
-| | Fendoir | touche aussi l'ennemi juste derrière | si la cible meurt, la moitié de la recharge est rendue |
-| | Brise-garde | étourdit 3 s | la cible étourdie subit +20 % de dégâts |
-| | Cri de guerre | durée +3 s | profite aussi aux alliés proches |
-| Dagues | Saignement | dure 2 s de plus | se propage à un ennemi voisin |
-| | Pas de l'ombre | recharge −2 s | les monstres perdent ta trace 2 s |
-| | Danse des lames | rayon +0,5 | chaque ennemi touché réduit la recharge de 0,5 s |
-| | Coup dans le dos | +20 % de critique | recharge Pas de l'ombre si la cible meurt |
-| Arc | Volée | 2 flèches de plus, rayon +0,5 | ralentit les ennemis touchés |
-| | Flèche perçante | traverse 2 ennemis alignés | ralentissement plus fort (−70 %) |
-| | Pluie d'Éther | frappe deux fois | soigne les alliés dans la zone |
-| Bâton / grimoire | Nova de givre | rayon +0,5 | gel prolongé d'1 s |
-| | Boule de feu | laisse un brasier 3 s | rebondit sur une deuxième cible |
-| | Soin lumineux | rend aussi du mana | bouclier qui absorbe 15 % des PV |
-| Lance | Balayage | repousse les ennemis | rayon +0,8 |
-| | Saut | portée +2 | zone d'impact de 2 cases |
-| | Empalement | traverse 2 ennemis | étourdit 1 s |
+| Épée 1M | Tourbillon | **Large** : rayon +0,6 · **Tranchant** : fait saigner 3 s | **Aimant** : attire les ennemis · **Double** : frappe deux fois |
+| | Taillade | **Hémorragie** : saigne 4 s · **Écrasante** : +25 % de dégâts | **Exécution** : ×2 sur une cible sous 30 % de PV · **Garde** : te protège de 20 % 3 s |
+| | Charge | **Longue** : portée +2 · **Rapide** : recharge −2 s | **Onde de choc** : étourdit autour de l'impact · **Élan** : +30 % de vitesse 3 s |
+| | Cri de guerre | **Prolongé** : +3 s · **Rageur** : +15 % de dégâts en plus | **Bannière** : profite aux alliés · **Second souffle** : rend 15 % des PV |
+| Deux mains | Moulinet | **Large** : rayon +0,6 · **Lourd** : +25 % de dégâts | **Tornade** : deux tours · **Repousser** : écarte les ennemis |
+| | Fendoir | **Traversant** : touche l'ennemi derrière · **Brutal** : +25 % de dégâts | **Bourreau** : recharge rendue à moitié si la cible meurt · **Fracas** : étourdit 1 s |
+| | Brise-garde | **Long** : étourdit 3 s · **Vulnérable** : +20 % de dégâts subis pendant l'étourdissement | **Zone** : étourdit les voisins · **Rapide** : recharge −3 s |
+| | Cri de guerre | (comme l'épée) | (comme l'épée) |
+| Dagues | Saignement | **Profond** : +2 s · **Venin** : ralentit aussi | **Contagion** : se propage à un voisin · **Saignée** : te soigne de 30 % des dégâts |
+| | Pas de l'ombre | **Vif** : recharge −2 s · **Long** : portée +2 | **Disparition** : les monstres perdent ta trace 2 s · **Embuscade** : critique garanti |
+| | Danse des lames | **Large** : rayon +0,5 · **Affûtée** : +25 % de dégâts | **Tempo** : −0,5 s de recharge par ennemi touché · **Esquive** : −30 % de dégâts subis 2 s |
+| | Coup dans le dos | **Précis** : +20 % de critique · **Perforant** : +25 % de dégâts | **Enchaînement** : recharge Pas de l'ombre si la cible meurt · **Marque** : la cible subit +15 % 4 s |
+| Arc | Volée | **Nourrie** : 2 flèches de plus · **Large** : rayon +0,5 | **Glu** : ralentit · **Feu** : enflamme 2 s |
+| | Flèche perçante | **Transperçante** : traverse 2 ennemis · **Lourde** : +25 % de dégâts | **Entrave** : ralentissement −70 % · **Recul** : repousse la cible |
+| | Pluie d'Éther | **Double** : frappe deux fois · **Large** : rayon +0,6 | **Bénie** : soigne les alliés dans la zone · **Orage** : étourdit 0,5 s |
+| Bâton / grimoire | Nova de givre | **Large** : rayon +0,5 · **Mordante** : +25 % de dégâts | **Glaciale** : gel +1 s · **Éclats** : les gelés touchés subissent +20 % |
+| | Boule de feu | **Brasier** : laisse un feu au sol 3 s · **Comète** : rayon +0,6 | **Rebond** : touche une 2e cible · **Combustion** : enflamme 4 s |
+| | Soin lumineux | **Clarté** : rend aussi du mana · **Ample** : portée de soin des alliés +2 | **Égide** : bouclier de 15 % des PV · **Renouveau** : soigne encore 4 s |
+| Lance | Balayage | **Repousser** : écarte les ennemis · **Large** : rayon +0,6 | **Faucheuse** : +30 % de dégâts aux ennemis ralentis · **Riposte** : −20 % de dégâts subis 3 s |
+| | Saut | **Long** : portée +2 · **Vif** : recharge −2 s | **Impact** : zone de 2 cases · **Écrasant** : étourdit 2 s |
+| | Empalement | **Traversant** : traverse 2 ennemis · **Profond** : +25 % de dégâts | **Clouer** : étourdit 1 s · **Hémorragie** : saigne 4 s |
 
-**Capacités passives** : le Blocage progresse aussi en bloquant (25 % de chances au rang 1, +1 % par rang, 34 % au rang 10).
+## Étapes
 
-## Interface
-
-- **Onglet Compétences** : pour chaque technique, « Rang 3 / 10 », une barre d'expérience, le plafond actuel
-  (« Rang max 3 — rang 4 au niveau 12 ») et le prochain palier.
-- **Boutons d'action** : un petit chiffre de rang dans le coin ; un liseré doré au rang 10.
-- **Montée de rang** : message (« Boule de feu passe au rang 4 : elle laisse un brasier ! ») et éclat lumineux.
-
-## Sauvegarde
-
-- Nouveau champ `sk` : expérience de chaque technique, par arme et par technique (ex. `staff:1`). Valeur par défaut : vide.
-- Toutes les techniques déjà débloquées démarrent au rang 1.
-
-## Étapes après validation
-
-1. Expérience et rangs, bonus par rang, plafond par niveau, interface (onglet, boutons, messages).
-2. Paliers des rangs 4 et 8, famille par famille (en commençant par le bâton / grimoire d'Archi404).
-3. Blocage et effets visuels du rang 10.
+1. ~~Rangs, expérience, plafond, bonus par rang, interface~~ (fait).
+2. Paliers au choix, famille par famille, en commençant par le bâton / grimoire d'Archi404 (palier 1 au niveau 15).
+3. Effet visuel du rang 10.
