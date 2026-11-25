@@ -145,18 +145,20 @@
   function say(t, color) { const max = Math.floor((Math.min(170, UW - 64) - 4) / 4); for (const l of wrap(t, max)) chat.push({ text: l, color: color || '#ece6f4', t: time }); if (chat.length > 60) chat = chat.slice(-60); }
   const sys = t => say(t, '#ffd75a');
 
-  /* ---------- effets de classes ---------- */
+  /* ---------- effets des armes et techniques ---------- */
   const shots = [], FOOT = [];
   function shoot(from, to, kind, dur) { const [x0, y0] = ePx(from), [x1, y1] = ePx(to); shots.push({ x0, y0: y0 - 12, x1, y1: y1 - 6, t: 0, dur: dur || 0.18, kind }); }
-  function basicFx(e, tgt, cls) {
-    const fx = (C.CLASSES[cls | 0] || C.CLASSES[0]).basic.fx;
+  function basicFx(e, tgt, fx) {
+    fx = fx || 'slash';
     if (fx === 'slash') { e.slash = 0.18; e.slashAng = screenAng(e, tgt); }
+    else if (fx === 'thrust') shoot(e, tgt, 'pierce', 0.1);
     else shoot(e, tgt, fx, fx === 'arrow' ? 0.16 : 0.22);
   }
-  function abilityFx(e, cls, a, mb) {
-    const A = C.CLASSES[cls].ab[a];
-    if (e === me) { floatAt(me, A.name, '#ffe9b0'); }
+  function abilityFx(e, ev, mb) {
+    const A = { fx: ev.fx, name: ev.n || '', r: ev.r || 2 };
+    if (e === me && A.name) { floatAt(me, A.name, '#ffe9b0'); }
     switch (A.fx) {
+      case 'slashx': if (mb) { e.slash = 0.25; e.slashAng = screenAng(e, mb); burst(mb, '#fff0c0', 12, 14); } break;
       case 'spin': e.spin = 0.35; ring(e, A.r, '#ffe27a', 0.35); break;
       case 'charge': if (mb) { burst(mb, '#ffd060', 12, 10); } break;
       case 'shout': ring(e, 2.2, '#ff7a5a', 0.5); burst(e, '#ff9a6a', 18, 40); break;
@@ -171,7 +173,7 @@
 
   /* ---------- entrées ---------- */
   const input = { atkBtn: false, atkKey: false, ab: -1, pot: false };
-  const CL = () => C.CLASSES[me.cls | 0] || C.CLASSES[0];
+  const CL = () => C.kitOf(me.equip, me.mast, me.bar); // arme en main → attaque de base + 3 techniques
   const localAbCd = [0, 0, 0];
   const joy = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0 }, keys = {}, pointers = new Map(), btnDown = {};
   function btns() { const b = UH - 12 - SB, K0 = CL(); return { atk: { x: UW - 27, y: b - 18, r: 18, icon: 'a_' + K0.basic.icon }, s0: { x: UW - 62, y: b - 6, r: 12, icon: 'a_' + K0.ab[0].icon, ab: 0 }, s1: { x: UW - 59, y: b - 38, r: 12, icon: 'a_' + K0.ab[1].icon, ab: 1 }, s2: { x: UW - 31, y: b - 57, r: 12, icon: 'a_' + K0.ab[2].icon, ab: 2 }, pot: { x: UW - 91, y: b - 4, r: 10, icon: 'potion' }, chat: { x: UW - 64, y: 16 + ST, r: 9, icon: 'chat' }, bag: { x: UW - 64, y: 38 + ST, r: 9, icon: 'bag' } }; }
@@ -227,6 +229,7 @@
     $('dtext').textContent = txt; $('dobj').textContent = obj ? 'Objectif : ' + obj : ''; $('dobj').hidden = !obj; $('drew').textContent = rew ? 'Récompense : ' + rew : ''; $('drew').hidden = !rew;
     $('dok').textContent = ok; $('dno').hidden = !later; dlgAction = act ? n.id : null; dlgNpc = n.id;
     $('dcraft').hidden = !C.RECIPES.some(r => r.npc === n.id); $('dcraft').textContent = n.id === 'bran' ? 'Forge' : 'Atelier';
+    $('dresp').hidden = n.id !== 'elya'; $('dresp').textContent = 'Réinitialiser mes points (' + (me.fr ? 'gratuit' : fmt(me.rcost || 0) + ' PO') + ')';
     dpx.clearRect(0, 0, 32, 36); dpx.drawImage(n.set.front[0], 7, 8, 32, 36, 0, 0, 32, 36);
     dlg.hidden = false;
   }
@@ -265,12 +268,13 @@
   $('clist').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || b.disabled || !link) return; if (b.dataset.r != null) link.send({ t: 'craft', r: +b.dataset.r }); if (b.dataset.scarf != null) link.send({ t: 'scarf', s: +b.dataset.scarf }); });
   $('cclose').addEventListener('click', () => { $('craft').hidden = true; craftNpc = null; });
   $('dcraft').addEventListener('click', () => openCraft(dlgNpc));
+  $('dresp').addEventListener('click', () => { if (link) link.send({ t: 'respec' }); closeDlg(); });
   /* ---------- page personnage : équipement, essayage, stats, sac, compétences ---------- */
   const iconCache2 = new Map();
   function iconURL(t) { let u0 = iconCache2.get(t); if (!u0) { const T = C.ITEMS[t]; u0 = ARTAPI.itemIcon(T.icon, T.c).toDataURL(); iconCache2.set(t, u0); } return u0; }
   function statLine(inst) { const st = C.itemStats(inst); return Object.keys(st).map(k => '+' + st[k] + ' ' + C.STAT_NAMES[k]).join(' · '); }
   let charSig = '', sel = null, charTab = 'stats', bagFilter = 'all', sellArm = false, prevDir = 0, prevSet = null; // sel = { from: 'bag', i } | { slot }
-  const ARMOR = ['head', 'chest', 'legs', 'feet'];
+  const ARMOR = ['head', 'chest', 'legs', 'feet', 'offhand'];
   function openChar() { if (mode !== 'play') return; charSig = ''; sel = null; sellArm = false; renderChar(); $('char').hidden = false; input.atkBtn = false; joy.active = false; }
   function slotHTML(sl) {
     const it = me.equip && me.equip[sl];
@@ -289,26 +293,39 @@
     const T = C.ITEMS[inst[0]], R0 = C.RARITY[inst[1]], st = C.itemStats(inst), cur = !equipped && me.equip && me.equip[T.slot] ? C.itemStats(me.equip[T.slot]) : null;
     const keys = [...new Set([...Object.keys(st), ...(cur ? Object.keys(cur) : [])])];
     const lines0 = keys.map(k => { const v = st[k] || 0, d = cur ? v - (cur[k] || 0) : 0; return `<li>${v ? '+' + v : '–'} ${C.STAT_NAMES[k]}${cur && d ? ` <em class="${d > 0 ? 'up' : 'down'}">(${d > 0 ? '+' : ''}${d})</em>` : ''}</li>`; }).join('');
-    const tooLow = me.lvl < T.lvl, lines = lines0 + (T.speed ? `<li>+${Math.round(T.speed * 100)} % vitesse de déplacement</li>` : '') + (T.fx === 'void' ? '<li class="lore">Laisse des empreintes de néant.</li>' : '') + (T.lore ? `<li class="lore">« ${T.lore} »</li>` : '');
+    const fam = T.slot === 'weapon' ? C.FAMS[C.FAM_OF[T.icon]] : null, sm = C.mLevel((me.mast || {}).sword || 0).lv;
+    const need = T.slot === 'offhand' ? (C.weaponFam(me.equip) !== 'sword' ? '<li class="no">Se porte avec une épée à une main.</li>' : sm < 5 ? '<li class="no">Maîtrise Épée à une main 5 requise (actuelle : ' + sm + ').</li>' : '') : '';
+    const tooLow = me.lvl < T.lvl, lines = (fam ? `<li>Arme : ${fam.name} · attaque « ${fam.basic.name} »</li>` : '') + need + lines0 + (T.speed ? `<li>+${Math.round(T.speed * 100)} % vitesse de déplacement</li>` : '') + (T.fx === 'void' ? '<li class="lore">Laisse des empreintes de néant.</li>' : '') + (T.lore ? `<li class="lore">« ${T.lore} »</li>` : '');
     const sellBtn = `<button type="button" data-act="sell" class="sell">${sellArm ? 'Confirmer la vente' : 'Vendre ' + C.itemValue(inst) + ' PO'}</button>`;
     return `<b style="color:${R0[1]}">${T.n}</b><small>${R0[0]} · ${C.SLOT_NAMES[T.slot]} · <span class="${tooLow ? 'no' : ''}">Niveau ${T.lvl}${tooLow ? ' requis' : ''}</span></small><ul>${lines}</ul>${cur ? '<small>Comparé à ton objet équipé · stats ci-dessous avec cet objet</small>' : ''}
       <div class="tipb">${equipped ? `<button type="button" data-act="unequip">Retirer</button>` : `<button type="button" data-act="equip" ${tooLow ? 'disabled' : ''}>Équiper</button>${sellBtn}`}</div>`;
   }
   function statRows(rows) { return rows.map(([k, v, d, unit]) => `<div><span>${k}</span><b>${v == null ? '–' : v + (unit || '')}${d ? `<em class="${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : ''}${d}${unit || ''}</em>` : ''}</b></div>`).join(''); }
   function renderChar() {
-    const sig = JSON.stringify([me.equip, me.bag, me.lvl, me.xp, me.gold, sel, charTab, bagFilter, sellArm]); if (sig === charSig) return; charSig = sig;
+    const sig = JSON.stringify([me.equip, me.bag, me.lvl, me.xp, me.gold, sel, charTab, bagFilter, sellArm, me.mast, me.pts, me.bar, me.free, me.fr]); if (sig === charSig) return; charSig = sig;
     const K0 = CL(), bag = me.bag || [];
-    $('chtitle').textContent = me.name; $('chsub').textContent = K0.name + ' · niveau ' + me.lvl + ' · ' + fmt(me.gold || 0) + ' PO';
+    $('chtitle').textContent = me.name; $('chsub').textContent = 'Niveau ' + me.lvl + ' · ' + K0.name + ' (maîtrise ' + K0.ml + ') · ' + fmt(me.gold || 0) + ' PO';
     const xpf = me.need ? Math.min(1, (me.xp || 0) / me.need) : 0; $('chxp').style.width = (xpf * 100).toFixed(1) + '%'; $('chxpt').textContent = 'XP ' + fmt(me.xp || 0) + ' / ' + fmt(me.need || 0);
-    $('slotsL').innerHTML = ['head', 'chest', 'legs'].map(slotHTML).join('');
-    $('slotsR').innerHTML = ['weapon', 'feet', 'trinket'].map(slotHTML).join('');
+    $('slotsL').innerHTML = ['head', 'chest', 'legs', 'feet'].map(slotHTML).join('');
+    $('slotsR').innerHTML = ['weapon', 'offhand', 'trinket'].map(slotHTML).join('');
     // stats actuelles, et différence si un objet est essayé
-    const now = C.computeStats(me.lvl, me.equip, me.cls), te = trialEquip(), tr = te ? C.computeStats(me.lvl, te, me.cls) : null;
+    const now = C.computeStats(me.lvl, me.equip, me.pts), te = trialEquip(), tr = te ? C.computeStats(me.lvl, te, me.pts) : null;
     const dv = (a, b) => tr ? Math.round(b) - Math.round(a) : 0, S2 = now.stats, T2 = tr ? tr.stats : S2;
     $('chattr').innerHTML = statRows([['Force', S2.str, dv(S2.str, T2.str)], ['Endurance', S2.sta, dv(S2.sta, T2.sta)], ['Intelligence', S2.int, dv(S2.int, T2.int)], ['Agilité', S2.agi, dv(S2.agi, T2.agi)], ['Armure', S2.armor, dv(S2.armor, T2.armor)]]);
     const P = (x) => Math.round(x * 100);
     $('chstats').innerHTML = statRows([['Attaque', Math.round(now.atk), tr ? dv(now.atk, tr.atk) : 0], ['Points de vie', now.maxhp, tr ? dv(now.maxhp, tr.maxhp) : 0], ['Points de mana', now.maxmp, tr ? dv(now.maxmp, tr.maxmp) : 0], ['Critique', P(now.crit), tr ? P(tr.crit) - P(now.crit) : 0, ' %'], ['Réduction', P(now.red), tr ? P(tr.red) - P(now.red) : 0, ' %'], ['Vitesse', P(now.speed), tr ? P(tr.speed) - P(now.speed) : 0, ' %']]);
-    $('abil').innerHTML = [Object.assign({ lvl: 1, desc: 'Attaque de base.' }, K0.basic), ...K0.ab].map(A => `<li class="${me.lvl < A.lvl ? 'lock' : ''}"><img src="${ART.icons['a_' + A.icon].toDataURL()}" alt=""><div><b>${A.name}</b><small>${me.lvl < A.lvl ? 'Niveau ' + A.lvl + ' · ' : ''}${A.mp ? A.mp + ' PM · ' : ''}${A.cd ? 'recharge ' + A.cd + ' s · ' : ''}${A.desc}</small></div></li>`).join('');
+    // points de caractéristiques (3 par niveau) ; réinitialisation chez Elya
+    const free = me.free | 0, PN = { str: 'Force', sta: 'Endurance', int: 'Intelligence', agi: 'Agilité' };
+    $('chpts').innerHTML = (free > 0 ? `<p class="ptsn">${free} point${free > 1 ? 's' : ''} à répartir</p><div class="ptsb">${Object.keys(PN).map(k => `<button type="button" data-pt="${k}">+ ${PN[k]}</button>`).join('')}</div>` : '')
+      + `<p class="muted small">Chaque niveau donne 3 points. Elya, à la fontaine, les réinitialise (${me.fr ? 'gratuit la première fois' : fmt(me.rcost || 0) + ' PO'}).</p>`;
+    // compétences : celles de l'arme en main, débloquées par sa maîtrise ; 3 cases dans la barre
+    const M0 = C.mLevel(((me.mast || {})[K0.fam]) || 0), inBar = K0.ab.map(a => a.locked ? -1 : a.ti), ico = n => (ART.icons['a_' + n] || ART.icons.a_slash).toDataURL();
+    const mbar = K0.fam === 'none' ? '<p class="muted">Équipe une arme pour débloquer des techniques.</p>' : `<div class="mast"><b>${K0.name} · maîtrise ${M0.lv}${M0.lv >= C.MAST_MAX ? ' (max)' : ''}</b><div class="xp"><i style="width:${M0.need ? (M0.cur / M0.need * 100).toFixed(1) : 100}%"></i><span>${M0.need ? M0.cur + ' / ' + M0.need : 'Maîtrise complète'}</span></div><small>Elle monte en te battant avec cette arme.</small></div>`;
+    const techs = K0.F.tech.map((A, i) => { const lock = A.m > K0.ml, slot = inBar.indexOf(i);
+      return `<li class="${lock ? 'lock' : ''}"><img src="${ico(A.icon)}" alt=""><div><b>${A.name}${slot >= 0 ? ' <span class="inbar">case ' + (slot + 1) + '</span>' : ''}</b><small>${lock ? 'Maîtrise ' + A.m + ' · ' : ''}${A.mp} PM · recharge ${A.cd} s · ${A.desc}</small>${lock ? '' : `<span class="barb">${[0, 1, 2].map(s0 => `<button type="button" data-bs="${s0}" data-bk="${i}" class="${slot === s0 ? 'on' : ''}" aria-label="Mettre en case ${s0 + 1}">${s0 + 1}</button>`).join('')}</span>`}</div></li>`; }).join('');
+    const caps = (K0.F.caps || []).map(A => `<li class="${A.m > K0.ml ? 'lock' : ''}"><img src="${ico(A.m === 5 ? 'charge' : 'shout')}" alt=""><div><b>${A.name}</b><small>${A.m > K0.ml ? 'Maîtrise ' + A.m + ' · ' : ''}${A.desc}</small></div></li>`).join('');
+    const others0 = Object.keys(C.FAMS).filter(f => f !== 'none' && f !== K0.fam && (me.mast || {})[f]).map(f => C.FAMS[f].name + ' ' + C.mLevel(me.mast[f]).lv).join(' · ');
+    $('abil').innerHTML = mbar + `<ul class="abil"><li><img src="${ico(K0.basic.icon)}" alt=""><div><b>${K0.basic.name}</b><small>Attaque de base · recharge ${K0.basic.cd} s · portée ${K0.basic.range}</small></div></li>${techs}${caps}</ul>` + (others0 ? `<p class="muted small">Autres maîtrises : ${others0}</p>` : '');
     $('bagn').textContent = bag.length + '/' + C.BAG_SIZE;
     const pass = it => { const sl = C.ITEMS[it[0]].slot; return bagFilter === 'all' || (bagFilter === 'armor' ? ARMOR.includes(sl) : sl === bagFilter); };
     let cells = ''; for (let i = 0; i < C.BAG_SIZE; i++) { const it = bag[i]; cells += it ? `<button type="button" class="slot r${it[1]}${sel && sel.from === 'bag' && sel.i === i ? ' sel' : ''}${pass(it) ? '' : ' dim'}${me.lvl < C.ITEMS[it[0]].lvl ? ' low' : ''}" data-bag="${i}" aria-label="${C.ITEMS[it[0]].n}"><img src="${iconURL(it[0])}" alt=""></button>` : '<span class="slot empty"></span>'; }
@@ -327,6 +344,8 @@
     if (b.id === 'chclose') { $('char').hidden = true; sel = null; prevSet = null; return; }
     if (b.id === 'rotl' || b.id === 'rotr') { prevDir = (prevDir + (b.id === 'rotr' ? 1 : 3)) % 4; return; }
     if (b.dataset.tab) { charTab = b.dataset.tab; renderChar(); return; }
+    if (b.dataset.pt && link) { link.send({ t: 'pt', s: b.dataset.pt }); return; }
+    if (b.dataset.bs != null && link) { link.send({ t: 'bar', s: +b.dataset.bs, k: +b.dataset.bk }); return; }
     if (b.dataset.f) { bagFilter = b.dataset.f; renderChar(); return; }
     if (b.dataset.bag != null) { const i = +b.dataset.bag; sel = sel && sel.from === 'bag' && sel.i === i ? null : { from: 'bag', i }; sellArm = false; renderChar(); return; }
     if (b.dataset.slot != null) { const sl = b.dataset.slot; sel = me.equip && me.equip[sl] && !(sel && sel.slot === sl) ? { slot: sl } : null; sellArm = false; if (!sel && !(me.equip && me.equip[sl])) { charTab = 'bag'; bagFilter = sl === 'weapon' ? 'weapon' : sl === 'trinket' ? 'trinket' : 'armor'; } renderChar(); return; }
@@ -457,16 +476,21 @@
       case 'hm': { const mb = mobs[ev.m]; if (!mb) break; mb.hitFlash = 0.15; const mine = ev.by === myId; floatAt(mb, ev.v, mine ? (ev.c ? '#ffd23f' : '#ffffff') : '#b8c4e0', ev.c && mine); burst(mb, ART.slimeLight[mb.type], ev.c ? 9 : 4); break; }
       case 'km': { const mb = mobs[ev.m]; if (!mb) break; burst(mb, ART.slimeLight[mb.type], 18, 20); burst(mb, '#ffffff', 6, 30); mb.alive = false; break; }
       case 'lt': if (ev.id === myId) { const mb = mobs[ev.m]; setTimeout(() => floatAt(mb, '+' + ev.xp + ' XP', '#8cf07a'), 150); setTimeout(() => floatAt(mb, '+' + ev.g + ' PO', '#ffd23f'), 450); if (ev.pot) setTimeout(() => floatAt(mb, '+1 potion', '#ff8ac0'), 750); if (ev.grp) setTimeout(() => floatAt(mb, 'Bonus groupe', '#9fe0ff'), 1000); } break;
-      case 'hp': { const t = ent(ev.id), mb = mobs[ev.m]; if (mb) mb.lunge = 0.15; if (!t) break; t.hitFlash = 0.25; if (t === me) { floatAt(me, '-' + ev.v, '#ff5a5a'); shake = 0.15; } break; }
-      case 'lv': { const t = ent(ev.id); if (!t) break; ring(t, 2.5, '#ffe27a', 0.6); burst(t, '#ffe27a', 24, 60); floatAt(t, 'Niveau ' + ev.lv + ' !', '#ffe27a', true); if (t === me) { sys('Niveau ' + ev.lv + ' atteint !'); for (const A of CL().ab) if (A.lvl === ev.lv) setTimeout(() => { sys('Nouvelle compétence : ' + A.name + ' — ' + A.desc); floatAt(me, A.name, '#ffe27a', true); }, 600); } else say(t.name + ' passe niveau ' + ev.lv + ' !', '#9fe0ff'); break; }
+      case 'hp': { const t = ent(ev.id), mb = mobs[ev.m]; if (mb) mb.lunge = 0.15; if (!t) break; t.hitFlash = 0.25; if (t === me) { floatAt(me, '-' + ev.v, '#ff5a5a'); shake = 0.15; } if (ev.b) { floatAt(t, 'Bloqué !', '#bfe6ff'); ring(t, 1.2, '#bfe6ff', 0.25); } break; }
+      case 'lv': { const t = ent(ev.id); if (!t) break; ring(t, 2.5, '#ffe27a', 0.6); burst(t, '#ffe27a', 24, 60); floatAt(t, 'Niveau ' + ev.lv + ' !', '#ffe27a', true); if (t === me) { sys('Niveau ' + ev.lv + ' atteint ! +3 points de caractéristiques à répartir (page personnage).'); } else say(t.name + ' passe niveau ' + ev.lv + ' !', '#9fe0ff'); break; }
       case 'die': if (ev.id === myId) sys('Vous êtes mort... -' + ev.loss + ' XP'); break;
       case 'rs': { const t = ent(ev.id); if (t) ring(t, 1.8, '#8fd4ff', 0.5); if (ev.id === myId) sys('Retour au Bourg d\'Argel.'); break; }
       case 'tp': if (ev.dash) { const t = ent(ev.id); if (t) burst(t, '#ffd060', 10, 10); } if (ev.id === myId) { me.x = ev.x; me.y = ev.y; me.z = W.hAt(me.x, me.y); } else { const o = others.get(ev.id); if (o) { o.x = o.tx = ev.x; o.y = o.ty = ev.y; } } break;
       case 'ch': if (ev.s) sys(ev.t); else if (!ignored.has(String(ev.n).toLowerCase())) say(ev.n + ': ' + ev.t, ev.id === myId ? '#b8f0a0' : '#ece6f4'); break;
-      case 'ab': { const t = ent(ev.id); if (t) abilityFx(t, ev.c | 0, ev.a, mobs[ev.m]); break; }
+      case 'ab': { const t = ent(ev.id); if (t) abilityFx(t, ev, mobs[ev.m]); break; }
+      case 'ml': if (ev.id === myId) {
+        const F = C.FAMS[ev.f]; if (!F) break; sys('Maîtrise ' + F.name + ' ' + ev.lv + ' !'); floatAt(me, 'Maîtrise ' + ev.lv, '#9fe0ff', true); ring(me, 2, '#9fe0ff', 0.5);
+        for (const A of F.tech) if (A.m === ev.lv) setTimeout(() => { sys('Nouvelle technique : ' + A.name + ' — ' + A.desc); floatAt(me, A.name, '#ffe27a', true); }, 600);
+        for (const A of F.caps || []) if (A.m === ev.lv) setTimeout(() => { sys('Nouvelle capacité : ' + A.name + ' — ' + A.desc); }, 900);
+      } break;
       case 'heal': { const t = ent(ev.id); if (t) { burst(t, '#9cf07a', 14, 30); if (t === me) floatAt(me, '+' + ev.v + (ev.by && ev.by !== myId ? ' (soin)' : ''), '#9cf07a'); } break; }
       case 'founder': if (ev.id === myId) { sys('Cadeau du fondateur : les Bottes du Néant (Unique) et un ensemble épique sont équipés !'); floatAt(me, 'Bottes du Néant', '#ff9a3c', true); ring(me, 2.6, '#ff9a3c', 0.8); burst(me, '#b08ae8', 30, 50); } break;
-      case 'sw': if (ev.id !== myId) { const o = others.get(ev.id), mb = mobs[ev.m]; if (o && mb) { basicFx(o, mb, ev.c | 0); setFacing(o, mb.x - o.x, mb.y - o.y); } } break;
+      case 'sw': if (ev.id !== myId) { const o = others.get(ev.id), mb = mobs[ev.m]; if (o && mb) { basicFx(o, mb, ev.fx); setFacing(o, mb.x - o.x, mb.y - o.y); } } break;
       case 'sk': if (ev.id !== myId) { const o = others.get(ev.id); if (o) { o.spin = 0.35; ring(o, 2.4, '#ffe27a', 0.35); } } break;
       case 'po': { const t = ent(ev.id); if (t) { burst(t, '#8cf07a', 12, 20); if (t === me) floatAt(me, '+' + ev.v, '#8cf07a'); } break; }
       case 'ga': if (ev.id === myId) { nodeCd[ev.k] = time + C.NODE_CD; const n = W.nodes[ev.k], pos = { x: n.x, y: n.y, z: W.hAt(n.x, n.y) }; floatAt(pos, '+' + ev.n + ' ' + C.RES[ev.res].name, '#bfe6ff'); burst(pos, ev.res === 'herb' ? '#bfe6ff' : ev.res === 'wood' ? '#ffd060' : '#ffb0d4', 12, 20); setTimeout(() => floatAt(me, '+' + ev.g + ' cueillette', '#c8c0d8'), 400); } break;
@@ -499,12 +523,12 @@
     const atk = input.atkBtn || input.atkKey, K0 = CL(), B = K0.basic;
     if (atk && tgt) {
       const d = Math.hypot(tgt.x - me.x, tgt.y - me.y), reach = B.range + (tgt.type === 'boss' ? 0.6 : 0);
-      if (d <= reach) { if (me.atkCd <= 0) { me.atkCd = B.cd; setFacing(me, tgt.x - me.x, tgt.y - me.y); basicFx(me, tgt, me.cls); link.send({ t: 'atk', m: tgt.k }); } }
+      if (d <= reach) { if (me.atkCd <= 0) { me.atkCd = B.cd; setFacing(me, tgt.x - me.x, tgt.y - me.y); basicFx(me, tgt, B.fx); link.send({ t: 'atk', m: tgt.k }); } }
       else if (!me.moving) { const dx = tgt.x - me.x, dy = tgt.y - me.y, sp = 3 * (me.speed || 1); C.moveBy(W, me, dx / d * sp * dt, dy / d * sp * dt); setFacing(me, dx, dy); me.moving = true; }
     } else if (atk && me.atkCd <= 0 && B.fx === 'slash') { me.atkCd = B.cd; me.slash = 0.18; me.slashAng = me.face === 'side' ? (me.flip ? Math.PI : 0) : me.face === 'front' ? Math.PI / 2 : -Math.PI / 2; }
     if (input.ab >= 0) {
       const i = input.ab, A = K0.ab[i]; input.ab = -1;
-      if (me.lvl < A.lvl) floatAt(me, A.name + ' : niveau ' + A.lvl, '#c8c0d8');
+      if (A.locked) floatAt(me, A.m < 99 ? A.name + ' : maîtrise ' + A.m : 'Pas de technique', '#c8c0d8');
       else if (localAbCd[i] > time || (me.abCd && me.abCd[i] > 0.2)) { /* en recharge */ }
       else if (me.mp < A.mp) floatAt(me, 'Mana insuffisant', '#7fb2ff');
       else {
@@ -781,7 +805,7 @@
     if (k === 'atk') cd = me.atkCd / CL().basic.cd; else if (k === 'pot') cd = me.potCd / 0.9;
     else if (b.ab != null) { const A = CL().ab[b.ab]; cd = Math.max(localAbCd[b.ab] - time, (me.abCd && me.abCd[b.ab]) || 0) / A.cd; }
     if (cd > 0) pcircle(b.x, b.y, b.r, 'rgba(10,5,20,.6)', -b.r + Math.round(2 * b.r * clamp(cd, 0, 1)));
-    if (b.ab != null) { const A = CL().ab[b.ab]; if (me.lvl < A.lvl) { pcircle(b.x, b.y, b.r, 'rgba(10,5,20,.72)'); text(u, 'Nv' + A.lvl, b.x, b.y - 3, '#c8c0d8', 'center'); } else if (me.mp < A.mp) pcircle(b.x, b.y, b.r, 'rgba(20,30,80,.45)'); }
+    if (b.ab != null) { const A = CL().ab[b.ab]; if (A.locked) { pcircle(b.x, b.y, b.r, 'rgba(10,5,20,.72)'); text(u, A.m < 99 ? 'M' + A.m : '-', b.x, b.y - 3, '#c8c0d8', 'center'); } else if (me.mp < A.mp) pcircle(b.x, b.y, b.r, 'rgba(20,30,80,.45)'); }
     if (k === 'pot') { pcircle(b.x + b.r - 2, b.y + b.r - 3, 4, '#1a0f1c'); text(u, String(me.potions), b.x + b.r - 2, b.y + b.r - 6, '#ffe27a', 'center', 1, false); }
   }
   function drawUI() {
@@ -860,12 +884,12 @@
   /* ---------- menu de création ---------- */
   const preview = $('preview'), pctx = preview.getContext('2d'); pctx.imageSmoothingEnabled = false;
   const LOOK_LABELS = ['Coiffure', 'Cheveux', 'Tenue', 'Peau', 'Chapeau'];
-  me.cls = C.CLASSES[prefs.cls | 0] ? prefs.cls | 0 : 0;
+  me.cls = C.START[prefs.cls | 0] ? prefs.cls | 0 : 0;
   const LOOK_NAMES = [['Courte', 'Longue', 'Épis'], ['Châtain', 'Roux', 'Blond', 'Argent', 'Nuit', 'Sylve', 'Rose'], ['Azur', 'Carmin', 'Forêt', 'Ocre', 'Améthyste', 'Ardoise', 'Lagon'], ['Claire', 'Dorée', 'Brune'], ['Aucun', 'Mage', 'Bandeau', 'Pousse']];
   function buildMenu() {
     { let sv = null; try { sv = JSON.parse(localStorage.getItem('etheria_solo') || 'null'); } catch (e) { /* ignore */ } if (!sv) sv = restoredSolo || (SEED && SEED.solo); if (sv && sv.equip && prefs.name) { me.equip = sv.equip; me.gear = C.gearStr(sv.equip); } }
-    const box = $('looks'); box.innerHTML = `<div class="row cls"><span>Classe</span><button type="button" data-c="-1" aria-label="Classe précédente">‹</button><b id="lvc"></b><button type="button" data-c="1" aria-label="Classe suivante">›</button></div><p id="clsdesc" class="clsdesc"></p>` + LOOK_LABELS.map((l, i) => `<div class="row"><span>${l}</span><button type="button" data-i="${i}" data-d="-1" aria-label="${l} précédent">‹</button><b id="lv${i}"></b><button type="button" data-i="${i}" data-d="1" aria-label="${l} suivant">›</button></div>`).join('');
-    box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.c) { me.cls = (me.cls + +b.dataset.c + 3) % 3; refreshLook(); return; } const i = +b.dataset.i, d = +b.dataset.d; look[i] = (look[i] + d + C.LOOK_MAX[i]) % C.LOOK_MAX[i]; refreshLook(); });
+    const box = $('looks'); box.innerHTML = `<div class="row cls"><span>Arme</span><button type="button" data-c="-1" aria-label="Arme précédente">‹</button><b id="lvc"></b><button type="button" data-c="1" aria-label="Arme suivante">›</button></div><p id="clsdesc" class="clsdesc"></p>` + LOOK_LABELS.map((l, i) => `<div class="row"><span>${l}</span><button type="button" data-i="${i}" data-d="-1" aria-label="${l} précédent">‹</button><b id="lv${i}"></b><button type="button" data-i="${i}" data-d="1" aria-label="${l} suivant">›</button></div>`).join('');
+    box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.c) { me.cls = (me.cls + +b.dataset.c + C.START.length) % C.START.length; refreshLook(); return; } const i = +b.dataset.i, d = +b.dataset.d; look[i] = (look[i] + d + C.LOOK_MAX[i]) % C.LOOK_MAX[i]; refreshLook(); });
     $('name').value = me.name; refreshLook();
     $('form').addEventListener('submit', e => { e.preventDefault(); play(); });
     // héros déjà créé : écran « Continuer » au lieu de la création
@@ -876,13 +900,13 @@
     if (prefs.name) {
       let lvl = 0; try { const s = JSON.parse(localStorage.getItem('etheria_solo') || 'null'); if (s && s.lvl) lvl = s.lvl; } catch (e) { /* ignore */ }
       lvl = Math.max(lvl, prefs.lvl || 0);
-      $('rname').textContent = prefs.name; $('rlvl').textContent = CL().name + (lvl ? ' · niveau ' + lvl : '');
+      $('rname').textContent = prefs.name; $('rlvl').textContent = (lvl ? 'Niveau ' + lvl + ' · ' : '') + C.FAMS[C.weaponFam(me.equip)].name;
       setResume(true);
     }
     $('edit').addEventListener('click', () => setResume(false));
     const url = serverUrl(); $('status').textContent = url ? 'Serveur : ' + url.replace(/^wss?:\/\//, '') : 'Mode solo : aucun serveur configuré';
   }
-  function refreshLook() { const K0 = CL(); $('lvc').textContent = K0.name; $('clsdesc').textContent = K0.desc + ' Compétences : ' + [K0.basic.name, ...K0.ab.map(a => a.name)].join(', ') + '.'; LOOK_LABELS.forEach((l, i) => { $('lv' + i).textContent = LOOK_NAMES[i][look[i]]; }); me.set = ARTAPI.charSet(look, me.gear || ''); }
+  function refreshLook() { const st = C.START[me.cls] || C.START[0], F = C.FAMS[st[1]]; $('lvc').textContent = F.name; $('clsdesc').textContent = 'Pas de classe : ton arme définit tes attaques. Attaque « ' + F.basic.name + ' », puis ' + F.tech.map(a => a.name).join(', ') + ' en gagnant de la maîtrise. Tu peux changer d\'arme à tout moment.'; LOOK_LABELS.forEach((l, i) => { $('lv' + i).textContent = LOOK_NAMES[i][look[i]]; }); me.set = ARTAPI.charSet(look, me.gear || C.gearStr({ weapon: [st[0], 0], chest: [9, 0] })); }
   function drawPreview() {
     if (!me.set) return; pctx.clearRect(0, 0, preview.width, preview.height);
     const dirs = ['front', 'side', 'back', 'side'], k = Math.floor(time / 1.2) % 4, fr = Math.floor(time * 6) % 4;

@@ -90,6 +90,9 @@ h3{margin:14px 0 6px;font-size:16px;letter-spacing:.08em;color:#e8c37a;font-weig
 .tip .lore{color:#e8c890;font-style:italic}
 .abil{list-style:none;margin:0;padding:0}.abil li{display:flex;gap:10px;align-items:center;padding:6px 0;border-top:1px solid rgba(236,212,164,.2)}.abil img{width:30px;height:30px;image-rendering:pixelated;background:#1a1a36;border:2px solid #7a7290;padding:2px;flex:none}.abil b{display:block;font-size:16px;color:#ffe9b0;font-weight:600}.abil small{display:block;font-size:13px;color:#d8d0e8}.abil li.lock{opacity:.5}
 .row.cls b{color:#ffe27a;font-weight:600}.clsdesc{margin:2px 0 8px;font-size:14px;color:#c8c0d8;line-height:1.35}
+.ptsn{margin:4px 0;font-size:16px;color:#9cf07a}.ptsb{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}.ptsb button{min-height:40px;font:inherit;font-size:15px;color:#2a1a10;background:linear-gradient(#c8f0a0,#6ac050);border:2px solid #1a0f1c;cursor:pointer}
+.mast{margin:6px 0 8px}.mast b{font-size:16px;color:#9fe0ff;font-weight:600}.mast small{display:block;font-size:13px;color:#b8b0c8;margin-top:4px}.mast .xp i{background:linear-gradient(#bfe6ff,#5a98d8)}
+.barb{display:flex;gap:6px;margin-top:6px}.barb button{width:40px;height:34px;font:inherit;font-size:15px;color:var(--ink);background:#2e3456;border:2px solid #0c0a1c;cursor:pointer}.barb button.on{color:#2a1a10;background:linear-gradient(#f0d49a,#d4a560);font-weight:600}.inbar{font-size:12px;color:#e8c37a;font-weight:400}
 #status{margin:10px 0 0;font-size:13px;text-align:center;color:#c8c0d8}
 #chatbox{position:fixed;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));z-index:6;display:flex;gap:6px;touch-action:auto}
 #chatbox[hidden]{display:none}
@@ -125,6 +128,7 @@ h3{margin:14px 0 6px;font-size:16px;letter-spacing:.08em;color:#e8c37a;font-weig
     <p id="drew"></p>
     <button id="dok" type="button"></button>
     <button id="dcraft" type="button" class="alt" hidden>Atelier</button>
+    <button id="dresp" type="button" class="alt" hidden>Réinitialiser mes points</button>
     <button id="dno" type="button" class="link">Plus tard</button>
   </div>
 </div>
@@ -173,13 +177,13 @@ h3{margin:14px 0 6px;font-size:16px;letter-spacing:.08em;color:#e8c37a;font-weig
       <button type="button" role="tab" data-tab="bag">Sac <span id="bagn"></span></button>
       <button type="button" role="tab" data-tab="skills">Compétences</button>
     </nav>
-    <section id="tab-stats"><h3>Attributs</h3><div id="chattr" class="cstats"></div><h3>Combat</h3><div id="chstats" class="cstats"></div></section>
+    <section id="tab-stats"><h3>Attributs</h3><div id="chpts"></div><div id="chattr" class="cstats"></div><h3>Combat</h3><div id="chstats" class="cstats"></div></section>
     <section id="tab-bag" hidden>
       <div class="filters" id="bagf"><button type="button" data-f="all" class="on">Tout</button><button type="button" data-f="weapon">Armes</button><button type="button" data-f="armor">Armures</button><button type="button" data-f="trinket">Bijoux</button></div>
       <div id="bag" class="bag"></div>
       <p class="muted small">Touche un objet pour l'essayer : ton héros le porte en aperçu et les stats montrent le gain ou la perte.</p>
     </section>
-    <section id="tab-skills" hidden><ul id="abil" class="abil"></ul></section>
+    <section id="tab-skills" hidden><div id="abil"></div></section>
   </div>
 </div>
 <div id="chatbox" hidden><input id="chatin" maxlength="80" placeholder="Message pour tous…" enterkeyhint="send"><button id="chatsend" type="button">OK</button><button id="chatclose" type="button" aria-label="Fermer">×</button></div>

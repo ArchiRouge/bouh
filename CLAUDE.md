@@ -69,7 +69,11 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   `sprites.js` has no DOM dependency (paints into an RGBA array), so it can be tested in Node; `assets.js` `charSet` caches canvases.
 - In the world a character pixel is ~0.6 game pixel, rounded so it lands on whole screen pixels (`charP()` in `game.js`).
   Don't scale sprites by non-integer screen factors. Draw new gear in the grids pixel by pixel; never go back to vector-then-downsample.
-- `C.gearStr(equip)` encodes head/chest/legs/feet/weapon; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
+- No classes: the equipped weapon's family (`FAMS` in `core.js`: sword, great, dagger, bow, staff, spear) gives the basic attack and
+  techniques, unlocked by per-family mastery (`p.mast`, gained in combat). `kitOf(equip, mast, bar)` = basic attack + the 3 bar slots.
+  Stats come from points (`p.pts`, 3 per level, reset at Elya). The old `cls` save field now means "starting weapon" (`START`).
+  Shield = `offhand` slot, only with a 1H sword and sword mastery ≥ 5; block at mastery 8.
+- `C.gearStr(equip)` encodes head/chest/legs/feet/weapon/offhand; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
 
 ## Rendering & smoothness
 - The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving

@@ -1,7 +1,27 @@
 # Pixels Worlds — design des personnages, monstres et éléments
 
 Statut : **personnages en pixel art posé à la main, style Realms of Pixel : validé et intégré au jeu** (`client/sprites.js`).
-Les systèmes de jeu ci-dessous (maîtrise d'arme, éléments, nouveaux emplacements) ne sont **pas encore codés**.
+**Armes sans classes, maîtrise, bouclier (main gauche), points de caractéristiques : codés** (`client/core.js`, `FAMS`).
+Pas encore codés : éléments, emplacements Épaules et Mains.
+
+### Ce qui est en jeu (armes v1)
+
+| Famille | Attaque de base | Techniques (maîtrise requise) | Capacités |
+|---|---|---|---|
+| Épée à une main | Frappe | Tourbillon (2), Taillade (3), Charge (6), Cri de guerre (10) | Port du bouclier (5), Blocage 25 % (8) |
+| Arme à deux mains (espadon, hache) | Coup lourd | Moulinet (2), Fendoir (4), Brise-garde (7), Cri de guerre (10) | |
+| Dagues | Coups rapides | Saignement (2), Pas de l'ombre (4), Danse des lames (7), Coup dans le dos (11) | |
+| Arc | Tir | Volée (2), Flèche perçante (5), Pluie d'Éther (8) | |
+| Bâton | Trait d'Éther | Nova de givre (2), Boule de feu (5), Soin lumineux (8) | |
+| Lance | Estoc (portée 2) | Balayage (2), Saut (4), Empalement (7) | |
+
+- Maîtrise : +1 par coup porté, +2 + niveau du monstre par victoire (+30 pour le Roi Gelée) ; palier n → n+1 : 10 × n^1,7 points.
+- Barre d'actions : 3 cases, choisies dans l'onglet Compétences parmi les techniques débloquées de l'arme en main.
+- Caractéristiques : 5 de base partout, +3 points par niveau ; Elya les réinitialise (gratuit une fois, puis 25 PO × niveau).
+- Attaque : Force (épées, haches, lances), Agilité (dagues, arc), Intelligence (bâton).
+- Bouclier : seulement avec une épée à une main et maîtrise 5 ; il retourne au sac si on prend une autre arme.
+- Création : on choisit son arme de départ (épée, arc, bâton, dagues, lance, espadon) au lieu d'une classe.
+- Anciennes sauvegardes : le champ `cls` est gardé ; maîtrise de l'ancienne arme = niveau du héros (Archi404 → Épée à une main 8), points répartis selon l'ancienne classe.
 Règle de travail : on valide le design ici (maquettes en images), puis un plan d'implémentation, puis seulement le code.
 
 ## Personnages en jeu (v7, validés)
@@ -9,6 +29,8 @@ Règle de travail : on valide le design ici (maquettes en images), puis un plan 
 Pixel art posé à la main, couches d'équipement recoloriées selon l'objet. Colonnes : face (repos, pas gauche, pas droit, clignement), profil (repos, deux foulées), dos.
 
 ![Personnages v7](img/v7-personnages-pixel.png)
+
+![Armes et bouclier v7](img/v7-armes-bouclier.png)
 
 ## Direction des personnages : Grow Stone Online (sprites en jeu)
 

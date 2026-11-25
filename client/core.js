@@ -37,8 +37,8 @@
     };
   }
   /* ---------------- objets, caractéristiques & équipement ---------------- */
-  const SLOTS = ['head', 'chest', 'legs', 'feet', 'weapon', 'trinket'];
-  const SLOT_NAMES = { head: 'Tête', chest: 'Torse', legs: 'Jambes', feet: 'Pieds', weapon: 'Arme', trinket: 'Bijou' };
+  const SLOTS = ['head', 'chest', 'legs', 'feet', 'weapon', 'trinket', 'offhand'];
+  const SLOT_NAMES = { head: 'Tête', chest: 'Torse', legs: 'Jambes', feet: 'Pieds', weapon: 'Arme', trinket: 'Bijou', offhand: 'Main gauche' };
   const RARITY = [['Commun', '#ece8f4', 1], ['Inhabituel', '#5ee870', 1.3], ['Rare', '#5aa8ff', 1.7], ['Épique', '#c47cff', 2.2], ['Unique', '#ff9a3c', 2.6]];
   const STAT_NAMES = { str: 'Force', sta: 'Endurance', int: 'Intelligence', agi: 'Agilité', armor: 'Armure' };
   const BAG_SIZE = 16;
@@ -67,9 +67,18 @@
     { n: 'Arc de saule', slot: 'weapon', lvl: 3, icon: 'bow', c: '#9ad07a', st: { agi: 4, str: 1 } },
     { n: 'Arc de braise', slot: 'weapon', lvl: 6, icon: 'bow', c: '#f08a3a', st: { agi: 6, sta: 2 } },
     { n: 'Arc du Roi Gelée', slot: 'weapon', lvl: 10, icon: 'bow', c: '#b08ae8', st: { agi: 9, sta: 3, str: 2 } },
-    { n: 'Bottes du Néant', slot: 'feet', lvl: 1, icon: 'boots', c: '#7a5ad0', st: { agi: 3, sta: 2, armor: 3 }, speed: 0.4, fx: 'void', unique: 1, lore: 'Chaque pas creuse un peu de vide dans le monde.' }
+    { n: 'Bottes du Néant', slot: 'feet', lvl: 1, icon: 'boots', c: '#7a5ad0', st: { agi: 3, sta: 2, armor: 3 }, speed: 0.4, fx: 'void', unique: 1, lore: 'Chaque pas creuse un peu de vide dans le monde.' },
+    // (ne jamais réordonner : les sauvegardes stockent l'indice des objets)
+    { n: 'Bouclier de bois', slot: 'offhand', lvl: 1, icon: 'shield', c: '#a07a52', st: { armor: 4, sta: 1 } },
+    { n: 'Écu de braise', slot: 'offhand', lvl: 6, icon: 'shield', c: '#e0703a', st: { armor: 9, sta: 3 } },
+    { n: 'Pavois du Roi Gelée', slot: 'offhand', lvl: 10, icon: 'shield', c: '#b08ae8', st: { armor: 14, sta: 5, str: 2 } },
+    { n: 'Dague ébréchée', slot: 'weapon', lvl: 1, icon: 'dagger', c: '#b4acbc', st: { agi: 2 } },
+    { n: 'Dagues de champi', slot: 'weapon', lvl: 4, icon: 'dagger', c: '#e08a4a', st: { agi: 5, str: 1 } },
+    { n: 'Lance de frêne', slot: 'weapon', lvl: 1, icon: 'spear', c: '#c09a6a', st: { str: 2, agi: 1 } },
+    { n: 'Pique de braise', slot: 'weapon', lvl: 6, icon: 'spear', c: '#f08a3a', st: { str: 6, agi: 2 } },
+    { n: 'Espadon rouillé', slot: 'weapon', lvl: 1, icon: 'great', c: '#b4acbc', st: { str: 3 } }
   ];
-  const LOOT = { slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22] }, boss: { ch: 1, items: [5, 8, 23], minR: 2 } };
+  const LOOT = { slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21, 25, 29] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22, 26, 31] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 } };
   function itemStats(inst) { const T = ITEMS[inst[0]], mul = RARITY[inst[1]][2], o = {}; for (const k in T.st) o[k] = Math.max(1, Math.round(T.st[k] * mul)); return o; }
   const itemValue = inst => Math.round((5 + ITEMS[inst[0]].lvl * 4) * RARITY[inst[1]][2]);
   function rollRarity(min) { const r = Math.random(); const v = r < 0.02 ? 3 : r < 0.12 ? 2 : r < 0.4 ? 1 : 0; return Math.min(3, Math.max(min || 0, v)); }
@@ -96,13 +105,74 @@
         { name: 'Boule de feu', icon: 'fire', lvl: 5, mp: 16, cd: 4, kind: 'aoeTarget', range: 5, r: 1.3, mult: 2.2, fx: 'fire', desc: 'Explose sur la cible et brûle les ennemis voisins.' },
         { name: 'Soin lumineux', icon: 'heal', lvl: 8, mp: 25, cd: 12, kind: 'heal', fx: 'heal', desc: 'Rend 40 % de tes PV et 25 % aux alliés proches.' }] }
   ];
-  function computeStats(lvl, equip, cls) {
-    const C0 = CLASSES[cls | 0] || CLASSES[0], g = C0.grow;
-    const s = { str: g.str[0] + lvl * g.str[1], sta: g.sta[0] + lvl * g.sta[1], int: g.int[0] + lvl * g.int[1], agi: g.agi[0] + lvl * g.agi[1], armor: 0 };
-    for (const sl of SLOTS) { const it = equip && equip[sl]; if (it) { const st = itemStats(it); for (const k in st) s[k] += st[k]; } }
-    let speed = 1; for (const sl of SLOTS) { const it = equip && equip[sl]; if (it && ITEMS[it[0]].speed) speed += ITEMS[it[0]].speed; }
+  /* ---------------- armes : pas de classes, l'arme en main définit les attaques ----------------
+     Chaque famille a une attaque de base et des techniques débloquées par sa maîtrise (1 à 20), gagnée en se battant avec.
+     La barre d'actions porte 3 techniques au choix parmi celles débloquées pour l'arme en main. */
+  const FAMS = {
+    sword: { name: 'Épée à une main', stat: 'str', basic: { name: 'Frappe', icon: 'slash', range: 1.3, cd: 0.45, mult: 1, fx: 'slash' },
+      tech: [
+        { name: 'Tourbillon', icon: 'spin', m: 2, mp: 15, cd: 3, kind: 'aoeSelf', r: 2.4, mult: 1.5, fx: 'spin', desc: 'Frappe tous les ennemis autour de toi.' },
+        { name: 'Taillade', icon: 'slash', m: 3, mp: 10, cd: 4, kind: 'single', range: 1.7, mult: 2.2, fx: 'slashx', desc: 'Un coup puissant sur une seule cible.' },
+        { name: 'Charge', icon: 'charge', m: 6, mp: 12, cd: 7, kind: 'charge', range: 6, mult: 1.4, stun: 1.5, fx: 'charge', desc: "Fonce sur un ennemi et l'étourdit 1,5 s." },
+        { name: 'Cri de guerre', icon: 'shout', m: 10, mp: 20, cd: 20, kind: 'buff', dur: 8, fx: 'shout', desc: '+40 % de dégâts et -30 % de dégâts subis pendant 8 s.' }],
+      caps: [{ m: 5, name: 'Port du bouclier', desc: 'Tu peux tenir un bouclier en main gauche.' }, { m: 8, name: 'Blocage', desc: 'Avec un bouclier : 25 % de chances de bloquer 75 % des dégâts.' }] },
+    great: { name: 'Arme à deux mains', stat: 'str', basic: { name: 'Coup lourd', icon: 'slash', range: 1.5, cd: 0.8, mult: 1.7, fx: 'slash' },
+      tech: [
+        { name: 'Moulinet', icon: 'spin', m: 2, mp: 18, cd: 4, kind: 'aoeSelf', r: 2.8, mult: 1.8, fx: 'spin', desc: 'Grand cercle qui frappe tout autour de toi.' },
+        { name: 'Fendoir', icon: 'slash', m: 4, mp: 14, cd: 6, kind: 'single', range: 1.8, mult: 3, fx: 'slashx', desc: 'Un coup écrasant sur une seule cible.' },
+        { name: 'Brise-garde', icon: 'charge', m: 7, mp: 16, cd: 9, kind: 'single', range: 1.8, mult: 1.6, stun: 2, fx: 'slashx', desc: 'Étourdit la cible 2 s.' },
+        { name: 'Cri de guerre', icon: 'shout', m: 10, mp: 20, cd: 20, kind: 'buff', dur: 8, fx: 'shout', desc: '+40 % de dégâts et -30 % de dégâts subis pendant 8 s.' }] },
+    dagger: { name: 'Dagues', stat: 'agi', basic: { name: 'Coups rapides', icon: 'slash', range: 1.1, cd: 0.28, mult: 0.6, fx: 'slash' },
+      tech: [
+        { name: 'Saignement', icon: 'slash', m: 2, mp: 10, cd: 4, kind: 'single', range: 1.4, mult: 2, slow: 3, fx: 'slashx', desc: 'Entaille profonde qui ralentit la cible 3 s.' },
+        { name: "Pas de l'ombre", icon: 'charge', m: 4, mp: 12, cd: 6, kind: 'charge', range: 5, mult: 1.8, stun: 0.8, fx: 'charge', desc: 'Surgit derrière un ennemi et frappe.' },
+        { name: 'Danse des lames', icon: 'spin', m: 7, mp: 16, cd: 5, kind: 'aoeSelf', r: 2, mult: 1.7, fx: 'spin', desc: 'Tourbillon de lames autour de toi.' },
+        { name: 'Coup dans le dos', icon: 'pierce', m: 11, mp: 18, cd: 8, kind: 'single', range: 1.4, mult: 3.6, fx: 'slashx', desc: 'Énormes dégâts sur une seule cible.' }] },
+    bow: { name: 'Arc', stat: 'agi', basic: { name: 'Tir', icon: 'bow', range: 5, cd: 0.6, mult: 0.9, fx: 'arrow' },
+      tech: [
+        { name: 'Volée', icon: 'volley', m: 2, mp: 15, cd: 4, kind: 'aoeTarget', range: 5, r: 2, mult: 1.0, fx: 'volley', desc: 'Une pluie de flèches touche la cible et ses voisins.' },
+        { name: 'Flèche perçante', icon: 'pierce', m: 5, mp: 14, cd: 6, kind: 'single', range: 5.5, mult: 2.4, slow: 4, fx: 'pierce', desc: 'Gros dégâts et ralentit la cible 4 s.' },
+        { name: "Pluie d'Éther", icon: 'rain', m: 8, mp: 25, cd: 12, kind: 'aoeTarget', range: 5, r: 3.2, mult: 1.6, fx: 'rain', desc: 'Déluge de flèches lumineuses sur une grande zone.' }] },
+    staff: { name: 'Bâton', stat: 'int', basic: { name: "Trait d'Éther", icon: 'bolt', range: 4.5, cd: 0.7, mult: 1, fx: 'bolt' },
+      tech: [
+        { name: 'Nova de givre', icon: 'frost', m: 2, mp: 18, cd: 6, kind: 'aoeSelf', r: 2.5, mult: 1.1, stun: 2, fx: 'frost', desc: 'Gèle les ennemis proches pendant 2 s.' },
+        { name: 'Boule de feu', icon: 'fire', m: 5, mp: 16, cd: 4, kind: 'aoeTarget', range: 5, r: 1.3, mult: 2.2, fx: 'fire', desc: 'Explose sur la cible et brûle les ennemis voisins.' },
+        { name: 'Soin lumineux', icon: 'heal', m: 8, mp: 25, cd: 12, kind: 'heal', fx: 'heal', desc: 'Rend 40 % de tes PV et 25 % aux alliés proches.' }] },
+    spear: { name: 'Lance', stat: 'str', basic: { name: 'Estoc', icon: 'pierce', range: 2, cd: 0.55, mult: 1.05, fx: 'thrust' },
+      tech: [
+        { name: 'Balayage', icon: 'spin', m: 2, mp: 15, cd: 4, kind: 'aoeSelf', r: 2.6, mult: 1.3, fx: 'spin', desc: 'Fauche les ennemis autour de toi.' },
+        { name: 'Saut', icon: 'charge', m: 4, mp: 14, cd: 7, kind: 'charge', range: 5, mult: 1.6, stun: 1, fx: 'charge', desc: 'Bondit sur un ennemi et l\'étourdit 1 s.' },
+        { name: 'Empalement', icon: 'pierce', m: 7, mp: 16, cd: 6, kind: 'single', range: 2.3, mult: 2.6, slow: 4, fx: 'pierce', desc: 'Transperce la cible et la ralentit 4 s.' }] },
+    none: { name: 'Mains nues', stat: 'str', basic: { name: 'Coup de poing', icon: 'slash', range: 1.1, cd: 0.5, mult: 0.6, fx: 'slash' }, tech: [] }
+  };
+  const FAM_OF = { sword: 'sword', axe: 'great', great: 'great', dagger: 'dagger', bow: 'bow', staff: 'staff', spear: 'spear' };
+  // armes de départ proposées à la création (l'ancien champ « cls » des sauvegardes garde ce sens : 0 épée, 1 arc, 2 bâton)
+  const START = [[0, 'sword'], [20, 'bow'], [1, 'staff'], [28, 'dagger'], [30, 'spear'], [32, 'great']];
+  const MAST_MAX = 20, mNeed = l => Math.round(10 * Math.pow(l, 1.7));
+  function mTotal(l) { let t = 0; for (let k = 1; k < l; k++) t += mNeed(k); return t; }
+  const MAST_CAP = mTotal(MAST_MAX);
+  function mLevel(total) { let lv = 1, t = total | 0; while (lv < MAST_MAX && t >= mNeed(lv)) { t -= mNeed(lv); lv++; } return { lv, cur: t, need: lv < MAST_MAX ? mNeed(lv) : 0 }; }
+  function weaponFam(equip) { const w = equip && equip.weapon, T = w && ITEMS[w[0]]; return T ? (FAM_OF[T.icon] || 'sword') : 'none'; }
+  function kitOf(equip, mast, bar) {
+    const fam = weaponFam(equip), F = FAMS[fam], ml = mLevel((mast || {})[fam] || 0).lv, T = F.tech;
+    const open = T.map((A, i) => i).filter(i => T[i].m <= ml), want = (bar && bar[fam]) || [], pick = [];
+    for (const i of want) if (open.includes(i) && !pick.includes(i) && pick.length < 3) pick.push(i);
+    for (const i of open) if (!pick.includes(i) && pick.length < 3) pick.push(i);
+    const ab = pick.map(i => Object.assign({ ti: i }, T[i]));
+    for (let i = 0; i < T.length && ab.length < 3; i++) if (!pick.includes(i)) ab.push(Object.assign({ ti: i, locked: 1 }, T[i]));
+    while (ab.length < 3) ab.push({ ti: -1, name: '—', icon: 'slash', m: 99, mp: 0, cd: 1, locked: 1, desc: '' });
+    return { fam, F, ml, name: F.name, basic: F.basic, ab };
+  }
+  const freePts = (lvl, pts) => 3 * (Math.max(1, lvl) - 1) - ((pts.str | 0) + (pts.sta | 0) + (pts.int | 0) + (pts.agi | 0));
+  const respecCost = lvl => 25 * lvl;
+  function computeStats(lvl, equip, pts) {
+    pts = pts && typeof pts === 'object' ? pts : {};
+    const s = { str: 5 + (pts.str | 0), sta: 5 + (pts.sta | 0), int: 5 + (pts.int | 0), agi: 5 + (pts.agi | 0), armor: 0 };
+    const fam = weaponFam(equip), on = sl => equip && equip[sl] && (sl !== 'offhand' || fam === 'sword');
+    for (const sl of SLOTS) if (on(sl)) { const st = itemStats(equip[sl]); for (const k in st) s[k] += st[k]; }
+    let speed = 1; for (const sl of SLOTS) if (on(sl) && ITEMS[equip[sl][0]].speed) speed += ITEMS[equip[sl][0]].speed;
     for (const k in s) s[k] = Math.floor(s[k]);
-    const atk = C0.main === 'agi' ? 2 + s.agi * 1.6 + s.str * 0.5 : C0.main === 'int' ? 2 + s.int * 1.6 + s.str * 0.3 : 2 + s.str * 1.5;
+    const st = FAMS[fam].stat, atk = st === 'agi' ? 2 + s.agi * 1.6 + s.str * 0.5 : st === 'int' ? 2 + s.int * 1.6 + s.str * 0.3 : 2 + s.str * 1.5;
     return { speed, stats: s, maxhp: Math.round(20 + s.sta * 10), maxmp: Math.round(15 + s.int * 5), atk, crit: Math.min(0.5, 0.06 + s.agi * 0.006), red: s.armor / (s.armor + 60) };
   }
   function playerStats(lvl) { const c = computeStats(lvl, null); return { maxhp: c.maxhp, maxmp: c.maxmp, atk: c.atk }; }
@@ -122,13 +192,15 @@
     { id: 'armor', npc: 'bran', name: 'Tunique tressée', desc: 'Torse inhabituel (nv4)', req: 4, cost: { wood: 8, quartz: 2 }, item: [10, 1] },
     { id: 'scarf2', npc: 'mira', name: "Écharpe d'Éther", desc: 'Écharpe violette scintillante', req: 5, cost: { quartz: 4, herb: 4 }, scarf: 2 },
     { id: 'charm', npc: 'bran', name: 'Talisman de quartz', desc: 'Bijou rare (nv6)', req: 6, cost: { quartz: 6, wood: 4 }, item: [18, 2] },
-    { id: 'bow', npc: 'bran', name: 'Arc de saule', desc: 'Arc inhabituel (nv3)', req: 3, cost: { wood: 6, herb: 2 }, item: [21, 1] }
+    { id: 'bow', npc: 'bran', name: 'Arc de saule', desc: 'Arc inhabituel (nv3)', req: 3, cost: { wood: 6, herb: 2 }, item: [21, 1] },
+    { id: 'shield', npc: 'bran', name: 'Bouclier de bois', desc: 'Bouclier inhabituel (main gauche)', req: 2, cost: { wood: 5 }, item: [25, 1] },
+    { id: 'spear', npc: 'bran', name: 'Lance de frêne', desc: 'Lance inhabituelle (nv1)', req: 2, cost: { wood: 5, herb: 2 }, item: [30, 1] }
   ];
   const dayKey = () => new Date().toISOString().slice(0, 10);
   const xpNeed = l => Math.floor(18 * Math.pow(l, 1.6));
   const LOOK_MAX = [3, 7, 7, 3, 4]; // coiffure, couleur cheveux, tenue, peau, chapeau
-  /* Apparence de l'équipement (visible en jeu) : tête, torse, jambes, pieds, arme → « t.r » par emplacement, « - » si vide. */
-  const GEAR_SLOTS = ['head', 'chest', 'legs', 'feet', 'weapon'];
+  /* Apparence de l'équipement (visible en jeu) : tête, torse, jambes, pieds, arme, main gauche → « t.r » par emplacement, « - » si vide. */
+  const GEAR_SLOTS = ['head', 'chest', 'legs', 'feet', 'weapon', 'offhand'];
   function gearStr(equip) { return GEAR_SLOTS.map(sl => { const it = equip && equip[sl]; return it && ITEMS[it[0]] ? it[0] + '.' + it[1] : '-'; }).join(','); }
   function parseGear(str) { const o = {}; String(str || '').split(',').forEach((v, i) => { const m = /^(\d+)\.(\d)$/.exec(v); if (m && GEAR_SLOTS[i] && ITEMS[+m[1]] && ITEMS[+m[1]].slot === GEAR_SLOTS[i]) o[GEAR_SLOTS[i]] = [+m[1], +m[2]]; }); return o; }
   function cleanLook(l) { const a = Array.isArray(l) ? l : []; return LOOK_MAX.map((m, i) => { const v = a[i] | 0; return v >= 0 && v < m ? v : 0; }); }
@@ -293,8 +365,19 @@
       const inv = s.inv || {}; p.inv = { herb: clampInt(inv.herb, 0, 9999), wood: clampInt(inv.wood, 0, 9999), quartz: clampInt(inv.quartz, 0, 9999) };
       p.equip = {}; p.bag = [];
       if (s.equip) { for (const sl of SLOTS) { const it = cleanInst(s.equip[sl]); p.equip[sl] = it && ITEMS[it[0]].slot === sl ? it : null; } }
-      p.gifts = clampInt(s.gifts, 0, 1 << 20); p.cls = clampInt(cls == null ? s.cls : cls, 0, CLASSES.length - 1); p.abCd = [0, 0, 0]; p.buffT = 0;
-      if (!s.equip) { p.equip.weapon = [CLASSES[p.cls].start, 0]; p.equip.chest = [9, 0]; }
+      p.gifts = clampInt(s.gifts, 0, 1 << 20); p.cls = clampInt(s.lvl ? s.cls : cls == null ? s.cls : cls, 0, START.length - 1); p.abCd = [0, 0, 0]; p.buffT = 0;
+      if (!s.equip) { p.equip.weapon = [START[p.cls][0], 0]; p.equip.chest = [9, 0]; }
+      // maîtrise d'arme ; anciennes sauvegardes (avec classes) : l'arme de l'ancienne classe démarre au niveau du héros
+      p.mast = {};
+      if (s.mast && typeof s.mast === 'object') { for (const f in FAMS) if (f !== 'none' && s.mast[f]) p.mast[f] = clampInt(s.mast[f], 0, MAST_CAP); }
+      else if (s.lvl > 1) p.mast[['sword', 'bow', 'staff'][clampInt(s.cls, 0, 2)]] = mTotal(Math.min(MAST_MAX, p.lvl));
+      // points de caractéristiques (3 par niveau) ; anciennes sauvegardes : répartis selon l'ancienne classe
+      p.pts = { str: 0, sta: 0, int: 0, agi: 0 };
+      if (s.pts && typeof s.pts === 'object') { for (const k in p.pts) p.pts[k] = clampInt(s.pts[k], 0, 999); }
+      else if (p.lvl > 1) { const g = CLASSES[clampInt(s.cls, 0, 2)].grow, tot = 3 * (p.lvl - 1), sum = g.str[1] + g.sta[1] + g.int[1] + g.agi[1]; let left = tot; for (const k of ['int', 'agi', 'sta']) { p.pts[k] = Math.round(tot * g[k][1] / sum); left -= p.pts[k]; } p.pts.str = Math.max(0, left); }
+      if (freePts(p.lvl, p.pts) < 0) p.pts = { str: 0, sta: 0, int: 0, agi: 0 };
+      p.bar = {}; if (s.bar && typeof s.bar === 'object') for (const f in FAMS) if (Array.isArray(s.bar[f])) p.bar[f] = s.bar[f].slice(0, 3).map(v => clampInt(v, 0, 9));
+      p.fr = s.fr == null ? 1 : clampInt(s.fr, 0, 1); // une réinitialisation gratuite des points
       for (const a of (s.bag || []).slice(0, BAG_SIZE)) { const it = cleanInst(a); if (it) p.bag.push(it); }
       const gr = s.gear || {}; if (gr.blade) p.bag.push([2, 1]); if (gr.armor) p.bag.push([10, 1]); if (gr.charm) p.bag.push([18, 2]);
       p.ether = clampInt(s.ether == null ? DAILY_GIFT : s.ether, 0, ETHER_MAX); p.glvl = clampInt(s.glvl || 1, 1, 50); p.gxp = clampInt(s.gxp, 0, 99999);
@@ -314,12 +397,13 @@
     }
     /* Format de sauvegarde : ne JAMAIS renommer ni retirer un champ (les héros existants doivent survivre aux mises à jour).
        Ajouter un champ = lui donner une valeur par défaut dans addPlayer. */
-    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday }; }
+    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr }; }
     grantFounder(p) {
       if (p.gifts & 1) return false;
-      const wpn = [[5, 3], [23, 3], [4, 3]];
-      p.equip = { head: [8, 3], chest: [11, 3], legs: [13, 3], feet: [UNIQUE_BOOTS, 4], weapon: wpn[p.cls], trinket: [19, 3] };
-      for (let c = 0; c < 3; c++) if (c !== p.cls && p.bag.length < BAG_SIZE) p.bag.push(wpn[c].slice());
+      const wpn = [[5, 3], [23, 3], [4, 3], [29, 3], [31, 3], [3, 3]], k = p.cls < wpn.length ? p.cls : 0;
+      p.equip = { head: [8, 3], chest: [11, 3], legs: [13, 3], feet: [UNIQUE_BOOTS, 4], weapon: wpn[k], trinket: [19, 3], offhand: null };
+      for (let c = 0; c < 3; c++) if (c !== k && p.bag.length < BAG_SIZE) p.bag.push(wpn[c].slice());
+      if (p.bag.length < BAG_SIZE) p.bag.push([27, 3]);
       p.gifts |= 1; this.recalc(p, true);
       this.ev({ e: 'founder', id: p.id });
       return true;
@@ -327,7 +411,7 @@
     buffMul(p) { return p.buffT > this.t ? 1.4 : 1; }
     recalc(p, full) {
       const fh = p.maxhp ? p.hp / p.maxhp : 1, fm = p.maxmp ? p.mp / p.maxmp : 1;
-      Object.assign(p, computeStats(p.lvl, p.equip, p.cls));
+      Object.assign(p, computeStats(p.lvl, p.equip, p.pts));
       p.hp = full ? p.maxhp : Math.max(1, Math.min(p.maxhp, Math.round(p.maxhp * fh))); p.mp = full ? p.maxmp : Math.min(p.maxmp, Math.round(p.maxmp * fm));
     }
     giveItem(p, inst, m) {
@@ -349,18 +433,18 @@
           break;
         }
         case 'atk': {
-          const mob = this.mobs[m.m | 0], B = CLASSES[p.cls].basic;
+          const mob = this.mobs[m.m | 0], B = kitOf(p.equip, p.mast, p.bar).basic;
           if (p.dead || !mob || !mob.alive || p.atkCd > 0) return;
           if (Math.hypot(mob.x - p.x, mob.y - p.y) > B.range + (mob.type === 'boss' ? 1.1 : 0.6)) return;
           p.atkCd = B.cd - 0.05;
           let dmg = p.atk * B.mult * (0.85 + Math.random() * 0.3) * this.buffMul(p); const crit = Math.random() < p.crit; if (crit) dmg *= 1.8;
-          this.ev({ e: 'sw', id, m: mob.k, c: p.cls });
+          this.ev({ e: 'sw', id, m: mob.k, c: p.cls, fx: B.fx });
           this.hitMob(mob, Math.round(dmg), p, crit);
           break;
         }
         case 'ab': {
-          const i = m.a | 0, A = CLASSES[p.cls].ab[i];
-          if (!A || p.dead || p.lvl < A.lvl || p.abCd[i] > this.t || p.mp < A.mp) return;
+          const i = m.a | 0, A = kitOf(p.equip, p.mast, p.bar).ab[i];
+          if (!A || A.locked || p.dead || p.abCd[i] > this.t || p.mp < A.mp) return;
           let tgt = null;
           if (A.kind === 'aoeTarget' || A.kind === 'single' || A.kind === 'charge') {
             tgt = this.mobs[m.m | 0];
@@ -371,7 +455,7 @@
           const around = (cx, cy, r) => this.mobs.filter(o => o.alive && Math.hypot(o.x - cx, o.y - cy) <= r);
           if (A.kind === 'aoeSelf') for (const o of around(p.x, p.y, A.r)) { this.hitMob(o, Math.round(p.atk * A.mult * roll()), p, false); if (A.stun && o.alive) o.stunT = this.t + A.stun; }
           else if (A.kind === 'aoeTarget') for (const o of around(tgt.x, tgt.y, A.r)) this.hitMob(o, Math.round(p.atk * A.mult * roll()), p, false);
-          else if (A.kind === 'single') { this.hitMob(tgt, Math.round(p.atk * A.mult * roll()), p, Math.random() < p.crit); if (A.slow && tgt.alive) tgt.slowT = this.t + A.slow; }
+          else if (A.kind === 'single') { this.hitMob(tgt, Math.round(p.atk * A.mult * roll()), p, Math.random() < p.crit); if (A.slow && tgt.alive) tgt.slowT = this.t + A.slow; if (A.stun && tgt.alive) tgt.stunT = this.t + A.stun; }
           else if (A.kind === 'charge') {
             const d = Math.hypot(tgt.x - p.x, tgt.y - p.y) || 1, nx = tgt.x - (tgt.x - p.x) / d * 0.8, ny = tgt.y - (tgt.y - p.y) / d * 0.8;
             if (this.W.walkable(Math.floor(nx), Math.floor(ny))) { p.x = nx; p.y = ny; p.lastMv = this.t; this.ev({ e: 'tp', id, x: p.x, y: p.y, dash: 1 }); }
@@ -382,7 +466,7 @@
             const h = Math.round(p.maxhp * 0.4); p.hp = Math.min(p.maxhp, p.hp + h); this.ev({ e: 'heal', id, v: h });
             for (const o of this.players.values()) if (o !== p && !o.dead && Math.hypot(o.x - p.x, o.y - p.y) <= 4) { const h2 = Math.round(o.maxhp * 0.25); o.hp = Math.min(o.maxhp, o.hp + h2); this.ev({ e: 'heal', id: o.id, v: h2, by: id }); }
           }
-          this.ev({ e: 'ab', id, c: p.cls, a: i, m: tgt ? tgt.k : -1 });
+          this.ev({ e: 'ab', id, c: p.cls, a: i, m: tgt ? tgt.k : -1, fx: A.fx, n: A.name, r: A.r || 0 });
           break;
         }
         case 'pot': {
@@ -426,7 +510,14 @@
         case 'equip': {
           const b = m.b | 0, inst = p.bag[b]; if (!inst || p.dead) return;
           const T = ITEMS[inst[0]]; if (p.lvl < T.lvl) { this.ev({ e: 'msg', id, t: 'Niveau ' + T.lvl + ' requis pour ' + T.n + '.' }); return; }
+          if (T.slot === 'offhand') {
+            if (weaponFam(p.equip) !== 'sword') { this.ev({ e: 'msg', id, t: 'Un bouclier se porte avec une épée à une main.' }); return; }
+            if (mLevel(p.mast.sword || 0).lv < 5) { this.ev({ e: 'msg', id, t: 'Maîtrise Épée à une main 5 requise pour porter un bouclier.' }); return; }
+          }
+          const dropShield = T.slot === 'weapon' && p.equip.offhand && FAM_OF[T.icon] !== 'sword';
+          if (dropShield && (p.equip.weapon ? p.bag.length : p.bag.length - 1) >= BAG_SIZE) { this.ev({ e: 'msg', id, t: 'Sac plein : range d\'abord ton bouclier.' }); return; }
           const old = p.equip[T.slot]; p.equip[T.slot] = inst; if (old) p.bag[b] = old; else p.bag.splice(b, 1);
+          if (dropShield) { p.bag.push(p.equip.offhand); p.equip.offhand = null; this.ev({ e: 'msg', id, t: 'Bouclier rangé : il se porte avec une épée à une main.' }); }
           this.recalc(p); this.ev({ e: 'eq', id, t: inst[0], r: inst[1] }); break;
         }
         case 'unequip': {
@@ -439,6 +530,20 @@
           const v = itemValue(inst); p.gold += v; p.bag.splice(b, 1); this.ev({ e: 'sold', id, t: inst[0], r: inst[1], v }); break;
         }
         case 'scarf': { const sc = clampInt(m.s, 0, 2); if (p.scarves & (1 << sc)) p.scarf = sc; break; }
+        case 'pt': { const k = String(m.s); if (!(k in p.pts) || freePts(p.lvl, p.pts) <= 0) return; p.pts[k]++; this.recalc(p); break; }
+        case 'respec': {
+          const npc = NPCS.elya; if (p.dead || Math.hypot(p.x - npc.x, p.y - npc.y) > 2.8) return;
+          const cost = p.fr ? 0 : respecCost(p.lvl); if (p.gold < cost) { this.ev({ e: 'msg', id, t: 'Il te faut ' + cost + ' pièces d\'or.' }); return; }
+          p.gold -= cost; if (p.fr) p.fr = 0; p.pts = { str: 0, sta: 0, int: 0, agi: 0 }; this.recalc(p);
+          this.ev({ e: 'msg', id, t: 'Points réinitialisés : ' + freePts(p.lvl, p.pts) + ' points à répartir.' }); break;
+        }
+        case 'bar': {
+          const K = kitOf(p.equip, p.mast, p.bar), s0 = clampInt(m.s, 0, 2), ti = m.k | 0, A = K.F.tech[ti];
+          if (!A || A.m > K.ml) return;
+          const cur = K.ab.map(a => a.locked ? -1 : a.ti), j = cur.indexOf(ti);
+          if (j >= 0) cur[j] = cur[s0]; cur[s0] = ti; p.bar[K.fam] = cur.filter(v => v >= 0); p.abCd = [0, 0, 0];
+          break;
+        }
         case 'talk': {
           const npc = NPCS[m.npc]; if (!npc || p.dead) return;
           if (Math.hypot(p.x - npc.x, p.y - npc.y) > 2.8) return;
@@ -460,8 +565,13 @@
         }
       }
     }
+    addMast(p, v) {
+      const fam = weaponFam(p.equip); if (fam === 'none') return;
+      const before = mLevel(p.mast[fam] || 0).lv; p.mast[fam] = Math.min(MAST_CAP, (p.mast[fam] || 0) + v);
+      const after = mLevel(p.mast[fam]).lv; if (after > before) this.ev({ e: 'ml', id: p.id, f: fam, lv: after });
+    }
     hitMob(m, dmg, p, crit) {
-      m.hp -= dmg; m.tagged.add(p.id);
+      m.hp -= dmg; m.tagged.add(p.id); this.addMast(p, 1);
       if (m.target == null) { m.target = p.id; m.returning = false; }
       const d = Math.hypot(m.x - p.x, m.y - p.y) || 1; moveBy(this.W, m, (m.x - p.x) / d * 0.12, (m.y - p.y) / d * 0.12);
       this.ev({ e: 'hm', m: m.k, v: dmg, c: crit ? 1 : 0, by: p.id });
@@ -479,7 +589,7 @@
         const LT = LOOT[m.type]; if (LT && Math.random() < LT.ch) this.giveItem(p, [LT.items[Math.floor(Math.random() * LT.items.length)], rollRarity(LT.minR)], m.k);
         p.gold += gold; p.potions += pot;
         this.ev({ e: 'lt', id: p.id, m: m.k, xp, g: gold, pot, grp: group.length > 1 ? 1 : 0 });
-        this.gainXP(p, xp);
+        this.gainXP(p, xp); this.addMast(p, m.type === 'boss' ? 30 : 2 + m.lvl);
         this.questProgress(p, m);
       }
       if (m.type === 'boss' && group.length) this.ev({ e: 'ch', s: 1, t: 'Le Roi Gelée est tombé ! Bravo ' + group.map(p => p.name).join(', ') + ' !' });
@@ -503,8 +613,10 @@
     hurt(p, dmg, m) {
       if (p.dead) return;
       dmg = Math.max(1, Math.round(dmg * (0.85 + Math.random() * 0.3) * (1 - (p.red || 0)) * (p.buffT > this.t ? 0.7 : 1)));
+      const blk = p.equip.offhand && weaponFam(p.equip) === 'sword' && mLevel(p.mast.sword || 0).lv >= 8 && Math.random() < 0.25;
+      if (blk) dmg = Math.max(1, Math.round(dmg * 0.25));
       p.hp -= dmg; p.lastHit = 0;
-      this.ev({ e: 'hp', id: p.id, v: dmg, m: m.k });
+      this.ev({ e: 'hp', id: p.id, v: dmg, m: m.k, b: blk ? 1 : 0 });
       if (p.hp <= 0) {
         p.hp = 0; p.dead = true; p.deadT = 5; p.moving = 0;
         const loss = Math.floor(p.xp * 0.1); p.xp -= loss;
@@ -568,9 +680,9 @@
     }
     meState(id) {
       const p = this.players.get(id); if (!p) return null;
-      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed, cls: p.cls, abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
+      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed, cls: p.cls, mast: p.mast, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
     }
   }
 
-  return { CLASSES, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
+  return { CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
 });

@@ -102,8 +102,37 @@
     staff: (() => { const L = []; for (let y = 9; y <= 38; y++) L.push([y, 9, y % 7 === 3 ? 'gG' : 'PO']);
       L.push([2, 9, '45'], [3, 8, '4553'], [4, 7, '455543'], [5, 7, '455432'], [6, 7, '345321'], [7, 8, '3221'], [8, 8, 'gYyg'], [4, 6, 'y'], [6, 13, 'y'], [3, 9, 'w']); return L; })(),
     bow: (() => { const L = []; for (let y = 19; y <= 45; y++) { const t = Math.abs(y - 32), x = 9 - Math.round(4 - t * t / 42); L.push([y, x - 1, t > 11 ? '32' : '453']); if (y > 19 && y < 45) L.push([y, 10, 'w']); }
-      L.push([31, 7, 'gG'], [32, 7, 'gG'], [19, 5, 'y'], [45, 5, 'y']); return L; })()
+      L.push([31, 7, 'gG'], [32, 7, 'gG'], [19, 5, 'y'], [45, 5, 'y']); return L; })(),
+    // dagues : une dans chaque main (main droite de l'écran : prise inversée, lame vers le bas)
+    dagger: (() => { const L = []; for (let y = 30; y >= 20; y--) { const x = 6 - ((31 - y) >> 1); L.push([y, x - 1, '5442']); } L.push([19, 1, '54'], [18, 1, '5'], [31, 4, 'gGyyg'], [32, 7, 'LM'], [33, 7, 'LM'], [34, 7, 'gR'],
+      [32, 31, 'LM'], [33, 30, 'gyGg'], [34, 31, '544'], [35, 31, '544'], [36, 31, '544'], [37, 31, '542'], [38, 31, '54'], [39, 32, '4']); return L; })(),
+    // lance : longue hampe tenue en biais, fer en feuille au-dessus de l'épaule
+    spear: (() => { const L = []; for (let y = 0; y <= 40; y++) L.push([y, Math.round(9 - (31 - y) / 3.5), 'PO']);
+      L.push([-8, 0, '5'], [-7, -1, '545'], [-6, -1, '4552'], [-5, -1, '4552'], [-4, -1, '4542'], [-3, -1, '452'], [-2, 0, '42'], [-1, -1, 'gGyg']); return L; })(),
+    // épée à deux mains : lame large et longue, garde massive
+    great: (() => { const L = []; for (let y = 28; y >= 1; y--) { const x = 8 - Math.round((30 - y) / 3); L.push([y, x - 3, '55442']); } L.push([0, -2, '544'], [-1, -2, '54'], [-2, -1, '5'],
+      [29, 1, 'gGGyyYyyGGg'], [30, 4, 'gGyyGg'], [31, 8, 'LM'], [32, 8, 'LM'], [33, 8, 'LM'], [34, 7, 'gRQg'], [35, 8, 'gg']); return L; })()
   };
+  // bouclier rond (face) : bord = liseré, champ = couleur de l'objet, umbo central ; tenu au bras gauche (droite de l'écran)
+  function disc(cx, cy, R, back) {
+    const L = [];
+    for (let y = Math.floor(cy - R); y <= Math.ceil(cy + R); y++) {
+      let s = '', lead = null;
+      for (let x = Math.floor(cx - R) - 1; x <= Math.ceil(cx + R) + 1; x++) {
+        const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy); if (d > R) { if (lead !== null) s += '.'; continue; }
+        if (lead === null) lead = x;
+        const lx = (x + 0.5 - cx) + (y + 0.5 - cy);
+        if (d > R - 1.5) s += lx < -3 ? 'y' : lx < 3 ? 'G' : 'g';
+        else if (back) s += d < 1.6 ? 'M' : Math.abs(y + 0.5 - cy) < 1 ? 'L' : lx < 0 ? '2' : '1';
+        else if (d < 1.5) s += lx < -0.5 ? 'Y' : lx < 1 ? 'y' : 'g';
+        else if (d < 2.5) s += lx < 0 ? 'G' : 'g';
+        else s += lx < -4 ? '5' : lx < 0 ? '4' : lx < 4 ? '3' : '2';
+      }
+      L.push([y, lead, s.replace(/\.+$/, '')]);
+    }
+    return L;
+  }
+  F.shield = disc(30.5, 34, 6.6, false);
 
   /* ---------- couvre-chefs (vue de face) ---------- */
   function dome(rx, ry, cx, cy, y0, y1, open) { // calotte ombrée (lumière en haut à gauche) ; open(x, y) = trou du visage
@@ -202,15 +231,23 @@
     sword: (() => { const L = []; for (let i = 0; i <= 8; i++) L.push([29 - i, 21 + 2 * i, '2445']); L.push([20, 39, '5'], [27, 19, 'Y'], [28, 20, 'y'], [29, 20, 'G'], [30, 21, 'g'], [30, 17, 'LM'], [31, 15, 'LM'], [32, 13, 'RQ']); return L; })(),
     axe: (() => { const L = []; for (let i = 0; i <= 12; i++) L.push([34 - i, 15 + i, 'PO']); L.push([18, 28, '34'], [19, 28, '3455'], [20, 28, '34554'], [21, 28, '345543'], [22, 29, '45543'], [23, 29, '4543'], [24, 29, '432'], [25, 30, '2'], [21, 25, 'gG'], [22, 25, 'gG']); return L; })(),
     staff: (() => { const L = []; for (let y = 0; y <= 37; y++) L.push([y, Math.round(19 - (31 - y) * 0.35), y % 7 === 3 ? 'gG' : 'OP']); L.push([-6, 6, '45'], [-5, 5, '4553'], [-4, 4, '455543'], [-3, 4, '455432'], [-2, 4, '345321'], [-1, 5, '3221'], [-5, 6, 'w']); return L; })(),
-    bow: (() => { const L = []; for (let y = 22; y <= 44; y++) { const t = Math.abs(y - 33), x = 22 + Math.round(4 - t * t / 30); L.push([y, x, t > 9 ? '23' : '354']); if (y > 22 && y < 44) L.push([y, 21, 'w']); } L.push([32, 19, 'gG'], [33, 19, 'gG']); return L; })()
+    bow: (() => { const L = []; for (let y = 22; y <= 44; y++) { const t = Math.abs(y - 33), x = 22 + Math.round(4 - t * t / 30); L.push([y, x, t > 9 ? '23' : '354']); if (y > 22 && y < 44) L.push([y, 21, 'w']); } L.push([32, 19, 'gG'], [33, 19, 'gG']); return L; })(),
+    dagger: [[29, 23, '2445'], [28, 25, '2445'], [27, 27, '2445'], [26, 29, '245'], [25, 31, '45'], [24, 33, '5'], [28, 22, 'y'], [29, 22, 'G'], [30, 22, 'g'], [30, 19, 'LMM']],
+    spear: (() => { const L = []; for (let x = 6; x <= 37; x++) { const y = Math.round(31 - (x - 19) * 0.4); L.push([y, x, 'P'], [y + 1, x, 'O']); } L.push([24, 37, '45'], [23, 38, '4555'], [24, 39, '442'], [25, 38, '22'], [22, 39, '5'], [26, 36, 'gG'], [25, 36, 'g']); return L; })(),
+    great: (() => { const L = []; for (let i = 0; i <= 9; i++) L.push([29 - i, 21 + 2 * i, '234455']); L.push([19, 41, '5'], [26, 19, 'Y'], [27, 19, 'yG'], [28, 20, 'yG'], [29, 20, 'Gg'], [30, 21, 'g'], [31, 21, 'g'], [30, 17, 'LM'], [31, 15, 'LM'], [32, 13, 'RQ']); return L; })()
   };
+  S.shield = [[26, 22, 'yG'], [27, 21, 'y45g'], [28, 21, 'y45g'], [29, 21, 'y44g'], [30, 21, 'yYyg'], [31, 21, 'y43g'], [32, 21, 'y43g'], [33, 21, 'y32g'], [34, 21, 'G32g'], [35, 22, 'Gg']];
   // armes dans le dos (vue de dos) : en diagonale derrière les épaules
   B.weapons = {
     sword: (() => { const L = []; for (let y = 6; y <= 30; y++) { const x = 30 - ((y - 6) >> 1) * 1 + 0; L.push([y, x - 1, '2443']); } L.push([31, 16, 'gGyyGg'], [32, 17, 'LM'], [33, 17, 'LM']); return L; })(),
     axe: (() => { const L = []; for (let y = 8; y <= 34; y++) L.push([y, 28 - ((y - 8) >> 1), 'OP']); L.push([6, 27, '345'], [7, 26, '23455'], [8, 26, '234554'], [9, 26, '23455'], [10, 27, '234']); return L; })(),
     staff: (() => { const L = []; for (let y = 4; y <= 36; y++) L.push([y, 29 - ((y - 4) >> 2), 'OP']); L.push([0, 29, '45'], [1, 28, '4553'], [2, 28, '3542'], [3, 29, '22']); return L; })(),
-    bow: (() => { const L = []; for (let y = 16; y <= 40; y++) { const t = Math.abs(y - 28), x = 31 - Math.round(3 - t * t / 48); L.push([y, x, '342']); } return L; })()
+    bow: (() => { const L = []; for (let y = 16; y <= 40; y++) { const t = Math.abs(y - 28), x = 31 - Math.round(3 - t * t / 48); L.push([y, x, '342']); } return L; })(),
+    dagger: [[31, 27, 'gG'], [32, 27, '34'], [33, 27, '34'], [34, 27, '24'], [35, 28, '2'], [31, 10, 'Gg'], [32, 10, '43'], [33, 10, '43'], [34, 10, '42'], [35, 10, '2']],
+    spear: (() => { const L = []; for (let y = -2; y <= 38; y++) L.push([y, Math.round(30 - (y + 2) / 3), 'OP']); L.push([-8, 31, '5'], [-7, 30, '545'], [-6, 30, '4552'], [-5, 30, '4542'], [-4, 31, '42'], [-3, 30, 'gGg']); return L; })(),
+    great: (() => { const L = []; for (let y = 2; y <= 30; y++) { const x = 32 - ((y - 2) >> 1); L.push([y, x - 2, '24453']); } L.push([1, 31, '45'], [0, 32, '5'], [31, 14, 'gGGyyGGg'], [32, 17, 'LM'], [33, 17, 'LM']); return L; })()
   };
+  B.shield = disc(7.5, 34, 6.6, true);
 
   /* ---------- peintre ---------- */
   // look : [coiffure, couleur des cheveux, tenue, peau, chapeau] ; gear : { slot: { icon, c, rar } }
@@ -222,7 +259,8 @@
     const rampId = r => { let k = RAMPS.indexOf(r); if (k < 0) { RAMPS.push(r); k = RAMPS.length - 1; } return k; };
     const hair = HAIR[look[1]] || HAIR[0], skin = SKIN[look[3]] || SKIN[0];
     const tunic = ramp5(TUNIC[look[2]] || TUNIC[0]);
-    const ch = gear.chest, lg = gear.legs, ft = gear.feet, hd = gear.head, wp = gear.weapon;
+    const ch = gear.chest, lg = gear.legs, ft = gear.feet, hd = gear.head, wp = gear.weapon, sh = wp && wp.icon === 'sword' && gear.offhand && gear.offhand.icon === 'shield' ? gear.offhand : null;
+    const shR = sh ? ramp5(sh.c) : null, shT = sh ? (sh.rar >= 2 ? GOLD : [FIX.o, FIX.O, FIX.P, hex('#e0b070')]) : null;
     const plate = ch && ch.icon === 'plate';
     const chestR = ch ? (plate ? metal(ch.c) : ramp5(ch.c)) : tunic;
     const legsR = lg ? ramp5(lg.c) : DEF_LEGS, feetR = ft ? (ft.fx === 'void' ? ramp5('#5a3ab8') : ramp5(ft.c)) : DEF_FEET;
@@ -247,7 +285,7 @@
     const step = fr === 1 ? 1 : fr === 3 ? -1 : 0; // 1 : jambe gauche levée ; -1 : jambe droite levée
     const style = look[0] | 0, hatK = hd ? 0 : look[4] | 0;
     const hatPal = look[4] === 1 ? ramp5('#5e3cb4') : null;
-    const wpR = wp ? (wp.icon === 'sword' || wp.icon === 'axe' ? metal(wp.c) : ramp5(wp.c)) : null;
+    const wpR = wp ? (wp.icon === 'staff' || wp.icon === 'bow' ? ramp5(wp.c) : metal(wp.c)) : null;
     const wpT = wp ? goldOr(wp.rar, STEEL) : GOLD;
     const cape = (rows0, rows1, front) => { if (!capeR) return; for (let y = rows0; y <= rows1; y++) { const l = y < 28 ? 8 : y < 34 ? 7 : 6, r = 37 - l; let s = ''; for (let x = l; x <= r; x++) { const f = (x - l) % 5; s += front ? (x === l ? '5' : x < l + 5 ? (f !== 4 ? '4' : '3') : x < r - 4 ? (f !== 4 ? '3' : '2') : (f !== 1 ? '2' : '3')) : (x === l ? '4' : f === 2 ? '2' : x < 19 ? '4' : '3'); } if (y === rows1) s = s.split('').map((c, i) => (i % 5) > 2 ? '.' : c).join(''); layer([[y, l, s]], capeR); } };
     if (dir === 'front') {
@@ -268,12 +306,14 @@
       }
       if (wp && F.weapons[wp.icon]) layer(F.weapons[wp.icon], wpR, wpT, 0, step);
       layer(A.armL, chestR, AT, 0, step);
+      if (sh) layer(F.shield, shR, shT, 0, -step);
     } else if (dir === 'back') {
       if (wp && B.weapons[wp.icon]) layer(B.weapons[wp.icon], wpR, wpT);
       layer(B.legL, legsR, null, 0, step > 0 ? -2 : 0); layer(B.legR, legsR, null, 0, step < 0 ? -2 : 0);
       layer(B.bootL, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step > 0 ? -2 : 0); layer(B.bootR, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step < 0 ? -2 : 0);
       layer(plate ? B.plate : B.tunic, chestR, plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR));
       if (capeR) cape(23, 44, false);
+      if (sh) layer(B.shield, shR, shT, 0, -step);
       if (wp && B.weapons[wp.icon] && !capeR) layer(B.weapons[wp.icon], wpR, wpT);
       else if (wp && B.weapons[wp.icon]) layer(B.weapons[wp.icon].filter(r => r[0] < 24), wpR, wpT);
       if (hd && hd.icon === 'hood') layer(B.hood, ramp5(hd.c));
@@ -292,6 +332,7 @@
       layer(Lg.back, legsR); layer(Lg.bootB, feetR, goldOr(ft ? ft.rar : 0, feetR));
       layer(Lg.front, legsR); layer(Lg.bootF, feetR, goldOr(ft ? ft.rar : 0, feetR));
       layer(A.body, chestR, AT);
+      if (sh) layer(S.shield, shR, shT);
       layer(S.face, skin); if (blink) layer(S.blink, skin);
       if (hd && hd.icon === 'hood') layer(S.hood, ramp5(hd.c));
       else {
