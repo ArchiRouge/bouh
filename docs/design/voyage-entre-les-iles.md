@@ -83,3 +83,11 @@ Au lancement : **2 îles** (Givrée et Braises) + les îles éphémères, puis l
   n'importe qui peut le piller (« Piller le corps de … »), y compris le mort s'il revient à temps. L'équipement porté n'est jamais perdu.
   On réapparaît au bout du Pont d'Éther de l'île.
 - Code : `Sim.pvp`, `foe()`, `hurt(p, dmg, src)` (source monstre ou joueur), `die()`, `corpses`, message `loot` ; serveur : `isles` (une `Sim` par île).
+
+## Accessibilité (garantie à la génération)
+
+Sur chaque île, l'arrivée (bout du Pont d'Éther) et le Pont du Bourg sont choisis ensemble : le Pont du Bourg doit être
+atteignable à pied depuis l'arrivée (relief franchissable, pas d'obstacle), un chemin dégagé est réservé entre les deux
+(aucun arbre ni rocher), et monstres, cueillette et coffre ne sont placés que sur des cases accessibles.
+Vérifié sur l'Île Givrée, l'Île des Braises et 1 000 îles éphémères tirées au hasard.
+Mini-carte : Pont d'Éther en violet, Pont du Bourg en doré.

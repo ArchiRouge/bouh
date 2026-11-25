@@ -113,7 +113,7 @@
   let SHADOW = null, GLOW = null, MINICOL = null, CLOUD9 = null, miniT = 0;
   const NPCS = [];
   // tuiles de tablier des ponts (planches dessinées par-dessus l'eau) : 'x' ou 'y' selon l'axe du pont
-  const DECK = {}; for (const br of W.bridges || []) for (let a = 1; a <= br.L; a++) DECK[idx(br.i + br.di * a, br.j + br.dj * a)] = br.di ? 'x' : 'y';
+  const DECK = {}, DECKK = {}; for (const br of W.bridges || []) for (let a = 0; a <= br.L; a++) { const k = idx(br.i + br.di * a, br.j + br.dj * a); if (a) DECK[k] = br.di ? 'x' : 'y'; DECKK[k] = br.kind; }
   let nearBridge = null, nearChest = false, chestOpen = false, travel = null, nearCorpse = null, CORPSES = [];
   let nearNpc = null, nearNode = null, talkRect = null;
   const NODES = W.nodes.map(n => ({ kind: 'node', k: n.k, res: n.res, x: n.x, y: n.y, z: W.hAt(n.x, n.y) })), nodeCd = {};
@@ -161,7 +161,7 @@
     for (let k = 0; k < MW * MH; k++) {
       const t = TY[k], h = HT[k];
       const MP = { givre: ['#3a7ab4', '#c4d4e8', ['#9ab0cc', '#c8d8ec', '#e4eef8', '#ffffff']], braise: ['#7a2a2a', '#6a4838', ['#3a2424', '#54302c', '#6e3c34', '#8a5040']], brume: ['#3a3870', '#a49ab4', ['#5e5c88', '#7a789e', '#9a98b8', '#bcbad2']] }[W.theme];
-      MINICOL[k] = DECK[k] ? hx('#b07a44') : solidCol[k] || (MP ? (t === 0 ? hx(MP[0]) : t === 1 ? hx(MP[1]) : hx(MP[2][Math.min(3, h)])) : t === 0 ? hx('#2e7ee0') : t === 1 ? hx('#e0c890') : t === 3 ? hx('#b4b2c4') : t === 4 ? hx('#b8946a') : hx(['#2f9a46', '#45b84c', '#6cd256', '#9ee46a'][Math.min(3, h)]));
+      MINICOL[k] = DECKK[k] === 'home' ? hx('#ffd23f') : DECKK[k] === 'ether' ? hx('#b08ae8') : solidCol[k] || (MP ? (t === 0 ? hx(MP[0]) : t === 1 ? hx(MP[1]) : hx(MP[2][Math.min(3, h)])) : t === 0 ? hx('#2e7ee0') : t === 1 ? hx('#e0c890') : t === 3 ? hx('#b4b2c4') : t === 4 ? hx('#b8946a') : hx(['#2f9a46', '#45b84c', '#6cd256', '#9ee46a'][Math.min(3, h)]));
     }
     for (let i = 0; i < 46; i++) motes.push({ x: Math.random() * 400, y: Math.random() * 700, ph: Math.random() * TAU, sp: 2 + Math.random() * 4 });
   }

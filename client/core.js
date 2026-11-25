@@ -380,10 +380,11 @@
     const pool = FIXED_ISLES.filter(k => k !== cur); return { k: pool[Math.floor(Math.random() * pool.length)] };
   }
   // pont le long d'un axe (« x » : vers le bas-droite de l'écran, « y » : vers le bas-gauche), depuis une rive basse
-  function findBridge(TY, HT, SOL, idx, inb, axis, avoid, prefer) {
+  function findBridge(TY, HT, SOL, idx, inb, axis, avoid, prefer, okHead) {
     const di = axis === 'x' ? 1 : 0, dj = axis === 'x' ? 0 : 1; let best = null, bs = -1e9;
     for (let j = 1; j < MH - 1; j++) for (let i = 1; i < MW - 1; i++) {
       const k = idx(i, j); if (SOL[k] || TY[k] === 0 || HT[k] > 1) continue;
+      if (okHead && !okHead(i, j)) continue;
       let ok = true;
       for (let s = 1; s <= BRIDGE_LEN + 1 && ok; s++) { const a = i + di * s, b = j + dj * s; if (!inb(a, b) || TY[idx(a, b)] !== 0) ok = false;
         if (ok && s >= 2) for (const o of [-1, 1]) { const a2 = a + dj * o, b2 = b + di * o; if (inb(a2, b2) && TY[idx(a2, b2)] !== 0) ok = false; } }
@@ -413,20 +414,38 @@
       if (HT[k] > m + 1) HT[k] = m + 1;
     }
     for (let k = 0; k < N; k++) if (TY[k] === 0) SOL[k] = 1;
-    const eb = findBridge(TY, HT, SOL, idx, inb, 'x', null, null), bridges = [];
-    if (eb) { eb.kind = 'ether'; bridges.push(eb); }
-    const hb = findBridge(TY, HT, SOL, idx, inb, 'y', eb, null); if (hb) { hb.kind = 'home'; bridges.push(hb); }
-    for (const b of bridges) layDeck(b, SOL, HT, idx);
+    // zone accessible à pied depuis une case (mêmes règles que le héros : pas d'obstacle, marche d'au plus 1 niveau)
+    const reachFrom = (i0, j0) => { const R = new Uint8Array(N), par = new Int32Array(N).fill(-1), q = [idx(i0, j0)]; R[q[0]] = 1;
+      for (let h = 0; h < q.length; h++) { const k = q[h], i = k % MW, j = (k / MW) | 0;
+        for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = i + a, y = j + b; if (!inb(x, y)) continue; const k2 = idx(x, y); if (R[k2] || SOL[k2] || Math.abs(HT[k2] - HT[k]) > 1) continue; R[k2] = 1; par[k2] = k; q.push(k2); } }
+      return { R, par }; };
+    const inland = (i, j, di, dj) => { const a = i - di, b = j - dj; return inb(a, b) && TY[idx(a, b)] !== 0 && Math.abs(HT[idx(a, b)] - HT[idx(i, j)]) <= 1; };
+    // arrivée (Pont d'Éther) et Pont du Bourg choisis ensemble : le second doit être atteignable à pied depuis la première,
+    // dans une partie de l'île assez grande (on essaie d'autres rives sinon)
+    const tried = new Set(); let eb = null, hb = null, R0 = null;
+    for (let t = 0; t < 16 && !hb; t++) {
+      eb = findBridge(TY, HT, SOL, idx, inb, 'x', null, null, (i, j) => inland(i, j, 1, 0) && !tried.has(i + ',' + j)); if (!eb) break;
+      tried.add(eb.i + ',' + eb.j); R0 = reachFrom(eb.i - 1, eb.j);
+      let size = 0; for (let k = 0; k < N; k++) size += R0.R[k];
+      if (size >= 200) hb = findBridge(TY, HT, SOL, idx, inb, 'y', eb, null, (i, j) => R0.R[idx(i, j)] && inland(i, j, 0, 1));
+    }
+    if (!hb) { eb = findBridge(TY, HT, SOL, idx, inb, 'x', null, null, (i, j) => inland(i, j, 1, 0)); R0 = eb ? reachFrom(eb.i - 1, eb.j) : null; hb = findBridge(TY, HT, SOL, idx, inb, 'y', eb, null); }
+    const bridges = []; if (eb) { eb.kind = 'ether'; bridges.push(eb); }
     const spawn = eb ? { x: eb.ix, y: eb.iy } : { x: CX, y: CY };
+    if (hb) { hb.kind = 'home'; bridges.push(hb); }
+    for (const b of bridges) layDeck(b, SOL, HT, idx);
+    const keep = new Uint8Array(N);
+    if (hb && R0 && R0.R[idx(hb.i, hb.j)]) for (let k = idx(hb.i, hb.j); k >= 0; k = R0.par[k]) { const i = k % MW, j = (k / MW) | 0; for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (inb(i + a, j + b)) keep[idx(i + a, j + b)] = 1; }
     const near = (i, j, r) => bridges.some(b => Math.hypot(i + .5 - b.ix, j + .5 - b.iy) < r || Math.hypot(i + .5 - b.hx, j + .5 - b.hy) < r);
     const props = [];
     for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) {
-      const k = idx(i, j); if (TY[k] !== 2 || SOL[k] || near(i, j, 2.6)) continue;
+      const k = idx(i, j); if (TY[k] !== 2 || SOL[k] || near(i, j, 2.6) || keep[k]) continue;
       const r = rnd(); if (r < 0.11) { const t = I.trees[Math.floor(rnd() * I.trees.length)]; SOL[k] = 1; props.push({ type: t, i, j, v: Math.floor(rnd() * 3), w: 1, h: 1 }); }
       else if (r < 0.14) { SOL[k] = 1; props.push({ type: 'bush', i, j, v: Math.floor(rnd() * 3), w: 1, h: 1 }); }
     }
     const walkable = (i, j) => inb(i, j) && !SOL[idx(i, j)];
-    const cand = []; for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) if (walkable(i, j) && TY[idx(i, j)] === 2 && Math.hypot(i + .5 - spawn.x, j + .5 - spawn.y) > 5 && !near(i, j, 3)) cand.push([i, j]);
+    const R1 = reachFrom(Math.floor(spawn.x), Math.floor(spawn.y)).R; // monstres, cueillette et coffre : seulement là où l'on peut marcher
+    const cand = []; for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) if (walkable(i, j) && R1[idx(i, j)] && TY[idx(i, j)] === 2 && Math.hypot(i + .5 - spawn.x, j + .5 - spawn.y) > 5 && !near(i, j, 3)) cand.push([i, j]);
     for (let i = cand.length - 1; i > 0; i--) { const r = Math.floor(rnd() * (i + 1)); [cand[i], cand[r]] = [cand[r], cand[i]]; }
     const spawns = [];
     for (const c of cand) { if (spawns.every(p => Math.hypot(p.i - c[0], p.j - c[1]) > 2.7)) spawns.push({ type: I.mobs[Math.floor(rnd() * I.mobs.length)], lvl: 1, i: c[0], j: c[1] }); if (spawns.length >= 30) break; }
