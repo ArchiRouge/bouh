@@ -1,6 +1,6 @@
 # Pixels Worlds — progression des compétences par l'usage
 
-Statut : **rangs, plafond et interface codés** ; **effets au choix des paliers (rangs 4 et 8) : proposition à valider**.
+Statut : **validé et codé** (rangs, plafond, interface, et les 84 effets au choix des paliers).
 
 Choix d'Archibald : rythme lent (rang max = 1 + niveau / 5), un **choix entre deux effets** à chaque palier,
 toutes les techniques démarrent au rang 1.
@@ -28,9 +28,12 @@ toutes les techniques démarrent au rang 1.
   message à chaque montée de rang.
 - **Sauvegarde** : champ `sk` (expérience par technique, ex. `staff:1`).
 
-## Paliers au choix (proposition à valider)
+## Paliers au choix (en jeu)
 
-Au rang 4 puis au rang 8, la technique propose **deux effets** ; on en choisit un (modifiable chez Elya, comme les points).
+Au rang 4 puis au rang 8, la technique propose **deux effets** ; on en choisit un dans l'onglet Compétences (le bouton
+de la technique affiche « ! » tant qu'un choix attend). Le choix est définitif, mais Elya réinitialise gratuitement
+tous les choix. Saignement (dagues) saigne désormais 3 s de base ; Venin = +50 % de dégâts de saignement.
+Code : `MS` et les modificateurs génériques dans `core.js` (`kitOf` les applique, le lancer `ab` les exécute).
 
 | Arme | Technique | Rang 4 : A ou B | Rang 8 : A ou B |
 |---|---|---|---|
@@ -59,5 +62,5 @@ Au rang 4 puis au rang 8, la technique propose **deux effets** ; on en choisit u
 ## Étapes
 
 1. ~~Rangs, expérience, plafond, bonus par rang, interface~~ (fait).
-2. Paliers au choix, famille par famille, en commençant par le bâton / grimoire d'Archi404 (palier 1 au niveau 15).
-3. Effet visuel du rang 10.
+2. ~~Paliers au choix~~ (fait).
+3. Effet visuel du rang 10 (plus grand, doré).

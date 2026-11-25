@@ -76,6 +76,9 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   Stats come from points (`p.pts`, 3 per level, reset at Elya). The old `cls` save field now means "starting weapon" (`START`).
   Shield = `offhand` slot, only with a 1H sword and sword mastery ≥ 5; block at mastery 8.
   Mages can hold a grimoire (`icon: 'tome'`, staff family): book in one hand, floating ether orb by the other (`orbAt` in `sprites.js`).
+- Skill ranks (`docs/design/competences.md`): each technique gains XP when useful (`addSk`), ranks 1–10, cap = 1 + level / 5,
+  +5 % power / −2 % cooldown per rank; at ranks 4 and 8 the player picks one of two effects (`MS` table, `p.skc`, generic
+  modifiers applied in `kitOf` and the `ab` handler); Elya resets the choices. Save fields `sk`, `skc`.
 - Game Master set (items 33–38, `fx: 'gm'`, unique, never in loot, can't be sold): golden armor drawn in `sprites.js`
   (`F.gm`, `gmhelm`, white cape), gold name and aura in game. `Sim.grantGM(p)` equips it once; granted to the artifact owner
   (`Cloud.owner`), to the hero Archi404 in the app when `config.js` has `gm: true`, and on the server to device tokens in `GM_TOKENS`.

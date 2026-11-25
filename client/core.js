@@ -156,6 +156,35 @@
         { name: 'Empalement', icon: 'pierce', m: 7, mp: 16, cd: 6, kind: 'single', range: 2.3, mult: 2.6, slow: 4, fx: 'pierce', desc: 'Transperce la cible et la ralentit 4 s.' }] },
     none: { name: 'Mains nues', stat: 'str', basic: { name: 'Coup de poing', icon: 'slash', range: 1.1, cd: 0.5, mult: 0.6, fx: 'slash' }, tech: [] }
   };
+  /* Paliers des compétences : au rang 4 puis au rang 8, on choisit un effet parmi deux (modificateurs génériques
+     appliqués au lancer : r rayon, range portée, cd recharge, dmg dégâts, bleed / burn durées, stun, slow, chain…). */
+  const O = (id, n, d, mods) => ({ id, n, d, mods });
+  const CRI = [[O('long', 'Prolongé', 'Dure 3 s de plus.', { buffDur: 3 }), O('rage', 'Rageur', '+15 % de dégâts en plus.', { buffDmg: 0.15 })],
+    [O('ban', 'Bannière', 'Profite aussi aux alliés proches.', { allies: 1 }), O('souffle', 'Second souffle', 'Rend 15 % de tes PV.', { healSelf: 0.15 })]];
+  const MS = {
+    'sword:Tourbillon': [[O('large', 'Large', 'Rayon +0,6.', { r: 0.6 }), O('tranchant', 'Tranchant', 'Fait saigner 3 s.', { bleed: 3 })], [O('aimant', 'Aimant', 'Attire les ennemis vers toi.', { pull: 1 }), O('double', 'Double', 'Frappe deux fois.', { twice: 1 })]],
+    'sword:Taillade': [[O('hemo', 'Hémorragie', 'Fait saigner 4 s.', { bleed: 4 }), O('ecras', 'Écrasante', '+25 % de dégâts.', { dmg: 0.25 })], [O('exec', 'Exécution', 'Dégâts ×2 sur une cible sous 30 % de PV.', { execute: 1 }), O('garde', 'Garde', 'Tu subis 20 % de dégâts en moins pendant 3 s.', { guard: [0.2, 3] })]],
+    'sword:Charge': [[O('longue', 'Longue', 'Portée +2.', { range: 2 }), O('rapide', 'Rapide', 'Recharge −2 s.', { cd: 2 })], [O('onde', 'Onde de choc', "Étourdit aussi les ennemis autour de l'impact.", { stunArea: 1.8 }), O('elan', 'Élan', '+30 % de vitesse pendant 3 s.', { haste: 3 })]],
+    'sword:Cri de guerre': CRI, 'great:Cri de guerre': CRI,
+    'great:Moulinet': [[O('large', 'Large', 'Rayon +0,6.', { r: 0.6 }), O('lourd', 'Lourd', '+25 % de dégâts.', { dmg: 0.25 })], [O('tornade', 'Tornade', 'Deux tours.', { twice: 1 }), O('repousse', 'Repousser', 'Écarte les ennemis.', { push: 1 })]],
+    'great:Fendoir': [[O('trav', 'Traversant', "Touche aussi l'ennemi juste derrière.", { chain: 1 }), O('brutal', 'Brutal', '+25 % de dégâts.', { dmg: 0.25 })], [O('bourreau', 'Bourreau', 'Si la cible meurt, la moitié de la recharge est rendue.', { killRefund: 0.5 }), O('fracas', 'Fracas', 'Étourdit 1 s.', { stun: 1 })]],
+    'great:Brise-garde': [[O('long', 'Long', 'Étourdit 3 s.', { stun: 3 }), O('vuln', 'Vulnérable', 'La cible subit +20 % de dégâts pendant 3 s.', { vuln: [0.2, 3] })], [O('zone', 'Zone', 'Étourdit aussi les voisins.', { stunArea: 1.8 }), O('rapide', 'Rapide', 'Recharge −3 s.', { cd: 3 })]],
+    'dagger:Saignement': [[O('profond', 'Profond', 'Le saignement dure 2 s de plus.', { bleed: 2 }), O('venin', 'Venin', 'Le saignement fait +50 % de dégâts.', { bleedK: 0.5 })], [O('contagion', 'Contagion', 'Se propage à un ennemi voisin.', { chain: 1 }), O('saignee', 'Saignée', 'Te soigne de 30 % des dégâts.', { lifesteal: 0.3 })]],
+    "dagger:Pas de l'ombre": [[O('vif', 'Vif', 'Recharge −2 s.', { cd: 2 }), O('long', 'Long', 'Portée +2.', { range: 2 })], [O('dispa', 'Disparition', 'Les monstres perdent ta trace 2 s.', { stealth: 2 }), O('embu', 'Embuscade', 'Coup critique garanti.', { crit: 1 })]],
+    'dagger:Danse des lames': [[O('large', 'Large', 'Rayon +0,5.', { r: 0.5 }), O('affutee', 'Affûtée', '+25 % de dégâts.', { dmg: 0.25 })], [O('tempo', 'Tempo', 'Chaque ennemi touché réduit la recharge de 0,5 s.', { cdPerHit: 0.5 }), O('esquive', 'Esquive', 'Tu subis 30 % de dégâts en moins pendant 2 s.', { guard: [0.3, 2] })]],
+    'dagger:Coup dans le dos': [[O('precis', 'Précis', '+20 % de chances de critique.', { critAdd: 0.2 }), O('perfo', 'Perforant', '+25 % de dégâts.', { dmg: 0.25 })], [O('enchain', 'Enchaînement', "Recharge Pas de l'ombre si la cible meurt.", { killReset: "Pas de l'ombre" }), O('marque', 'Marque', 'La cible subit +15 % de dégâts pendant 4 s.', { vuln: [0.15, 4] })]],
+    'bow:Volée': [[O('nourrie', 'Nourrie', 'Deux flèches de plus (+30 % de dégâts).', { dmg: 0.3, arrows: 2 }), O('large', 'Large', 'Rayon +0,5.', { r: 0.5 })], [O('glu', 'Glu', 'Ralentit les ennemis touchés.', { slow: 2.5 }), O('feu', 'Feu', 'Enflamme 2 s.', { burn: 2 })]],
+    'bow:Flèche perçante': [[O('transp', 'Transperçante', 'Traverse deux ennemis de plus.', { chain: 2 }), O('lourde', 'Lourde', '+25 % de dégâts.', { dmg: 0.25 })], [O('entrave', 'Entrave', 'Ralentissement bien plus fort.', { slowStrong: 1 }), O('recul', 'Recul', 'Repousse la cible.', { push: 1 })]],
+    "bow:Pluie d'Éther": [[O('double', 'Double', 'Frappe deux fois.', { twice: 1 }), O('large', 'Large', 'Rayon +0,6.', { r: 0.6 })], [O('benie', 'Bénie', 'Soigne les alliés dans la zone.', { healZone: 0.1 }), O('orage', 'Orage', 'Étourdit 0,5 s.', { stun: 0.5 })]],
+    'staff:Nova de givre': [[O('large', 'Large', 'Rayon +0,5.', { r: 0.5 }), O('mord', 'Mordante', '+25 % de dégâts.', { dmg: 0.25 })], [O('glac', 'Glaciale', 'Gel prolongé d’1 s.', { stun: 3 }), O('eclats', 'Éclats', 'Les ennemis gelés subissent +20 % de dégâts.', { vuln: [0.2, 4] })]],
+    'staff:Boule de feu': [[O('brasier', 'Brasier', 'Laisse un feu au sol pendant 3 s.', { zone: 3 }), O('comete', 'Comète', 'Rayon +0,6.', { r: 0.6 })], [O('rebond', 'Rebond', 'Rebondit sur une deuxième cible.', { chain: 1, bounce: 1 }), O('combu', 'Combustion', 'Enflamme 4 s.', { burn: 4 })]],
+    'staff:Soin lumineux': [[O('clarte', 'Clarté', 'Rend aussi 20 % de ton mana.', { mana: 0.2 }), O('ample', 'Ample', 'Soigne les alliés jusqu’à 2 cases plus loin.', { healRange: 2 })], [O('egide', 'Égide', 'Bouclier qui absorbe 15 % de tes PV.', { shield: 0.15 }), O('renouv', 'Renouveau', 'Soigne encore 20 % de tes PV en 4 s.', { regen: [0.2, 4] })]],
+    'spear:Balayage': [[O('repousse', 'Repousser', 'Écarte les ennemis.', { push: 1 }), O('large', 'Large', 'Rayon +0,6.', { r: 0.6 })], [O('fauch', 'Faucheuse', '+30 % de dégâts aux ennemis ralentis.', { slowBonus: 0.3 }), O('riposte', 'Riposte', 'Tu subis 20 % de dégâts en moins pendant 3 s.', { guard: [0.2, 3] })]],
+    'spear:Saut': [[O('long', 'Long', 'Portée +2.', { range: 2 }), O('vif', 'Vif', 'Recharge −2 s.', { cd: 2 })], [O('impact', 'Impact', "Étourdit tout autour de l'impact.", { stunArea: 2 }), O('ecras', 'Écrasant', 'Étourdit 2 s.', { stun: 2 })]],
+    'spear:Empalement': [[O('trav', 'Traversant', 'Traverse un ennemi de plus.', { chain: 1 }), O('profond', 'Profond', '+25 % de dégâts.', { dmg: 0.25 })], [O('clouer', 'Clouer', 'Étourdit 1 s.', { stun: 1 }), O('hemo', 'Hémorragie', 'Fait saigner 4 s.', { bleed: 4 })]]
+  };
+  for (const f in FAMS) for (const T of FAMS[f].tech) T.ms = MS[f + ':' + T.name] || null;
+  FAMS.dagger.tech[0].bleed = 3; FAMS.dagger.tech[0].desc = 'Entaille profonde : saigne 3 s et ralentit la cible.';
   const FAM_OF = { sword: 'sword', axe: 'great', great: 'great', dagger: 'dagger', bow: 'bow', staff: 'staff', tome: 'staff', spear: 'spear' };
   // armes de départ proposées à la création (l'ancien champ « cls » des sauvegardes garde ce sens : 0 épée, 1 arc, 2 bâton)
   const START = [[0, 'sword'], [20, 'bow'], [1, 'staff'], [28, 'dagger'], [30, 'spear'], [32, 'great']];
@@ -177,9 +206,17 @@
     return { r, cap, cur: r < SK_MAX ? total - skTotal(r) : 0, need: r < SK_MAX ? skNeed(r) : 0, ready: r < SK_MAX && total >= next, lvlNext: r < SK_MAX ? skLvlFor(r + 1) : 0 };
   }
   function weaponFam(equip) { const w = equip && equip.weapon, T = w && ITEMS[w[0]]; return T ? (FAM_OF[T.icon] || 'sword') : 'none'; }
-  function kitOf(equip, mast, bar, sk, lvl) {
+  function kitOf(equip, mast, bar, sk, lvl, skc) {
     const fam = weaponFam(equip), F = FAMS[fam], ml = mLevel((mast || {})[fam] || 0).lv, T = F.tech, cap = skCap(lvl || 1);
-    const ranked = i => { const r = skRank(((sk || {})[fam + ':' + i]) || 0, cap); return Object.assign({ ti: i, rank: r, pw: 1 + 0.05 * (r - 1) }, T[i], { cd: Math.round(T[i].cd * (1 - 0.02 * (r - 1)) * 10) / 10 }); };
+    const ranked = i => {
+      const key = fam + ':' + i, r = skRank(((sk || {})[key]) || 0, cap), ch = ((skc || {})[key]) || [], M = {}, Tm = T[i].ms;
+      if (Tm) for (let j = 0; j < 2; j++) if (r >= (j ? 8 : 4) && ch[j] >= 0 && Tm[j][ch[j]]) { const mo = Tm[j][ch[j]].mods; for (const k in mo) M[k] = typeof mo[k] === 'number' && typeof M[k] === 'number' ? M[k] + mo[k] : mo[k]; }
+      const A = Object.assign({ ti: i, rank: r, pw: 1 + 0.05 * (r - 1) }, T[i]);
+      A.mods = M; A.pending = Tm ? [0, 1].filter(j => r >= (j ? 8 : 4) && !(ch[j] >= 0)) : [];
+      A.cd = Math.max(0.5, Math.round((T[i].cd * (1 - 0.02 * (r - 1)) - (M.cd || 0)) * 10) / 10);
+      if (A.r != null || M.r) A.r = (A.r || 0) + (M.r || 0); if (A.range != null) A.range += M.range || 0;
+      return A;
+    };
     const open = T.map((A, i) => i).filter(i => T[i].m <= ml), want = (bar && bar[fam]) || [], pick = [];
     for (const i of want) if (open.includes(i) && !pick.includes(i) && pick.length < 3) pick.push(i);
     for (const i of open) if (!pick.includes(i) && pick.length < 3) pick.push(i);
@@ -452,7 +489,7 @@
       this.W = W; this.t = 0; this.players = new Map(); this.events = []; this.bossWarn = 0;
       // îles du voyage : les monstres prennent le niveau du héros qui arrive (±1)
       const L0 = W.isle && W.isle !== 'bourg' ? Math.max(1, (opts && opts.lvl) | 0 || 1) : 0;
-      this.fx = (ISLES[W.isle] || {}).fx || null; this.chestOpen = false; this.spawn = W.spawn || SPAWN;
+      this.fx = (ISLES[W.isle] || {}).fx || null; this.chestOpen = false; this.spawn = W.spawn || SPAWN; this.zones = [];
       this.mobs = W.spawns.map((s, k) => { const lvl = L0 ? Math.max(1, L0 + Math.floor(Math.random() * 3) - 1) : s.lvl; return Object.assign({
         k, type: s.type, lvl: s.lvl, x: s.i + .5, y: s.j + .5, hx: s.i + .5, hy: s.j + .5, alive: true, respawnT: 0,
         target: null, returning: false, atkCd: 0, wt: Math.random() * 3, wdx: 0, wdy: 0, tagged: new Set(), moving: false
@@ -484,6 +521,7 @@
       if (freePts(p.lvl, p.pts) < 0) p.pts = { str: 0, sta: 0, int: 0, agi: 0 };
       p.bar = {}; if (s.bar && typeof s.bar === 'object') for (const f in FAMS) if (Array.isArray(s.bar[f])) p.bar[f] = s.bar[f].slice(0, 3).map(v => clampInt(v, 0, 9));
       p.fr = s.fr == null ? 1 : clampInt(s.fr, 0, 1); // une réinitialisation gratuite des points
+      p.skc = {}; if (s.skc && typeof s.skc === 'object') for (const k in s.skc) if (/^[a-z]+:\d$/.test(k) && Array.isArray(s.skc[k])) p.skc[k] = [0, 1].map(j => { const v = s.skc[k][j]; return v === 0 || v === 1 ? v : -1; });
       p.sk = {}; if (s.sk && typeof s.sk === 'object') for (const k in s.sk) if (/^[a-z]+:(\d|block)$/.test(k)) p.sk[k] = clampInt(s.sk[k], 0, skTotal(SK_MAX));
       // voyage : île actuelle, îles découvertes ; « arr » = on vient de traverser, on apparaît au bout du Pont d'Éther
       p.isle = cleanIsle(s.isle); p.isles = clampInt(s.isles, 0, 1 << 20) | 1; p.arr = 0;
@@ -507,7 +545,7 @@
     }
     /* Format de sauvegarde : ne JAMAIS renommer ni retirer un champ (les héros existants doivent survivre aux mises à jour).
        Ajouter un champ = lui donner une valeur par défaut dans addPlayer. */
-    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr, isle: p.isle, isles: p.isles, arr: p.arr, sk: p.sk }; }
+    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr, isle: p.isle, isles: p.isles, arr: p.arr, sk: p.sk, skc: p.skc }; }
     grantFounder(p) {
       if (p.gifts & 1) return false;
       const wpn = [[5, 3], [23, 3], [4, 3], [29, 3], [31, 3], [3, 3]], k = p.cls < wpn.length ? p.cls : 0;
@@ -539,7 +577,7 @@
       if (got) { this.recalc(p, true); this.ev({ e: 'gm', id: p.id, n: got, mage }); }
       return got;
     }
-    buffMul(p) { return p.buffT > this.t ? 1.4 : 1; }
+    buffMul(p) { return p.buffT > this.t ? 1.4 + (p.buffK || 0) : 1; }
     recalc(p, full) {
       const fh = p.maxhp ? p.hp / p.maxhp : 1, fm = p.maxmp ? p.mp / p.maxmp : 1;
       Object.assign(p, computeStats(p.lvl, p.equip, p.pts));
@@ -558,7 +596,7 @@
         case 'mv': {
           if (p.dead) return;
           const x = +m.x, y = +m.y; if (!isFinite(x) || !isFinite(y)) return;
-          const allowed = 3.6 * (p.speed || 1) * (this.t - p.lastMv) + 0.7;
+          const allowed = 3.6 * (p.speed || 1) * (p.hasteT > this.t ? 1.3 : 1) * (this.t - p.lastMv) + 0.7;
           if (Math.hypot(x - p.x, y - p.y) > allowed || !W.walkable(Math.floor(x), Math.floor(y))) { this.ev({ e: 'tp', id, x: p.x, y: p.y }); p.lastMv = this.t; return; }
           p.x = x; p.y = y; p.face = (m.f | 0) % 3; p.flip = m.fl ? 1 : 0; p.moving = m.mv ? 1 : 0; p.lastMv = this.t;
           break;
@@ -574,7 +612,7 @@
           break;
         }
         case 'ab': {
-          const K = kitOf(p.equip, p.mast, p.bar, p.sk, p.lvl), i = m.a | 0, A = K.ab[i];
+          const K = kitOf(p.equip, p.mast, p.bar, p.sk, p.lvl, p.skc), i = m.a | 0, A = K.ab[i], M = (A && A.mods) || {};
           if (!A || A.locked || p.dead || p.abCd[i] > this.t || p.mp < A.mp) return;
           let tgt = null;
           if (A.kind === 'aoeTarget' || A.kind === 'single' || A.kind === 'charge') {
@@ -582,25 +620,66 @@
             if (!tgt || !tgt.alive || Math.hypot(tgt.x - p.x, tgt.y - p.y) > A.range + 0.8) return;
           }
           p.mp -= A.mp; p.abCd[i] = this.t + A.cd - 0.1;
-          const pw = A.pw || 1, roll = () => (0.9 + Math.random() * 0.2) * this.buffMul(p) * pw;
+          const pw = A.pw || 1, roll = () => (0.9 + Math.random() * 0.2) * this.buffMul(p) * pw * (1 + (M.dmg || 0));
           const around = (cx, cy, r) => this.mobs.filter(o => o.alive && Math.hypot(o.x - cx, o.y - cy) <= r);
-          let hits = 0, kills = 0; const hit = (o, dmg, crit) => { hits++; this.hitMob(o, dmg, p, crit); if (!o.alive) kills++; };
-          if (A.kind === 'aoeSelf') for (const o of around(p.x, p.y, A.r)) { hit(o, Math.round(p.atk * A.mult * roll()), false); if (A.stun && o.alive) o.stunT = this.t + A.stun * pw; }
-          else if (A.kind === 'aoeTarget') for (const o of around(tgt.x, tgt.y, A.r)) hit(o, Math.round(p.atk * A.mult * roll()), false);
-          else if (A.kind === 'single') { hit(tgt, Math.round(p.atk * A.mult * roll()), Math.random() < p.crit); if (A.slow && tgt.alive) tgt.slowT = this.t + A.slow * pw; if (A.stun && tgt.alive) tgt.stunT = this.t + A.stun * pw; }
+          const fireImm = o => MOBDEF[o.type].el === 'fire';
+          let hits = 0, kills = 0;
+          // effets d'un coup : ralentir, étourdir, saigner, brûler, vulnérabilité, repousser / attirer
+          const onHit = o => {
+            if (!o.alive) return;
+            if (A.slow || M.slow) { o.slowT = this.t + (A.slow || 0) * pw + (M.slow || 0); o.slowK = M.slowStrong ? 0.3 : 0.5; }
+            const st = Math.max(A.stun || 0, M.stun || 0); if (st) o.stunT = this.t + st * pw;
+            if (A.bleed || M.bleed) { o.bleedT = this.t + (A.bleed || 0) + (M.bleed || 0); o.bleedBy = p.id; o.bleedDps = Math.max(1, p.atk * 0.15 * pw * (1 + (M.bleedK || 0))); }
+            if (M.burn && !fireImm(o)) { o.burnT = this.t + M.burn; o.burnBy = p.id; o.burnDps = Math.max(1, p.atk * 0.15 * pw); }
+            if (M.vuln) { o.vulnT = this.t + M.vuln[1]; o.vulnK = M.vuln[0]; }
+            if (M.push || M.pull) { const dx = o.x - p.x, dy = o.y - p.y, d = Math.hypot(dx, dy) || 1, s0 = M.push ? 1.2 : -Math.max(0, Math.min(1.2, d - 0.9)); if (s0) moveBy(this.W, o, dx / d * s0, dy / d * s0); }
+          };
+          const strike = (o, crit) => {
+            if (!o.alive) return;
+            let dmg = p.atk * A.mult * roll();
+            if (M.execute && o.hp < o.maxhp * 0.3) dmg *= 2;
+            if (M.slowBonus && o.slowT > this.t) dmg *= 1 + M.slowBonus;
+            const c = !!(crit || M.crit || Math.random() < (M.critAdd || 0)); if (c) dmg *= 1.8;
+            dmg = Math.round(dmg); hits++; this.hitMob(o, dmg, p, c);
+            if (M.lifesteal) p.hp = Math.min(p.maxhp, p.hp + dmg * M.lifesteal);
+            if (!o.alive) kills++; else onHit(o);
+          };
+          const chain = (from, n, r) => { const others = this.mobs.filter(o => o.alive && o !== from && Math.hypot(o.x - from.x, o.y - from.y) <= r).sort((a1, b1) => Math.hypot(a1.x - from.x, a1.y - from.y) - Math.hypot(b1.x - from.x, b1.y - from.y)).slice(0, n); for (const o of others) strike(o, false); return others; };
+          const rounds = M.twice ? 2 : 1;
+          if (A.kind === 'aoeSelf') { const L = around(p.x, p.y, A.r); for (let q = 0; q < rounds; q++) for (const o of L) strike(o, false); }
+          else if (A.kind === 'aoeTarget') { const L = around(tgt.x, tgt.y, A.r); for (let q = 0; q < rounds; q++) for (const o of L) strike(o, false); if (M.chain) chain(tgt, M.chain, M.bounce ? 4 : 2.5); }
+          else if (A.kind === 'single') { strike(tgt, Math.random() < p.crit); if (M.chain) chain(tgt, M.chain, 2.5); }
           else if (A.kind === 'charge') {
             const d = Math.hypot(tgt.x - p.x, tgt.y - p.y) || 1, nx = tgt.x - (tgt.x - p.x) / d * 0.8, ny = tgt.y - (tgt.y - p.y) / d * 0.8;
             if (this.W.walkable(Math.floor(nx), Math.floor(ny))) { p.x = nx; p.y = ny; p.lastMv = this.t; this.ev({ e: 'tp', id, x: p.x, y: p.y, dash: 1 }); }
-            hit(tgt, Math.round(p.atk * A.mult * roll()), false); if (tgt.alive) tgt.stunT = this.t + A.stun * pw;
+            strike(tgt, false);
           }
-          else if (A.kind === 'buff') { p.buffT = this.t + A.dur * pw; hits = 1; }
+          else if (A.kind === 'buff') {
+            const until = this.t + (A.dur + (M.buffDur || 0)) * pw; p.buffT = until; p.buffK = M.buffDmg || 0; hits = 1;
+            if (M.allies) for (const o of this.players.values()) if (o !== p && !o.dead && Math.hypot(o.x - p.x, o.y - p.y) <= 4) { o.buffT = until; o.buffK = p.buffK; }
+            if (M.healSelf) { const h = Math.round(p.maxhp * M.healSelf); p.hp = Math.min(p.maxhp, p.hp + h); this.ev({ e: 'heal', id, v: h }); }
+          }
           else if (A.kind === 'heal') {
             const h = Math.round(p.maxhp * 0.4 * pw); if (p.hp < p.maxhp) hits++; p.hp = Math.min(p.maxhp, p.hp + h); this.ev({ e: 'heal', id, v: h });
-            for (const o of this.players.values()) if (o !== p && !o.dead && Math.hypot(o.x - p.x, o.y - p.y) <= 4) { if (o.hp < o.maxhp) hits++; const h2 = Math.round(o.maxhp * 0.25 * pw); o.hp = Math.min(o.maxhp, o.hp + h2); this.ev({ e: 'heal', id: o.id, v: h2, by: id }); }
+            for (const o of this.players.values()) if (o !== p && !o.dead && Math.hypot(o.x - p.x, o.y - p.y) <= 4 + (M.healRange || 0)) { if (o.hp < o.maxhp) hits++; const h2 = Math.round(o.maxhp * 0.25 * pw); o.hp = Math.min(o.maxhp, o.hp + h2); this.ev({ e: 'heal', id: o.id, v: h2, by: id }); }
+            if (M.mana) p.mp = Math.min(p.maxmp, p.mp + p.maxmp * M.mana);
+            if (M.shield) { p.shieldHP = Math.round(p.maxhp * M.shield); hits = Math.max(hits, 1); }
+            if (M.regen) { p.regenT = this.t + M.regen[1]; p.regenPs = p.maxhp * M.regen[0] / M.regen[1]; }
           }
+          // effets d'ensemble : zone d'impact, sol en feu, soin de zone, garde, vitesse, disparition, recharges
+          const at = tgt || p;
+          if (M.stunArea) for (const o of around(at.x, at.y, M.stunArea)) o.stunT = this.t + 1.5 * pw;
+          if (M.zone && tgt) { this.zones.push({ x: tgt.x, y: tgt.y, r: 1.3, until: this.t + M.zone, dps: p.atk * 0.25 * pw, by: p.id, acc: 0 }); this.ev({ e: 'zone', x: +tgt.x.toFixed(2), y: +tgt.y.toFixed(2), r: 1.3, d: M.zone }); }
+          if (M.healZone && tgt) for (const o of this.players.values()) if (!o.dead && Math.hypot(o.x - tgt.x, o.y - tgt.y) <= A.r) { const h3 = Math.round(o.maxhp * M.healZone); o.hp = Math.min(o.maxhp, o.hp + h3); this.ev({ e: 'heal', id: o.id, v: h3, by: id }); }
+          if (M.guard) { p.guardT = this.t + M.guard[1]; p.guardK = M.guard[0]; }
+          if (M.haste) p.hasteT = this.t + M.haste;
+          if (M.stealth) { p.stealthT = this.t + M.stealth; for (const o of this.mobs) if (o.target === id) { o.target = null; o.returning = true; } }
+          if (M.cdPerHit && hits) p.abCd[i] = Math.max(this.t, p.abCd[i] - hits * M.cdPerHit);
+          if (M.killRefund && kills) p.abCd[i] = this.t + A.cd * (1 - M.killRefund);
+          if (M.killReset && kills) { const j = K.ab.findIndex(o => o.name === M.killReset); if (j >= 0) p.abCd[j] = 0; }
           // expérience de compétence : rien si la technique ne sert à rien (lancée dans le vide, soin à pleine vie)
           if (hits && A.ti >= 0) this.addSk(p, K.fam + ':' + A.ti, A.kind === 'buff' ? 2 : 1 + Math.min(3, hits) + 2 * kills);
-          this.ev({ e: 'ab', id, c: p.cls, a: i, m: tgt ? tgt.k : -1, fx: A.fx, n: A.name, r: A.r || 0 });
+          this.ev({ e: 'ab', id, c: p.cls, a: i, m: tgt ? tgt.k : -1, fx: A.fx, n: A.name, r: A.r || 0, ar: M.arrows || 0, tw: M.twice ? 1 : 0 });
           break;
         }
         case 'pot': {
@@ -684,6 +763,17 @@
           this.ev({ e: 'chest', id, g }); break;
         }
         case 'pt': { const k = String(m.s); if (!(k in p.pts) || freePts(p.lvl, p.pts) <= 0) return; p.pts[k]++; this.recalc(p); break; }
+        case 'skc': {
+          const k = String(m.k), [f, t] = k.split(':'), T = FAMS[f] && FAMS[f].tech[t | 0], j = m.j ? 1 : 0, c = m.c ? 1 : 0;
+          if (!T || !T.ms || String(t | 0) !== t) return;
+          if (skRank(p.sk[k] || 0, skCap(p.lvl)) < (j ? 8 : 4)) return;
+          const cur = p.skc[k] || [-1, -1]; if (cur[j] >= 0) return; cur[j] = c; p.skc[k] = cur;
+          this.ev({ e: 'skc', id, k, j, c, n: T.ms[j][c].n }); break;
+        }
+        case 'skcReset': {
+          const npc = NPCS.elya; if (p.dead || Math.hypot(p.x - npc.x, p.y - npc.y) > 2.8) return;
+          p.skc = {}; this.ev({ e: 'msg', id, t: 'Tes effets de techniques sont réinitialisés : choisis-les de nouveau dans l\'onglet Compétences.' }); break;
+        }
         case 'respec': {
           const npc = NPCS.elya; if (p.dead || Math.hypot(p.x - npc.x, p.y - npc.y) > 2.8) return;
           const cost = p.fr ? 0 : respecCost(p.lvl); if (p.gold < cost) { this.ev({ e: 'msg', id, t: 'Il te faut ' + cost + ' pièces d\'or.' }); return; }
@@ -729,6 +819,7 @@
       const after = mLevel(p.mast[fam]).lv; if (after > before) this.ev({ e: 'ml', id: p.id, f: fam, lv: after });
     }
     hitMob(m, dmg, p, crit) {
+      if (m.vulnT > this.t) dmg = Math.round(dmg * (1 + m.vulnK));
       m.hp -= dmg; m.tagged.add(p.id); this.addMast(p, 1);
       // effet de l'île, sauf sur les créatures du même élément (le feu ne brûle pas une gelée de braise)
       const el = MOBDEF[m.type].el, imm = (this.fx === 'slow' && el === 'ice') || (this.fx === 'burn' && el === 'fire');
@@ -781,6 +872,8 @@
       const blk = p.equip.offhand && weaponFam(p.equip) === 'sword' && mLevel(p.mast.sword || 0).lv >= 8 && Math.random() < 0.25 + 0.01 * (skRank(p.sk['sword:block'] || 0, skCap(p.lvl)) - 1);
       if (blk) this.addSk(p, 'sword:block', 2);
       if (blk) dmg = Math.max(1, Math.round(dmg * 0.25));
+      if (p.guardT > this.t) dmg = Math.max(1, Math.round(dmg * (1 - p.guardK)));
+      if (p.shieldHP > 0) { const a0 = Math.min(p.shieldHP, dmg); p.shieldHP -= a0; dmg -= a0; if (!dmg) { this.ev({ e: 'hp', id: p.id, v: 0, m: m.k, sh: 1 }); return; } }
       p.hp -= dmg; p.lastHit = 0;
       this.ev({ e: 'hp', id: p.id, v: dmg, m: m.k, b: blk ? 1 : 0 });
       if (p.hp <= 0) {
@@ -800,8 +893,14 @@
           continue;
         }
         if (p.lastHit > 4) p.hp = Math.min(p.maxhp, p.hp + p.maxhp * 0.03 * dt);
+        if (p.regenT > this.t) p.hp = Math.min(p.maxhp, p.hp + p.regenPs * dt);
         p.mp = Math.min(p.maxmp, p.mp + p.maxmp * 0.04 * dt);
         if (this.t - p.lastMv > 0.5) p.moving = 0;
+      }
+      for (let z = this.zones.length - 1; z >= 0; z--) {
+        const Z = this.zones[z]; if (Z.until <= this.t) { this.zones.splice(z, 1); continue; }
+        Z.acc += dt; if (Z.acc < 0.5) continue; Z.acc = 0; const zp = this.players.get(Z.by); if (!zp) continue;
+        for (const o of this.mobs) if (o.alive && MOBDEF[o.type].el !== 'fire' && Math.hypot(o.x - Z.x, o.y - Z.y) <= Z.r) this.hitMob(o, Math.max(1, Math.round(Z.dps * 0.5)), zp, false);
       }
       for (const m of this.mobs) {
         if (!m.alive) {
@@ -815,13 +914,14 @@
         }
         m.atkCd -= dt; m.moving = false;
         if (m.burnT > this.t) { m.burnAcc = (m.burnAcc || 0) + m.burnDps * dt; if (m.burnAcc >= Math.max(1, m.burnDps * 0.6)) { const v = Math.round(m.burnAcc); m.burnAcc = 0; m.hp -= v; this.ev({ e: 'hm', m: m.k, v, c: 0, by: m.burnBy, burn: 1 }); if (m.hp <= 0) { this.killMob(m); continue; } } }
+        if (m.bleedT > this.t) { m.bleedAcc = (m.bleedAcc || 0) + m.bleedDps * dt; if (m.bleedAcc >= Math.max(1, m.bleedDps * 0.6)) { const v = Math.round(m.bleedAcc); m.bleedAcc = 0; m.hp -= v; this.ev({ e: 'hm', m: m.k, v, c: 0, by: m.bleedBy, bleed: 1 }); if (m.hp <= 0) { const bp = this.players.get(m.bleedBy); if (bp) m.tagged.add(bp.id); this.killMob(m); continue; } } }
         if (m.stunT > this.t) continue;
-        const slow = m.slowT > this.t ? 0.5 : 1;
+        const slow = m.slowT > this.t ? (m.slowK || 0.5) : 1;
         let tp = m.target != null ? this.players.get(m.target) : null;
         if (m.target != null && (!tp || tp.dead)) { tp = null; m.target = null; m.returning = true; }
         if (!tp && !m.returning && m.aggressive) {
           let best = null, bd = m.aggroR;
-          for (const p of this.players.values()) { if (p.dead) continue; const d = Math.hypot(p.x - m.x, p.y - m.y); if (d < bd) { bd = d; best = p; } }
+          for (const p of this.players.values()) { if (p.dead || p.stealthT > this.t) continue; const d = Math.hypot(p.x - m.x, p.y - m.y); if (d < bd) { bd = d; best = p; } }
           if (best) { tp = best; m.target = best.id; if (m.type === 'boss' && this.t - this.bossWarn > 30) { this.bossWarn = this.t; this.ev({ e: 'ch', s: 1, t: 'Le Roi Gelée se réveille ! Appelez du renfort !' }); } }
         }
         const dh = Math.hypot(m.x - m.hx, m.y - m.hy);
@@ -842,12 +942,12 @@
     publicState() {
       const p = [], m = [];
       for (const q of this.players.values()) p.push([q.id, q.name, q.lookStr, +q.x.toFixed(2), +q.y.toFixed(2), q.face, q.flip, q.moving, Math.ceil(q.hp), q.maxhp, q.lvl, q.dead ? 1 : 0, q.scarf, q.cls, q.equip && q.equip.feet && ITEMS[q.equip.feet[0]].fx === 'void' ? 1 : 0, gearStr(q.equip)]);
-      for (const q of this.mobs) m.push([+q.x.toFixed(2), +q.y.toFixed(2), Math.max(0, Math.ceil(q.hp)), q.alive ? 1 : 0, q.target != null ? 1 : 0, q.moving ? 1 : 0, q.stunT > this.t ? 1 : q.burnT > this.t ? 3 : q.slowT > this.t ? 2 : 0]);
+      for (const q of this.mobs) m.push([+q.x.toFixed(2), +q.y.toFixed(2), Math.max(0, Math.ceil(q.hp)), q.alive ? 1 : 0, q.target != null ? 1 : 0, q.moving ? 1 : 0, q.stunT > this.t ? 1 : q.burnT > this.t ? 3 : q.bleedT > this.t ? 4 : q.slowT > this.t ? 2 : 0]);
       return { p, m, c: this.chestOpen ? 1 : 0 };
     }
     meState(id) {
       const p = this.players.get(id); if (!p) return null;
-      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed, cls: p.cls, mast: p.mast, sk: p.sk, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
+      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed * (p.hasteT > this.t ? 1.3 : 1), cls: p.cls, mast: p.mast, sk: p.sk, skc: p.skc, shield: Math.round(p.shieldHP || 0), stealth: p.stealthT > this.t ? 1 : 0, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
     }
   }
 
