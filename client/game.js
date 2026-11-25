@@ -148,14 +148,16 @@
   /* ---------- effets des armes et techniques ---------- */
   const shots = [], FOOT = [];
   function shoot(from, to, kind, dur) { const [x0, y0] = ePx(from), [x1, y1] = ePx(to); shots.push({ x0, y0: y0 - 12, x1, y1: y1 - 6, t: 0, dur: dur || 0.18, kind }); }
+  // animation d'attaque : l'arme est armée puis frappe (ATK_T secondes en tout, la frappe sur les ATK_STRIKE dernières)
+  const ATK_T = 0.26, ATK_STRIKE = 0.16;
   function basicFx(e, tgt, fx) {
-    fx = fx || 'slash';
+    fx = fx || 'slash'; e.atkT = ATK_T;
     if (fx === 'slash') { e.slash = 0.18; e.slashAng = screenAng(e, tgt); }
     else if (fx === 'thrust') shoot(e, tgt, 'pierce', 0.1);
     else shoot(e, tgt, fx, fx === 'arrow' ? 0.16 : 0.22);
   }
   function abilityFx(e, ev, mb) {
-    const A = { fx: ev.fx, name: ev.n || '', r: ev.r || 2 };
+    const A = { fx: ev.fx, name: ev.n || '', r: ev.r || 2 }; e.atkT = ATK_T + 0.04;
     if (e === me && A.name) { floatAt(me, A.name, '#ffe9b0'); }
     switch (A.fx) {
       case 'slashx': if (mb) { e.slash = 0.25; e.slashAng = screenAng(e, mb); burst(mb, '#fff0c0', 12, 14); } break;
@@ -230,7 +232,7 @@
     $('dok').textContent = ok; $('dno').hidden = !later; dlgAction = act ? n.id : null; dlgNpc = n.id;
     $('dcraft').hidden = !C.RECIPES.some(r => r.npc === n.id); $('dcraft').textContent = n.id === 'bran' ? 'Forge' : 'Atelier';
     $('dresp').hidden = n.id !== 'elya'; $('dresp').textContent = 'Réinitialiser mes points (' + (me.fr ? 'gratuit' : fmt(me.rcost || 0) + ' PO') + ')';
-    dpx.clearRect(0, 0, 32, 36); dpx.drawImage(n.set.front[0], 7, 8, 32, 36, 0, 0, 32, 36);
+    dpx.clearRect(0, 0, 32, 36); dpx.drawImage(n.set.front[0], 13, 8, 32, 36, 0, 0, 32, 36);
     dlg.hidden = false;
   }
   function closeDlg() { dlg.hidden = true; }
@@ -361,7 +363,7 @@
     if ($('char').hidden || !me.set) return;
     const set = (prevSet || me.set).hd, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 5) % 4;
     const img = d === 'sideL' ? set.sideL[fr] : d === 'side' ? set.side[fr] : set[d][Math.floor(time * 2) % 4 === 0 && d === 'front' ? 0 : fr];
-    chp.clearRect(0, 0, 64, 68); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(20, 62, 24, 4); chp.drawImage(img, 9, 9);
+    chp.clearRect(0, 0, 64, 68); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(20, 62, 24, 4); chp.drawImage(img, 3, 9);
   }
   const STEPS = window.EtheriaSteps || { native: false, collect: async () => 0 };
   function openWalk() { walkSig = ''; renderWalk(); $('walk').hidden = false; input.atkBtn = false; joy.active = false; }
@@ -491,7 +493,7 @@
         for (const A of F.caps || []) if (A.m === ev.lv) setTimeout(() => { sys('Nouvelle capacité : ' + A.name + ' — ' + A.desc); }, 900);
       } break;
       case 'heal': { const t = ent(ev.id); if (t) { burst(t, '#9cf07a', 14, 30); if (t === me) floatAt(me, '+' + ev.v + (ev.by && ev.by !== myId ? ' (soin)' : ''), '#9cf07a'); } break; }
-      case 'gm': if (ev.id === myId) { sys('Ton armure de Maître du jeu est équipée. Elle est unique.'); floatAt(me, 'Maître du jeu', '#ffe070', true); ring(me, 3, '#ffe070', 0.9); burst(me, '#ffe070', 40, 60); burst(me, '#ffffff', 16, 50); } break;
+      case 'gm': if (ev.id === myId) { sys(ev.mage ? 'Te voilà mage : le Sceptre du Maître du jeu tire à distance. Maîtrise Bâton ' + ev.mage + ', points passés en Intelligence (réinitialisables chez Elya).' : 'Ton armure de Maître du jeu est équipée. Elle est unique.'); floatAt(me, 'Maître du jeu', '#ffe070', true); ring(me, 3, '#ffe070', 0.9); burst(me, '#ffe070', 40, 60); burst(me, '#ffffff', 16, 50); } break;
       case 'founder': if (ev.id === myId) { sys('Cadeau du fondateur : les Bottes du Néant (Unique) et un ensemble épique sont équipés !'); floatAt(me, 'Bottes du Néant', '#ff9a3c', true); ring(me, 2.6, '#ff9a3c', 0.8); burst(me, '#b08ae8', 30, 50); } break;
       case 'sw': if (ev.id !== myId) { const o = others.get(ev.id), mb = mobs[ev.m]; if (o && mb) { basicFx(o, mb, ev.fx); setFacing(o, mb.x - o.x, mb.y - o.y); } } break;
       case 'sk': if (ev.id !== myId) { const o = others.get(ev.id); if (o) { o.spin = 0.35; ring(o, 2.4, '#ffe27a', 0.35); } } break;
@@ -518,7 +520,7 @@
   /* ---------- mise à jour ---------- */
   function nearestMob(x, y, r) { let best = null, bd = r; for (const m of mobs) { if (!m.alive) continue; const d = Math.hypot(m.x - x, m.y - y); if (d < bd) { bd = d; best = m; } } return best; }
   function updateMe(dt) {
-    me.atkCd -= dt; me.skillCd -= dt; me.potCd -= dt; me.slash -= dt; me.spin -= dt; me.hitFlash -= dt; me.moving = false;
+    me.atkCd -= dt; me.skillCd -= dt; me.potCd -= dt; me.slash -= dt; me.atkT -= dt; me.spin -= dt; me.hitFlash -= dt; me.moving = false;
     if (me.dead) { input.skill = input.pot = false; me.anim = 0; return; }
     const [sx, sy] = inputDir();
     if (sx || sy) { let wx = (sx / 16 + sy / 8) / 2, wy = (sy / 8 - sx / 16) / 2; const l = Math.hypot(wx, wy); wx /= l; wy /= l; C.moveBy(W, me, wx * 3 * (me.speed || 1) * dt, wy * 3 * (me.speed || 1) * dt); setFacing(me, wx, wy); me.moving = true; movedOnce = true; }
@@ -528,7 +530,7 @@
       const d = Math.hypot(tgt.x - me.x, tgt.y - me.y), reach = B.range + (tgt.type === 'boss' ? 0.6 : 0);
       if (d <= reach) { if (me.atkCd <= 0) { me.atkCd = B.cd; setFacing(me, tgt.x - me.x, tgt.y - me.y); basicFx(me, tgt, B.fx); link.send({ t: 'atk', m: tgt.k }); } }
       else if (!me.moving) { const dx = tgt.x - me.x, dy = tgt.y - me.y, sp = 3 * (me.speed || 1); C.moveBy(W, me, dx / d * sp * dt, dy / d * sp * dt); setFacing(me, dx, dy); me.moving = true; }
-    } else if (atk && me.atkCd <= 0 && B.fx === 'slash') { me.atkCd = B.cd; me.slash = 0.18; me.slashAng = me.face === 'side' ? (me.flip ? Math.PI : 0) : me.face === 'front' ? Math.PI / 2 : -Math.PI / 2; }
+    } else if (atk && me.atkCd <= 0 && B.fx === 'slash') { me.atkCd = B.cd; me.slash = 0.18; me.atkT = ATK_T; me.slashAng = me.face === 'side' ? (me.flip ? Math.PI : 0) : me.face === 'front' ? Math.PI / 2 : -Math.PI / 2; }
     if (input.ab >= 0) {
       const i = input.ab, A = K0.ab[i]; input.ab = -1;
       if (A.locked) floatAt(me, A.m < 99 ? A.name + ' : maîtrise ' + A.m : 'Pas de technique', '#c8c0d8');
@@ -574,7 +576,7 @@
     }
     for (const o of others.values()) {
       const px = o.x, py = o.y; o.x += (o.tx - o.x) * Math.min(1, dt * 10); o.y += (o.ty - o.y) * Math.min(1, dt * 10);
-      o.slash -= dt; o.spin -= dt; o.hitFlash -= dt; o.anim = o.moving ? o.anim + dt * 8 : 0; o.z += (W.hAt(o.x, o.y) - o.z) * Math.min(1, dt * 15); void px; void py;
+      o.slash -= dt; o.atkT -= dt; o.spin -= dt; o.hitFlash -= dt; o.anim = o.moving ? o.anim + dt * 8 : 0; o.z += (W.hAt(o.x, o.y) - o.z) * Math.min(1, dt * 15); void px; void py;
     }
     for (const m of mobs) {
       const dx = m.tx - m.x; m.x += (m.tx - m.x) * Math.min(1, dt * 8); m.y += (m.ty - m.y) * Math.min(1, dt * 8);
@@ -633,7 +635,8 @@
       if (e.scarf === 2 && ((time * 4 + k) % 5) < 0.4) { g.fillStyle = '#ffffff'; g.fillRect(x, y - 1, 1, 1); }
     }
   }
-  function frameOf(e, set) { set = set || e.set; const f = Math.floor(e.anim) % 4; if (!e.moving && set.blinkF && ((time + (e.bph || e.x)) % 3.4) < 0.14) { if (e.face === 'front') return set.blinkF; if (e.face === 'side') return e.flip ? set.blinkSL : set.blinkS; } if (e.face === 'side') return (e.flip ? set.sideL : set.side)[f]; return set[e.face][f]; }
+  function frameOf(e, set) { set = set || e.set; const f = Math.floor(e.anim) % 4;
+    if (e.atkT > 0 && set.atk) { const ph = e.atkT > ATK_STRIKE ? 0 : 1; return e.face === 'side' ? (e.flip ? set.atk.sideL : set.atk.side)[ph] : set.atk[e.face][ph]; } if (!e.moving && set.blinkF && ((time + (e.bph || e.x)) % 3.4) < 0.14) { if (e.face === 'front') return set.blinkF; if (e.face === 'side') return e.flip ? set.blinkSL : set.blinkS; } if (e.face === 'side') return (e.flip ? set.sideL : set.side)[f]; return set[e.face][f]; }
   function drawEntity(e, ox, oy) {
     const fine = e.kind === 'char' || e.kind === 'npc' || e.kind === 'mob', snap = v => fine ? Math.round(v * RQ) / RQ : Math.round(v);
     const sx = snap(ox + (e.x - e.y) * 16), sy = snap(oy + (e.x + e.y) * 8 - e.z * 8);
@@ -843,7 +846,7 @@
     const pw = Math.min(104, UW - 64);
     panel(3, 3, pw, 33);
     u.fillStyle = 'rgba(239,227,200,.8)'; u.fillRect(6, 6, 22, 22); u.fillStyle = '#2e4a5c'; u.fillRect(7, 7, 20, 20); u.fillStyle = '#243a4c'; u.fillRect(7, 17, 20, 10);
-    if (me.set) { u.imageSmoothingEnabled = true; u.drawImage(me.set.front[0], 7, 8, 32, 38, 9, 8, 16, 19); u.imageSmoothingEnabled = false; }
+    if (me.set) { u.imageSmoothingEnabled = true; u.drawImage(me.set.front[0], 13, 8, 32, 38, 9, 8, 16, 19); u.imageSmoothingEnabled = false; }
     u.fillStyle = '#e8c37a'; u.fillRect(6, 26, 22, 8); text(u, 'NV' + me.lvl, 17, 27, '#2a1a10', 'center', 1, false);
     text(u, me.name, 32, 5, '#fff2d0');
     const bw = pw - 34;
@@ -916,7 +919,7 @@
     const dirs = ['front', 'side', 'back', 'side'], k = Math.floor(time / 1.2) % 4, fr = Math.floor(time * 6) % 4;
     const img = dirs[k] === 'side' ? (k === 3 ? me.set.sideL : me.set.side)[fr] : me.set[dirs[k]][fr];
     pctx.fillStyle = 'rgba(24,16,48,.3)'; pctx.fillRect(20, 59, 24, 4);
-    pctx.drawImage(img, 9, 6);
+    pctx.drawImage(img, 3, 6);
   }
   async function play() {
     if (mode === 'connecting') return;

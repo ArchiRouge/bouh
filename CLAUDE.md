@@ -65,7 +65,9 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   hand-drawn grids per direction (front / back / side, side-left = mirror) and per layer (hair styles, face, tunic, plate +
   pauldrons, legs, boots, hood / helm / crown, creation hats, sword / axe / staff / bow, cape for rare+ chest pieces).
   Digits 1–5 in a grid are tones of that layer's material, recoloured from the item colour (`ramp5`, `metal`); letters are
-  fixed colours (skin, eyes, hair a–f, gold g/G/y/Y, leather, wood). Sprites are 46×57, ~2.2 heads, feet at y = 55.
+  fixed colours (skin, eyes, hair a–f, gold g/G/y/Y, leather, wood). Sprites are 58×57 (side margin for weapon swings), ~2.2 heads,
+  feet at y = 55, centre x = 28.5. Attack poses (`paint(..., pose)` 1 = wind-up, 2 = strike, `set.atk`) rotate the weapon around the hand
+  with RotSprite (Scale2x ×2, nearest rotation, resample) — keeps blades clean; angles in `SWING` / `SWING_SIDE`. `e.atkT` drives them in `game.js`.
   `sprites.js` has no DOM dependency (paints into an RGBA array), so it can be tested in Node; `assets.js` `charSet` caches canvases.
 - In the world a character pixel is ~0.6 game pixel, rounded so it lands on whole screen pixels (`charP()` in `game.js`).
   Don't scale sprites by non-integer screen factors. Draw new gear in the grids pixel by pixel; never go back to vector-then-downsample.
@@ -76,6 +78,8 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - Game Master set (items 33–38, `fx: 'gm'`, unique, never in loot, can't be sold): golden armor drawn in `sprites.js`
   (`F.gm`, `gmhelm`, white cape), gold name and aura in game. `Sim.grantGM(p)` equips it once; granted to the artifact owner
   (`Cloud.owner`), to the hero Archi404 in the app when `config.js` has `gm: true`, and on the server to device tokens in `GM_TOKENS`.
+  The Game Master plays a mage: the grant equips the golden Sceptre (item 39), puts blade and aegis in the bag and, once (gift bit 2),
+  sets staff mastery to the sword's level and moves stat points to Intelligence.
 - `C.gearStr(equip)` encodes head/chest/legs/feet/weapon/offhand; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
 
 ## Rendering & smoothness

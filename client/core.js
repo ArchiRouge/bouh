@@ -83,9 +83,10 @@
     { n: 'Jambières du Maître du jeu', slot: 'legs', lvl: 1, icon: 'pants', c: '#f0c040', st: { sta: 4, agi: 3, armor: 10 }, fx: 'gm', unique: 1 },
     { n: 'Solerets du Maître du jeu', slot: 'feet', lvl: 1, icon: 'boots', c: '#f0c040', st: { agi: 4, armor: 8 }, speed: 0.4, fx: 'gm', unique: 1 },
     { n: 'Lame du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'sword', c: '#f0c040', st: { str: 11, agi: 5, sta: 4 }, fx: 'gm', unique: 1 },
-    { n: 'Égide du Maître du jeu', slot: 'offhand', lvl: 1, icon: 'shield', c: '#f0c040', st: { armor: 16, sta: 6, str: 2 }, fx: 'gm', unique: 1 }
+    { n: 'Égide du Maître du jeu', slot: 'offhand', lvl: 1, icon: 'shield', c: '#f0c040', st: { armor: 16, sta: 6, str: 2 }, fx: 'gm', unique: 1 },
+    { n: 'Sceptre du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'staff', c: '#f0c040', st: { int: 12, sta: 4, agi: 3 }, fx: 'gm', unique: 1, lore: "L'orbe obéit à la voix de celui qui a écrit le monde." }
   ];
-  const GM_SET = [33, 34, 35, 36, 37, 38];
+  const GM_EQUIP = [33, 34, 35, 36, 39], GM_BAG = [37, 38]; // le maître du jeu est mage : sceptre en main, lame et égide au sac
   const LOOT = { slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21, 25, 29] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22, 26, 31] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 } };
   function itemStats(inst) { const T = ITEMS[inst[0]], mul = RARITY[inst[1]][2], o = {}; for (const k in T.st) o[k] = Math.max(1, Math.round(T.st[k] * mul)); return o; }
   const itemValue = inst => Math.round((5 + ITEMS[inst[0]].lvl * 4) * RARITY[inst[1]][2]);
@@ -419,14 +420,22 @@
     /* Ensemble unique du Maître du jeu : équipé une seule fois (les pièces remplacées vont au sac ; si le sac est plein,
        la pièce attend la prochaine connexion). Seul le client ou le serveur décide qui est maître du jeu. */
     grantGM(p) {
-      const owned = new Set([...Object.values(p.equip).filter(Boolean), ...p.bag].map(i => i[0])); let got = 0;
-      for (const t of GM_SET) {
+      const owned = new Set([...Object.values(p.equip).filter(Boolean), ...p.bag].map(i => i[0])); let got = 0, mage = 0;
+      for (const t of GM_EQUIP) {
         if (owned.has(t)) continue;
         const sl = ITEMS[t].slot, old = p.equip[sl];
         if (old && p.bag.length >= BAG_SIZE) continue;
         if (old) p.bag.push(old); p.equip[sl] = [t, 4]; got++;
       }
-      if (got) { this.recalc(p, true); this.ev({ e: 'gm', id: p.id, n: got }); }
+      for (const t of GM_BAG) if (!owned.has(t) && p.bag.length < BAG_SIZE) { p.bag.push([t, 4]); got++; }
+      if (p.equip.offhand && weaponFam(p.equip) !== 'sword' && p.bag.length < BAG_SIZE) { p.bag.push(p.equip.offhand); p.equip.offhand = null; }
+      // une fois : le maître du jeu devient mage (maîtrise du bâton au niveau de celle de l'épée, points en Intelligence)
+      if (!(p.gifts & 2)) {
+        p.gifts |= 2; p.mast.staff = Math.max(p.mast.staff || 0, p.mast.sword || 0);
+        const tot = 3 * (p.lvl - 1), it = Math.round(tot * 0.6), st = Math.round(tot * 0.3); p.pts = { str: 0, int: it, sta: st, agi: tot - it - st };
+        mage = mLevel(p.mast.staff).lv; got++;
+      }
+      if (got) { this.recalc(p, true); this.ev({ e: 'gm', id: p.id, n: got, mage }); }
       return got;
     }
     buffMul(p) { return p.buffT > this.t ? 1.4 : 1; }

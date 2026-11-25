@@ -7,8 +7,8 @@
    il peint dans un tableau RGBA, ce qui permet de le tester hors navigateur. */
 (function () {
   'use strict';
-  const OX = 4, OY = 9, W = 46, H = 57; // sprite final 46×57, pieds (contour compris) en y = 55, centre x = 22.5
-  const FOOT_Y = 55, CX = 22.5;
+  const OX = 10, OY = 9, W = 58, H = 57; // sprite final 58×57 (marge pour les coups d'arme), pieds (contour compris) en y = 55, centre x = 28.5
+  const FOOT_Y = 55, CX = 28.5;
   const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const mix = (a, b, t) => [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)];
 
@@ -134,6 +134,10 @@
   }
   F.shield = disc(30.5, 34, 6.6, false);
 
+  // sceptre du Maître du jeu : hampe dorée, ailettes, orbe d'éther (couleurs fixes w l i)
+  F.weapons.gmstaff = (() => { const L = [[-8, 9, 'Y'], [-7, 9, 'y5'], [-6, 5, 'Y'], [-6, 9, 'y4'], [-6, 14, 'Y'], [-5, 5, 'y5'], [-5, 13, '4y'], [-4, 5, 'y5'], [-4, 9, 'wl'], [-4, 13, '4G'],
+    [-3, 5, 'y4'], [-3, 8, 'wlli'], [-3, 13, '3G'], [-2, 6, 'y4'], [-2, 8, 'llii'], [-2, 12, '3g'], [-1, 6, 'g4'], [-1, 9, 'ii'], [-1, 11, '3g'], [0, 7, 'g44332g'], [1, 8, 'gyyGg']];
+    for (let y = 2; y <= 40; y++) L.push([y, 9, y % 7 === 4 ? 'yG' : '43']); L.push([41, 9, 'g']); return L; })();
   /* ---------- couvre-chefs (vue de face) ---------- */
   function dome(rx, ry, cx, cy, y0, y1, open) { // calotte ombrée (lumière en haut à gauche) ; open(x, y) = trou du visage
     const L = [];
@@ -279,12 +283,42 @@
   B.gmKnee = [[40, 13, 'g44g'], [40, 20, 'g33g']];
   S.gmKnee = [[39, 19, 'y55y'], [40, 19, 'g44g']];
 
+  /* ---------- rotation des armes (RotSprite) : Scale2x deux fois, rotation au plus proche, retour à 1× ---------- */
+  function scale2xKeys(K, w, h) {
+    const O = new Float64Array(w * h * 4).fill(-1), at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? -1 : K[y * w + x];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const E = at(x, y), B0 = at(x, y - 1), D0 = at(x - 1, y), F0 = at(x + 1, y), H0 = at(x, y + 1);
+      let e0 = E, e1 = E, e2 = E, e3 = E;
+      if (B0 !== H0 && D0 !== F0) { e0 = D0 === B0 ? D0 : E; e1 = B0 === F0 ? F0 : E; e2 = D0 === H0 ? D0 : E; e3 = H0 === F0 ? F0 : E; }
+      const o = (y * 2) * w * 2 + x * 2; O[o] = e0; O[o + 1] = e1; O[o + w * 2] = e2; O[o + w * 2 + 1] = e3;
+    }
+    return O;
+  }
+  function rotsprite(D, M, ang, px, py, outD, outM) {
+    const K = new Float64Array(W * H).fill(-1);
+    for (let i = 0; i < W * H; i++) if (M[i] >= 0) K[i] = M[i] * 16777216 + (D[i * 4] << 16) + (D[i * 4 + 1] << 8) + D[i * 4 + 2];
+    const K4 = scale2xKeys(scale2xKeys(K, W, H), W * 2, H * 2), W4 = W * 4, H4 = H * 4, c = Math.cos(ang), sn = Math.sin(ang);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const dx = x + 0.5 - px, dy = y + 0.5 - py, sx = px + dx * c + dy * sn, sy = py - dx * sn + dy * c;
+      const X = Math.floor(sx * 4), Y = Math.floor(sy * 4); if (X < 0 || Y < 0 || X >= W4 || Y >= H4) continue;
+      const k = K4[Y * W4 + X]; if (k < 0) continue;
+      const m = Math.floor(k / 16777216), rgb = k - m * 16777216, q = (y * W + x) * 4;
+      outD[q] = rgb >> 16; outD[q + 1] = (rgb >> 8) & 255; outD[q + 2] = rgb & 255; outD[q + 3] = 255; outM[y * W + x] = m;
+    }
+  }
+  const DEG = Math.PI / 180;
+  // angle de l'arme selon la pose : 1 = armer, 2 = frapper (au corps à corps grand arc, à distance geste court)
+  const SWING = { sword: [35, -70], axe: [40, -70], great: [40, -70], dagger: [30, -55], spear: [15, -35], staff: [10, -18], gmstaff: [10, -18], bow: [0, 0] };
+  const SWING_SIDE = { sword: [-55, 40], axe: [-60, 45], great: [-60, 45], dagger: [-45, 35], spear: [-20, 15], staff: [-15, 20], gmstaff: [-15, 20], bow: [0, 0] };
+
   /* ---------- peintre ---------- */
   // look : [coiffure, couleur des cheveux, tenue, peau, chapeau] ; gear : { slot: { icon, c, rar } }
   // dir : 'front' | 'back' | 'side' ; fr : image de marche 0–3 ; blink : yeux fermés
-  function paint(look, gear, dir, fr, blink) {
-    gear = gear || {};
+  // pose : 0 normal, 1 arme armée, 2 frappe (animation d'attaque)
+  function paint(look, gear, dir, fr, blink, pose) {
+    gear = gear || {}; pose = pose | 0;
     const data = new Uint8ClampedArray(W * H * 4), mat = new Int16Array(W * H).fill(-1); // mat : indice de la rampe (pour le contour teinté)
+    let tgtD = data, tgtM = mat;
     const RAMPS = [];
     const rampId = r => { let k = RAMPS.indexOf(r); if (k < 0) { RAMPS.push(r); k = RAMPS.length - 1; } return k; };
     const hair = HAIR[look[1]] || HAIR[0], skin = SKIN[look[3]] || SKIN[0];
@@ -297,7 +331,7 @@
     const goldOr = (rar, r) => rar >= 2 ? GOLD : [r[0], r[1], r[3], r[4]];
     const capeR = gm ? GMW : ch && ch.rar >= 2 ? ramp5(['#ece8f4', '#5ee870', '#3a6ad0', '#8a3ad0', '#d0402a'][ch.rar]) : null;
     const hairR = [hair[0], hair[1], hair[2], hair[3], hair[4], hair[5]];
-    const put = (x, y, c, r) => { x += OX; y += OY; if (x < 0 || y < 0 || x >= W || y >= H) return; const k = (y * W + x) * 4; data[k] = c[0]; data[k + 1] = c[1]; data[k + 2] = c[2]; data[k + 3] = 255; mat[y * W + x] = rampId(r); };
+    const put = (x, y, c, r) => { x += OX; y += OY; if (x < 0 || y < 0 || x >= W || y >= H) return; const k = (y * W + x) * 4; tgtD[k] = c[0]; tgtD[k + 1] = c[1]; tgtD[k + 2] = c[2]; tgtD[k + 3] = 255; tgtM[y * W + x] = rampId(r); };
     // dessine une couche : R = rampe des chiffres, T = rampe des liserés (g G y Y)
     const layer = (rows, R, T, dx, dy) => {
       if (!rows) return; dx = dx || 0; dy = dy || 0; T = T || GOLD;
@@ -313,6 +347,13 @@
       }
     };
     const step = fr === 1 ? 1 : fr === 3 ? -1 : 0; // 1 : jambe gauche levée ; -1 : jambe droite levée
+    // arme peinte à part puis tournée autour de la main (px, py en coordonnées de grille)
+    const layerRot = (rows, R, T, dx, dy, deg, px, py) => {
+      if (!deg) return layer(rows, R, T, dx, dy);
+      const D = new Uint8ClampedArray(W * H * 4), M = new Int16Array(W * H).fill(-1);
+      tgtD = D; tgtM = M; layer(rows, R, T, dx, dy); tgtD = data; tgtM = mat;
+      rotsprite(D, M, deg * DEG, px + dx + OX + 0.5, py + dy + OY + 0.5, data, mat);
+    };
     const style = look[0] | 0, hatK = hd ? 0 : look[4] | 0;
     const hatPal = look[4] === 1 ? ramp5('#5e3cb4') : null;
     const wpR = wp ? (wp.fx === 'gm' ? GMR : wp.icon === 'staff' || wp.icon === 'bow' ? ramp5(wp.c) : metal(wp.c)) : null;
@@ -337,8 +378,18 @@
         else if (gmHelm) layer(F.gmhelm, GMR, GMT);
         else if (hatK === 1) layer(F.hats[1], null, GOLD); else if (hatK) layer(F.hats[hatK]);
       }
-      if (wp && F.weapons[wp.icon]) layer(F.weapons[wp.icon], wpR, wpT, 0, step);
-      layer(A.armL, chestR, AT, 0, step);
+      // bras armé : marche (balancier), armer (bras levé), frapper (bras abaissé et avancé)
+      const ax = pose === 2 ? -1 : 0, ay = pose === 1 ? -2 : pose === 2 ? 1 : step;
+      if (wp) {
+        const key = wp.fx === 'gm' && wp.icon === 'staff' ? 'gmstaff' : wp.icon, rows = F.weapons[key];
+        if (rows) {
+          const sw = SWING[key] || [0, 0], deg = pose ? sw[pose - 1] : step * 6;
+          const main = key === 'dagger' ? rows.filter(r => r[1] < 20) : rows;
+          layerRot(main, wpR, wpT, ax, ay, deg, 9, 31);
+          if (key === 'dagger') layerRot(rows.filter(r => r[1] >= 20), wpR, wpT, 0, -step, pose ? -sw[pose - 1] : 0, 29, 31);
+        }
+      }
+      layer(A.armL, chestR, AT, ax, ay);
       if (sh) layer(F.shield, shR, shT, 0, -step);
     } else if (dir === 'back') {
       if (wp && B.weapons[wp.icon]) layer(B.weapons[wp.icon], wpR, wpT);
@@ -364,7 +415,8 @@
       const Lg = S.legs[step === 0 ? 0 : step > 0 ? 1 : 2], A = plate || gm ? S.plate : S.tunic, AT = gm ? GMT : plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR);
       if (capeR) { for (let y = 23; y <= 43; y++) { const w = 3 + ((y - 23) >> 2); layer([[y, 12 - w + 2, '4'.repeat(1) + '3'.repeat(Math.max(1, w - 2)) + '2']], capeR); } }
       if (style === 1) layer(S.hairLong);
-      if (wp && wp.icon === 'staff') layer(S.weapons.staff, wpR, wpT, 0, step ? -1 : 0);
+      const sax = pose === 1 ? -1 : pose === 2 ? 2 : step, say = pose === 1 ? -1 : 0, ssw = wp ? SWING_SIDE[wp.icon] || [0, 0] : [0, 0], sdeg = pose ? ssw[pose - 1] : step * -5;
+      if (wp && wp.icon === 'staff') layerRot(S.weapons.staff, wpR, wpT, sax, say + (step ? -1 : 0), sdeg, 19, 31);
       layer(Lg.back, legsR); layer(Lg.bootB, feetR, goldOr(ft ? ft.rar : 0, feetR));
       layer(Lg.front, legsR); layer(Lg.bootF, feetR, goldOr(ft ? ft.rar : 0, feetR));
       if (gmKnee && step === 0) layer(S.gmKnee, GMR, GMT);
@@ -379,9 +431,9 @@
         else if (gmHelm) layer(S.gmhelm, GMR, GMT);
         else if (hatK === 1) layer(S.hats[1], null, GOLD); else if (hatK) layer(S.hats[hatK]);
       }
-      if (wp && S.weapons[wp.icon] && wp.icon !== 'staff') layer(S.weapons[wp.icon], wpR, wpT, 0, step ? -1 : 0);
-      layer(A.arm, chestR, AT, step, 0);
-      if (gm) layer(S.gmSpikes, GMR, GMT, step, 0);
+      if (wp && S.weapons[wp.icon] && wp.icon !== 'staff') layerRot(S.weapons[wp.icon], wpR, wpT, sax, say + (step ? -1 : 0), sdeg, 19, 30);
+      layer(A.arm, chestR, AT, sax, say);
+      if (gm) layer(S.gmSpikes, GMR, GMT, sax, say);
     }
     // chapeau de mage : les lettres p q r prennent la couleur du chapeau, pas celle de la tenue
     // (géré en repeignant après coup : plus simple que de multiplier les rampes)
