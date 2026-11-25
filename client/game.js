@@ -10,6 +10,8 @@
   const TAU = Math.PI * 2, FACES = ['front', 'back', 'side'];
   const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
   const pick = a => a[Math.floor(Math.random() * a.length)];
+  // recul de la caméra : 0 proche, 1 normal (par défaut), 2 loin — un cran = un pixel d'écran de moins par pixel de jeu (reste net)
+  let ZOOM = (() => { try { const v = localStorage.getItem('etheria_zoom'); return v == null ? 1 : clamp(v | 0, 0, 2); } catch (e) { return 1; } })();
   const $ = id => document.getElementById(id);
 
   /* ---------- canvases : monde (pixels fins) + interface (pixels plus gros) ---------- */
@@ -51,7 +53,7 @@
   function resize() {
     dpr = window.devicePixelRatio || 1;
     const pw = Math.round(innerWidth * dpr), ph = Math.round(innerHeight * dpr), pm = Math.min(pw, ph);
-    S = Math.max(1, Math.round(pm / 240)); SU = Math.max(2, Math.round(pm / 195), S); // zoom : ~240 px de monde sur la largeur
+    const S0 = Math.max(1, Math.round(pm / 240)); S = Math.max(Math.min(2, S0), S0 - ZOOM); SU = Math.max(2, Math.round(pm / 195), S); // ~240 px de monde sur la largeur au plus proche, +25 % / +65 % en reculant
     VW = Math.ceil(pw / S); VH = Math.ceil(ph / S); UW = Math.ceil(pw / SU); UH = Math.ceil(ph / SU); K = S / SU;
     const sp = document.getElementById('safe'); if (sp) { const cs = getComputedStyle(sp); ST = Math.round(parseFloat(cs.paddingTop || 0) * dpr / SU); SB = Math.round(parseFloat(cs.paddingBottom || 0) * dpr / SU); }
     RQ = Math.min(RQ || S, S); cvW.width = VW * RQ; cvW.height = VH * RQ; cvW.style.width = VW * S / dpr + 'px'; cvW.style.height = VH * S / dpr + 'px'; // RQ sous-pixels par pixel de jeu : la caméra glisse finement
@@ -60,6 +62,11 @@
     GRADES = []; BACKDROP = buildBackdrop();
   }
   window.addEventListener('resize', resize); resize();
+  function setZoom(z) {
+    z = clamp(z, 0, 2); if (z === ZOOM) return; ZOOM = z; try { localStorage.setItem('etheria_zoom', String(z)); } catch (e) { /* ignore */ }
+    RQ = 0; resize(); if (mode === 'play') floatAt(me, 'Vue : ' + ['proche', 'normale', 'éloignée'][z], '#fff2d0');
+  }
+  let wheelT = 0; window.addEventListener('wheel', e => { if (mode !== 'play' || performance.now() - wheelT < 250) return; wheelT = performance.now(); setZoom(ZOOM + (e.deltaY > 0 ? 1 : -1)); }, { passive: true });
 
   /* ---------- police pixel 3x5 ---------- */
   const FONT = { A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', F: '111100110100100', G: '011100101101011', H: '101101111101101', I: '111010010010111', J: '001001001101010', K: '101101110101101', L: '100100100100111', M: '101111111101101', N: '110101101101101', O: '010101101101010', P: '110101110100100', Q: '010101101110011', R: '110101110101101', S: '011100010001110', T: '111010010010010', U: '101101101101111', V: '101101101101010', W: '101101111111101', X: '101101010101101', Y: '101101010010010', Z: '111001010100111', '0': '111101101101111', '1': '010110010010111', '2': '110001010100111', '3': '110001010001110', '4': '101101111001001', '5': '111100110001110', '6': '011100111101111', '7': '111001010010010', '8': '111101111101111', '9': '111101111001110', '_': '000000000000111', '-': '000000111000000', '+': '000010111010000', '!': '010010010000010', '.': '000000000000010', ':': '000010000010000', '/': '001001010100100', '?': '110001010000010', "'": '010010000000000', ',': '000000000010100', '(': '010100100100010', ')': '010001001001010', '%': '101001010100101', '#': '101111101111101', '*': '000101010101000', '<': '001010100010001', '>': '100010001010100', '=': '000111000111000' };
@@ -197,10 +204,10 @@
   const CL = () => C.kitOf(me.equip, me.mast, me.bar); // arme en main → attaque de base + 3 techniques
   const localAbCd = [0, 0, 0];
   const joy = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0 }, keys = {}, pointers = new Map(), btnDown = {};
-  function btns() { const b = UH - 12 - SB, K0 = CL(); return { atk: { x: UW - 27, y: b - 18, r: 18, icon: 'a_' + K0.basic.icon }, s0: { x: UW - 62, y: b - 6, r: 12, icon: 'a_' + K0.ab[0].icon, ab: 0 }, s1: { x: UW - 59, y: b - 38, r: 12, icon: 'a_' + K0.ab[1].icon, ab: 1 }, s2: { x: UW - 31, y: b - 57, r: 12, icon: 'a_' + K0.ab[2].icon, ab: 2 }, pot: { x: UW - 91, y: b - 4, r: 10, icon: 'potion' }, chat: { x: UW - 64, y: 16 + ST, r: 9, icon: 'chat' }, bag: { x: UW - 64, y: 38 + ST, r: 9, icon: 'bag' } }; }
+  function btns() { const b = UH - 12 - SB, K0 = CL(); return { atk: { x: UW - 27, y: b - 18, r: 18, icon: 'a_' + K0.basic.icon }, s0: { x: UW - 62, y: b - 6, r: 12, icon: 'a_' + K0.ab[0].icon, ab: 0 }, s1: { x: UW - 59, y: b - 38, r: 12, icon: 'a_' + K0.ab[1].icon, ab: 1 }, s2: { x: UW - 31, y: b - 57, r: 12, icon: 'a_' + K0.ab[2].icon, ab: 2 }, pot: { x: UW - 91, y: b - 4, r: 10, icon: 'potion' }, chat: { x: UW - 64, y: 16 + ST, r: 9, icon: 'chat' }, bag: { x: UW - 64, y: 38 + ST, r: 9, icon: 'bag' }, zoom: { x: UW - 64, y: 60 + ST, r: 9, icon: 'zoom' } }; }
   const toU = e => ({ x: e.clientX * dpr / SU, y: e.clientY * dpr / SU });
   function hitBtn(p) { const B = btns(); for (const k in B) { const b = B[k]; if (Math.hypot(p.x - b.x, p.y - b.y) <= b.r + 4) return k; } return null; }
-  function pressBtn(k, down) { btnDown[k] = down; if (k === 'atk') input.atkBtn = down; else if (down) { if (k[0] === 's' && k.length === 2) input.ab = +k[1]; if (k === 'pot') input.pot = true; if (k === 'chat') openChat(); if (k === 'bag') openChar(); } }
+  function pressBtn(k, down) { btnDown[k] = down; if (k === 'atk') input.atkBtn = down; else if (down) { if (k[0] === 's' && k.length === 2) input.ab = +k[1]; if (k === 'pot') input.pot = true; if (k === 'chat') openChat(); if (k === 'bag') openChar(); if (k === 'zoom') setZoom((ZOOM + 1) % 3); } }
   cvU.addEventListener('pointerdown', e => {
     e.preventDefault(); if (e.pointerType === 'touch') usedTouch = true;
     if (mode !== 'play') return;

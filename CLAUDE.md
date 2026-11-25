@@ -93,6 +93,8 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving
   characters glide at screen-pixel precision; static art stays on the game-pixel grid. `adaptQuality()` halves `RQ` if the
   average frame time exceeds 20 ms (full → half → 1). Tapping the minimap shows `fps` and `Q<RQ>`.
+- Camera distance: `ZOOM` (0 close, 1 normal = default, 2 far; `localStorage.etheria_zoom`, magnifier button / mouse wheel)
+  lowers the integer screen scale `S` by one step per level, so the world stays pixel-sharp.
 - Avoid full-screen per-frame effects (composite modes, scaled smoothed draws): cache them per screen size (see `OVERLAY`).
 - Measure before/after with a CPU-throttled headless run; headless rAF timestamps snap to 16.7 ms, so judge movement by time, not per frame.
 

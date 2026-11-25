@@ -555,6 +555,7 @@
     a_frost: icon(['.....w.....', '..w..w..w..', '...w.w.w...', '....www....', 'wwwwwWwwwww', '....www....', '...w.w.w...', '..w..w..w..', '.....w.....'], { w: '#a8dcff', W: '#ffffff' }),
     a_fire: icon(['....r.....', '...rr..r..', '..rrr.rr..', '..royrrr..', '.rooyyor..', '.royyyyor.', '.royWWyor.', '..ryWWyr..', '...rrrr...'], { r: '#d8402a', o: '#f08a3a', y: '#ffd060', W: '#fff4c0' }),
     a_heal: icon(['...gggg...', '...gWWg...', 'ggggWWgggg', 'gWWWWWWWWg', 'gWWWWWWWWg', 'ggggWWgggg', '...gWWg...', '...gggg...'], { g: '#4aa04a', W: '#c8f0a0' }),
+    zoom: icon(['.www.....', 'w...w....', 'w.W.w....', 'w...w....', '.www.....', '....ww...', '.....ww..', '......ww.', '.......w.'], { w: '#f4ead8', W: '#bfe6ff' }),
     chat: icon(['.wwwwwww.', 'wwwwwwwww', 'w.w.w.w.w', 'wwwwwwwww', '.wwwwwww.', '..ww.....', '.w.......'], { w: '#f4ead8' })
   };
 
