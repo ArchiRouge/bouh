@@ -528,13 +528,14 @@
         for (const A of F.caps || []) if (A.m === ev.lv) setTimeout(() => { sys('Nouvelle capacité : ' + A.name + ' — ' + A.desc); }, 900);
       } break;
       case 'heal': { const t = ent(ev.id); if (t) { burst(t, '#9cf07a', 14, 30); if (t === me) floatAt(me, '+' + ev.v + (ev.by && ev.by !== myId ? ' (soin)' : ''), '#9cf07a'); } break; }
-      case 'gm': if (ev.id === myId) { sys(ev.mage ? 'Te voilà mage : le Sceptre du Maître du jeu tire à distance. Maîtrise Bâton ' + ev.mage + ', points passés en Intelligence (réinitialisables chez Elya).' : 'Ton armure de Maître du jeu est équipée. Elle est unique.'); floatAt(me, 'Maître du jeu', '#ffe070', true); ring(me, 3, '#ffe070', 0.9); burst(me, '#ffe070', 40, 60); burst(me, '#ffffff', 16, 50); } break;
+      case 'gm': if (ev.id === myId) { sys(ev.mage ? 'Te voilà mage : le Grimoire du Maître du jeu et son orbe tirent à distance. Maîtrise Bâton ' + ev.mage + ', points passés en Intelligence (réinitialisables chez Elya).' : 'Ton armure de Maître du jeu est équipée. Elle est unique.'); floatAt(me, 'Maître du jeu', '#ffe070', true); ring(me, 3, '#ffe070', 0.9); burst(me, '#ffe070', 40, 60); burst(me, '#ffffff', 16, 50); } break;
       case 'travel': if (ev.id === myId && !travel) {
         const I = C.ISLES[ev.to.k] || C.ISLES.bourg; travel = { t: time, name: I.name, col: ev.via === 'ether' ? [120, 80, 200] : [230, 170, 70] };
         joy.active = false; input.atkBtn = false;
         try { sessionStorage.setItem('etheria_autoplay', '1'); sessionStorage.setItem('etheria_arrive', JSON.stringify({ name: I.name, desc: I.desc || '', fresh: ev.fresh, col: travel.col })); } catch (e) { /* ignore */ }
         setTimeout(() => { if (link) link.saveNow(); setTimeout(() => location.reload(), 150); }, 1300);
       } break;
+      case 'imm': { const mb = mobs[ev.m]; if (mb) floatAt(mb, ev.fx === 'burn' ? 'Insensible au feu' : 'Insensible au froid', '#c8c0d8'); break; }
       case 'chest': if (ev.id === myId) { chestOpen = true; sys('Coffre de brume : +' + ev.g + ' PO et deux objets !'); floatAt(me, 'Trésor !', '#ffe27a', true); burst(me, '#ffe27a', 30, 50); } break;
       case 'founder': if (ev.id === myId) { sys('Cadeau du fondateur : les Bottes du Néant (Unique) et un ensemble épique sont équipés !'); floatAt(me, 'Bottes du Néant', '#ff9a3c', true); ring(me, 2.6, '#ff9a3c', 0.8); burst(me, '#b08ae8', 30, 50); } break;
       case 'sw': if (ev.id !== myId) { const o = others.get(ev.id), mb = mobs[ev.m]; if (o && mb) { basicFx(o, mb, ev.fx); setFacing(o, mb.x - o.x, mb.y - o.y); } } break;
@@ -716,9 +717,9 @@
       default: return drawChar(e, sx, sy);
     }
   }
-  // taille d'un pixel de personnage en pixels de jeu : ~0,6, arrondie pour tomber sur un nombre entier de pixels d'écran
-  // (grille nette). ck = même échelle exprimée comme l'ancien facteur (~1,2) pour les effets placés autour du héros.
-  function charP() { return RQ >= 2 ? Math.max(1, Math.round(RQ * 0.6)) / RQ : 0.5; }
+  // ck = même échelle exprimée comme l'ancien facteur (~1,2) pour les effets placés autour du héros.
+  // 3 pixels d'écran par pixel de personnage quel que soit le recul de la caméra : le héros et son armure restent lisibles
+  function charP() { return Math.max(1, Math.round(3 * RQ / S)) / RQ; }
   function charK() { return charP() * 2; }
   function drawChar(e, sx, sy) {
     if (!e.set) return;

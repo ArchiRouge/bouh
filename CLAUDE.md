@@ -69,12 +69,13 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   feet at y = 55, centre x = 28.5. Attack poses (`paint(..., pose)` 1 = wind-up, 2 = strike, `set.atk`) rotate the weapon around the hand
   with RotSprite (Scale2x ×2, nearest rotation, resample) — keeps blades clean; angles in `SWING` / `SWING_SIDE`. `e.atkT` drives them in `game.js`.
   `sprites.js` has no DOM dependency (paints into an RGBA array), so it can be tested in Node; `assets.js` `charSet` caches canvases.
-- In the world a character pixel is ~0.6 game pixel, rounded so it lands on whole screen pixels (`charP()` in `game.js`).
+- In the world a character pixel is always 3 screen pixels (`charP()` in `game.js`), whatever the camera distance, so the hero stays readable.
   Don't scale sprites by non-integer screen factors. Draw new gear in the grids pixel by pixel; never go back to vector-then-downsample.
 - No classes: the equipped weapon's family (`FAMS` in `core.js`: sword, great, dagger, bow, staff, spear) gives the basic attack and
   techniques, unlocked by per-family mastery (`p.mast`, gained in combat). `kitOf(equip, mast, bar)` = basic attack + the 3 bar slots.
   Stats come from points (`p.pts`, 3 per level, reset at Elya). The old `cls` save field now means "starting weapon" (`START`).
   Shield = `offhand` slot, only with a 1H sword and sword mastery ≥ 5; block at mastery 8.
+  Mages can hold a grimoire (`icon: 'tome'`, staff family): book in one hand, floating ether orb by the other (`orbAt` in `sprites.js`).
 - Game Master set (items 33–38, `fx: 'gm'`, unique, never in loot, can't be sold): golden armor drawn in `sprites.js`
   (`F.gm`, `gmhelm`, white cape), gold name and aura in game. `Sim.grantGM(p)` equips it once; granted to the artifact owner
   (`Cloud.owner`), to the hero Archi404 in the app when `config.js` has `gm: true`, and on the server to device tokens in `GM_TOKENS`.
@@ -87,7 +88,7 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   before `C.buildWorld(C.SEED, isle)`. Crossing a bridge = `cross` message → `travel` event → save, mist fade, `location.reload()`,
   auto-continue (`sessionStorage.etheria_autoplay`). The home island's generation must stay identical (its bridge is added last).
 - Ether bridge (3 Éther, random: 90 % fixed island `givre`/`braise`, 10 % ephemeral `brume` with a seed and a chest), home bridge
-  back to the fountain. Island monsters take the arriving hero's level. Online the server keeps everyone on the home island for now.
+  back to the fountain. Island monsters take the arriving hero's level. Island effects (`slow`, `burn`) skip monsters of the same element (`MOBDEF.el`). Online the server keeps everyone on the home island for now.
 
 ## Rendering & smoothness
 - The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving

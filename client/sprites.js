@@ -138,6 +138,11 @@
   F.weapons.gmstaff = (() => { const L = [[-8, 9, 'Y'], [-7, 9, 'y5'], [-6, 5, 'Y'], [-6, 9, 'y4'], [-6, 14, 'Y'], [-5, 5, 'y5'], [-5, 13, '4y'], [-4, 5, 'y5'], [-4, 9, 'wl'], [-4, 13, '4G'],
     [-3, 5, 'y4'], [-3, 8, 'wlli'], [-3, 13, '3G'], [-2, 6, 'y4'], [-2, 8, 'llii'], [-2, 12, '3g'], [-1, 6, 'g4'], [-1, 9, 'ii'], [-1, 11, '3g'], [0, 7, 'g44332g'], [1, 8, 'gyyGg']];
     for (let y = 2; y <= 40; y++) L.push([y, 9, y % 7 === 4 ? 'yG' : '43']); L.push([41, 9, 'g']); return L; })();
+  // grimoire (famille Bâton) : livre tenu à la main, couverture à la couleur de l'objet, pages et gemme ; l'orbe flotte de l'autre côté
+  F.weapons.tome = [[26, -1, 'gGGGGGGg'], [27, -1, 'G555544G'], [28, -1, 'G5yyyy4G'], [29, -1, 'G5yRQy3G'], [30, -1, 'G5yRRy3G'], [31, -1, 'G5yyyy3G'], [32, -1, 'G444433G'], [33, -1, 'G443333G'], [34, -1, 'gGGGGGGg'],
+    [27, 7, 'w'], [28, 7, 'l'], [29, 7, 'w'], [30, 7, 'w'], [31, 7, 'l'], [32, 7, 'w'], [33, 7, 'w'], [26, 0, 'Y']];
+  const ORB = [[0, 1, 'lll'], [1, 0, 'lwwli'], [2, 0, 'lwllj'], [3, 0, 'illij'], [4, 1, 'ijj']];
+  const orbAt = (x, y, fr) => ORB.map(([dy, dx, t]) => [y + dy, x + dx, t]).concat(fr % 2 ? [[y - 2, x + 5, 'w'], [y + 6, x - 1, 'l']] : [[y - 1, x - 2, 'l'], [y + 5, x + 5, 'w']]);
   /* ---------- couvre-chefs (vue de face) ---------- */
   function dome(rx, ry, cx, cy, y0, y1, open) { // calotte ombrée (lumière en haut à gauche) ; open(x, y) = trou du visage
     const L = [];
@@ -240,6 +245,7 @@
     spear: (() => { const L = []; for (let x = 6; x <= 37; x++) { const y = Math.round(31 - (x - 19) * 0.4); L.push([y, x, 'P'], [y + 1, x, 'O']); } L.push([24, 37, '45'], [23, 38, '4555'], [24, 39, '442'], [25, 38, '22'], [22, 39, '5'], [26, 36, 'gG'], [25, 36, 'g']); return L; })(),
     great: (() => { const L = []; for (let i = 0; i <= 9; i++) L.push([29 - i, 21 + 2 * i, '234455']); L.push([19, 41, '5'], [26, 19, 'Y'], [27, 19, 'yG'], [28, 20, 'yG'], [29, 20, 'Gg'], [30, 21, 'g'], [31, 21, 'g'], [30, 17, 'LM'], [31, 15, 'LM'], [32, 13, 'RQ']); return L; })()
   };
+  S.weapons.tome = [[26, 20, 'gGGGGg'], [27, 20, 'G554ww'], [28, 20, 'G5Rwlw'], [29, 20, 'G543ww'], [30, 20, 'G433lw'], [31, 20, 'gGGGGg']];
   S.shield = [[26, 22, 'yG'], [27, 21, 'y45g'], [28, 21, 'y45g'], [29, 21, 'y44g'], [30, 21, 'yYyg'], [31, 21, 'y43g'], [32, 21, 'y43g'], [33, 21, 'y32g'], [34, 21, 'G32g'], [35, 22, 'Gg']];
   // armes dans le dos (vue de dos) : en diagonale derrière les épaules
   B.weapons = {
@@ -251,6 +257,7 @@
     spear: (() => { const L = []; for (let y = -2; y <= 38; y++) L.push([y, Math.round(30 - (y + 2) / 3), 'OP']); L.push([-8, 31, '5'], [-7, 30, '545'], [-6, 30, '4552'], [-5, 30, '4542'], [-4, 31, '42'], [-3, 30, 'gGg']); return L; })(),
     great: (() => { const L = []; for (let y = 2; y <= 30; y++) { const x = 32 - ((y - 2) >> 1); L.push([y, x - 2, '24453']); } L.push([1, 31, '45'], [0, 32, '5'], [31, 14, 'gGGyyGGg'], [32, 17, 'LM'], [33, 17, 'LM']); return L; })()
   };
+  B.weapons.tome = []; // de dos, le livre est caché ; seule l'orbe se voit
   B.shield = disc(7.5, 34, 6.6, true);
 
 
@@ -308,8 +315,8 @@
   }
   const DEG = Math.PI / 180;
   // angle de l'arme selon la pose : 1 = armer, 2 = frapper (au corps à corps grand arc, à distance geste court)
-  const SWING = { sword: [35, -70], axe: [40, -70], great: [40, -70], dagger: [30, -55], spear: [15, -35], staff: [10, -18], gmstaff: [10, -18], bow: [0, 0] };
-  const SWING_SIDE = { sword: [-55, 40], axe: [-60, 45], great: [-60, 45], dagger: [-45, 35], spear: [-20, 15], staff: [-15, 20], gmstaff: [-15, 20], bow: [0, 0] };
+  const SWING = { tome: [-12, 14], sword: [35, -70], axe: [40, -70], great: [40, -70], dagger: [30, -55], spear: [15, -35], staff: [10, -18], gmstaff: [10, -18], bow: [0, 0] };
+  const SWING_SIDE = { tome: [-15, 18], sword: [-55, 40], axe: [-60, 45], great: [-60, 45], dagger: [-45, 35], spear: [-20, 15], staff: [-15, 20], gmstaff: [-15, 20], bow: [0, 0] };
 
   /* ---------- peintre ---------- */
   // look : [coiffure, couleur des cheveux, tenue, peau, chapeau] ; gear : { slot: { icon, c, rar } }
@@ -356,7 +363,8 @@
     };
     const style = look[0] | 0, hatK = hd ? 0 : look[4] | 0;
     const hatPal = look[4] === 1 ? ramp5('#5e3cb4') : null;
-    const wpR = wp ? (wp.fx === 'gm' ? GMR : wp.icon === 'staff' || wp.icon === 'bow' ? ramp5(wp.c) : metal(wp.c)) : null;
+    const wpR = wp ? (wp.fx === 'gm' ? GMR : wp.icon === 'staff' || wp.icon === 'bow' || wp.icon === 'tome' ? ramp5(wp.c) : metal(wp.c)) : null;
+    const tome = wp && wp.icon === 'tome', bob = [0, -1, 0, 1][fr | 0] || 0;
     const wpT = wp ? (wp.fx === 'gm' ? GMT : goldOr(wp.rar, STEEL)) : GOLD;
     const gmKnee = lg && lg.fx === 'gm', gmHelm = hd && hd.icon === 'gmhelm';
     const cape = (rows0, rows1, front) => { if (!capeR) return; for (let y = rows0; y <= rows1; y++) { const l = y < 28 ? 8 : y < 34 ? 7 : 6, r = 37 - l; let s = ''; for (let x = l; x <= r; x++) { const f = (x - l) % 5; s += front ? (x === l ? '5' : x < l + 5 ? (f !== 4 ? '4' : '3') : x < r - 4 ? (f !== 4 ? '3' : '2') : (f !== 1 ? '2' : '3')) : (x === l ? '4' : f === 2 ? '2' : x < 19 ? '4' : '3'); } if (y === rows1) s = s.split('').map((c, i) => (i % 5) > 2 ? '.' : c).join(''); layer([[y, l, s]], capeR); } };
@@ -391,6 +399,7 @@
       }
       layer(A.armL, chestR, AT, ax, ay);
       if (sh) layer(F.shield, shR, shT, 0, -step);
+      if (tome) layer(orbAt(31 + (pose === 2 ? 1 : 0), 26 + bob - (pose === 1 ? 4 : pose === 2 ? 1 : 0), fr | 0).concat(pose === 2 ? [[24, 30, 'l'], [31, 37, 'l'], [23, 35, 'w']] : []));
     } else if (dir === 'back') {
       if (wp && B.weapons[wp.icon]) layer(B.weapons[wp.icon], wpR, wpT);
       layer(B.legL, legsR, null, 0, step > 0 ? -2 : 0); layer(B.legR, legsR, null, 0, step < 0 ? -2 : 0);
@@ -400,6 +409,7 @@
       if (capeR) cape(23, 44, false);
       if (gm) layer(B.gmPauldrons, GMR, GMT);
       if (sh) layer(B.shield, shR, shT, 0, -step);
+      if (tome) layer(orbAt(32, 21 + bob, fr | 0));
       if (wp && B.weapons[wp.icon] && !capeR) layer(B.weapons[wp.icon], wpR, wpT);
       else if (wp && B.weapons[wp.icon]) layer(B.weapons[wp.icon].filter(r => r[0] < 24), wpR, wpT);
       if (hd && hd.icon === 'hood') layer(B.hood, ramp5(hd.c));
@@ -434,6 +444,7 @@
       if (wp && S.weapons[wp.icon] && wp.icon !== 'staff') layerRot(S.weapons[wp.icon], wpR, wpT, sax, say + (step ? -1 : 0), sdeg, 19, 30);
       layer(A.arm, chestR, AT, sax, say);
       if (gm) layer(S.gmSpikes, GMR, GMT, sax, say);
+      if (tome) layer(orbAt(31 + (pose === 2 ? 3 : pose === 1 ? -1 : 0), 25 + bob - (pose === 1 ? 3 : 0), fr | 0));
     }
     // chapeau de mage : les lettres p q r prennent la couleur du chapeau, pas celle de la tenue
     // (géré en repeignant après coup : plus simple que de multiplier les rampes)

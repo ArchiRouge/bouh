@@ -518,6 +518,7 @@
     amulet: ['..dddddd....', '.d......d...', '.d......d...', '..d....d....', '...d..d.....', '....gg......', '...gllg.....', '...glccg....', '...gcccg....', '....ggg.....'],
     bow: ['...bb.......', '..b..bl.....', '.b....l.....', 'b.....l.....', 'b..wwwwwwwy.', 'b.....l.....', '.b....l.....', '..b..bl.....', '...bb.......'],
     gmhelm: ['l.........l.', 'll..l.l..ll.', '.lc.lcl.lc..', '.lccccccccl.', '..cccccccc..', '.dccgwgccd..', '.dcd....dcd.', '.dcd....dcd.', '..d......d..'],
+    tome: ['........ww..', '.......wllw.', '.......wllw.', '........ww..', 'ddddddd.....', 'dcccccdw....', 'dcgggcdw....', 'dcglgcdw....', 'dcgggcdw....', 'dcccccdw....', 'ddddddd.....'],
     shield: ['...dddddd...', '..dlllcccd..', '.dllcgcccdd.', '.dlcgggcccd.', '.dccgwgcccd.', '.dcccgccccd.', '.dcccccccdd.', '..dccccccd..', '...dccccd...', '....dddd....'],
     dagger: ['..........l.', '.........lc.', '........lcl.', '.......lcl..', '......lcl...', '...g.lcl....', '....gcl.....', '....bg......', '...b..g.....', '..b.........'],
     spear: ['..........ll', '.........lcl', '........lcc.', '.......gcl..', '......b.....', '.....b......', '....b.......', '...b........', '..b.........', '.b..........'],

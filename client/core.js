@@ -25,8 +25,8 @@
   const MOBDEF = {
     slime: { name: 'Gelée verte', aggr: false },
     champi: { name: 'Champi des bois', aggr: true },
-    ember: { name: 'Gelée de braise', aggr: true },
-    frost: { name: 'Gelée de givre', aggr: false },
+    ember: { name: 'Gelée de braise', aggr: true, el: 'fire' },
+    frost: { name: 'Gelée de givre', aggr: false, el: 'ice' },
     boss: { name: 'Roi Gelée', aggr: true, boss: true }
   };
   function mobStats(type, lvl) {
@@ -85,10 +85,11 @@
     { n: 'Solerets du Maître du jeu', slot: 'feet', lvl: 1, icon: 'boots', c: '#f0c040', st: { agi: 4, armor: 8 }, speed: 0.4, fx: 'gm', unique: 1 },
     { n: 'Lame du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'sword', c: '#f0c040', st: { str: 11, agi: 5, sta: 4 }, fx: 'gm', unique: 1 },
     { n: 'Égide du Maître du jeu', slot: 'offhand', lvl: 1, icon: 'shield', c: '#f0c040', st: { armor: 16, sta: 6, str: 2 }, fx: 'gm', unique: 1 },
-    { n: 'Sceptre du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'staff', c: '#f0c040', st: { int: 12, sta: 4, agi: 3 }, fx: 'gm', unique: 1, lore: "L'orbe obéit à la voix de celui qui a écrit le monde." }
+    { n: 'Grimoire du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'tome', c: '#f0c040', st: { int: 12, sta: 4, agi: 3 }, fx: 'gm', unique: 1, lore: "Le livre où le monde a été écrit ; l'orbe obéit à sa voix." },
+    { n: "Grimoire d'apprenti", slot: 'weapon', lvl: 2, icon: 'tome', c: '#6a4ab0', st: { int: 4, sta: 1 } }
   ];
   const GM_EQUIP = [33, 34, 35, 36, 39], GM_BAG = [37, 38]; // le maître du jeu est mage : sceptre en main, lame et égide au sac
-  const LOOT = { frost: { ch: 0.13, items: [7, 13, 15, 26, 29, 31, 1, 21] }, slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21, 25, 29] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22, 26, 31] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 } };
+  const LOOT = { frost: { ch: 0.13, items: [7, 13, 15, 26, 29, 31, 1, 21, 40] }, slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32, 40] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21, 25, 29] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22, 26, 31] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 } };
   function itemStats(inst) { const T = ITEMS[inst[0]], mul = RARITY[inst[1]][2], o = {}; for (const k in T.st) o[k] = Math.max(1, Math.round(T.st[k] * mul)); return o; }
   const itemValue = inst => Math.round((5 + ITEMS[inst[0]].lvl * 4) * RARITY[inst[1]][2]);
   function rollRarity(min) { const r = Math.random(); const v = r < 0.02 ? 3 : r < 0.12 ? 2 : r < 0.4 ? 1 : 0; return Math.min(3, Math.max(min || 0, v)); }
@@ -155,7 +156,7 @@
         { name: 'Empalement', icon: 'pierce', m: 7, mp: 16, cd: 6, kind: 'single', range: 2.3, mult: 2.6, slow: 4, fx: 'pierce', desc: 'Transperce la cible et la ralentit 4 s.' }] },
     none: { name: 'Mains nues', stat: 'str', basic: { name: 'Coup de poing', icon: 'slash', range: 1.1, cd: 0.5, mult: 0.6, fx: 'slash' }, tech: [] }
   };
-  const FAM_OF = { sword: 'sword', axe: 'great', great: 'great', dagger: 'dagger', bow: 'bow', staff: 'staff', spear: 'spear' };
+  const FAM_OF = { sword: 'sword', axe: 'great', great: 'great', dagger: 'dagger', bow: 'bow', staff: 'staff', tome: 'staff', spear: 'spear' };
   // armes de départ proposées à la création (l'ancien champ « cls » des sauvegardes garde ce sens : 0 épée, 1 arc, 2 bâton)
   const START = [[0, 'sword'], [20, 'bow'], [1, 'staff'], [28, 'dagger'], [30, 'spear'], [32, 'great']];
   const MAST_MAX = 20, mNeed = l => Math.round(10 * Math.pow(l, 1.7));
@@ -264,8 +265,8 @@
      le Pont du Bourg (doré) ramène toujours au Bourg d'Argel. 90 % : une île fixe ; 10 % : une île éphémère. */
   const ISLES = {
     bourg: { name: "Bourg d'Argel", theme: 'bourg' },
-    givre: { name: 'Île Givrée', theme: 'givre', seed: 7101, fx: 'slow', mobs: ['frost', 'frost', 'frost', 'champi'], res: ['quartz', 'wood'], trees: ['pine', 'pine', 'pine', 'oak', 'rock'], desc: 'Le froid mord : tes coups ralentissent les ennemis.' },
-    braise: { name: 'Île des Braises', theme: 'braise', seed: 7202, fx: 'burn', mobs: ['ember', 'ember', 'ember', 'champi'], res: ['quartz', 'herb'], trees: ['rock', 'rock', 'pine', 'bush', 'oak'], desc: 'La terre brûle : tes coups enflamment les ennemis.' },
+    givre: { name: 'Île Givrée', theme: 'givre', seed: 7101, fx: 'slow', mobs: ['frost', 'frost', 'champi', 'slime'], res: ['quartz', 'wood'], trees: ['pine', 'pine', 'pine', 'oak', 'rock'], desc: 'Le froid mord : tes coups ralentissent les ennemis (sauf les créatures de givre).' },
+    braise: { name: 'Île des Braises', theme: 'braise', seed: 7202, fx: 'burn', mobs: ['ember', 'ember', 'champi', 'slime'], res: ['quartz', 'herb'], trees: ['rock', 'rock', 'pine', 'bush', 'oak'], desc: 'La terre brûle : tes coups enflamment les ennemis (sauf les créatures de feu).' },
     brume: { name: 'Île de Brume', theme: 'brume', eph: 1, mobs: ['slime', 'champi', 'ember', 'frost'], res: ['herb', 'wood', 'quartz'], trees: ['oak', 'pine', 'blossom', 'bush'], desc: "Île éphémère : un coffre rare t'attend. Elle disparaîtra quand tu partiras." }
   };
   const FIXED_ISLES = ['givre', 'braise'], ETHER_BRIDGE = 3, BRIDGE_LEN = 4;
@@ -706,7 +707,10 @@
     }
     hitMob(m, dmg, p, crit) {
       m.hp -= dmg; m.tagged.add(p.id); this.addMast(p, 1);
-      if (this.fx === 'slow') m.slowT = this.t + 2.5;
+      // effet de l'île, sauf sur les créatures du même élément (le feu ne brûle pas une gelée de braise)
+      const el = MOBDEF[m.type].el, imm = (this.fx === 'slow' && el === 'ice') || (this.fx === 'burn' && el === 'fire');
+      if (imm) { if (!(m.immT > this.t)) { m.immT = this.t + 4; this.ev({ e: 'imm', m: m.k, fx: this.fx }); } }
+      else if (this.fx === 'slow') m.slowT = this.t + 2.5;
       else if (this.fx === 'burn') { m.burnT = this.t + 3; m.burnBy = p.id; m.burnDps = Math.max(1, dmg * 0.12); }
       if (m.target == null) { m.target = p.id; m.returning = false; }
       const d = Math.hypot(m.x - p.x, m.y - p.y) || 1; moveBy(this.W, m, (m.x - p.x) / d * 0.12, (m.y - p.y) / d * 0.12);

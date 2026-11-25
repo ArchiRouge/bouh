@@ -56,6 +56,8 @@ Au lancement : **2 îles** (Givrée et Braises) + les îles éphémères, puis l
 
 - Le Pont d'Éther **coûte 3 Éther** (gagné en marchant dans la vraie vie) ; le Pont du Bourg est gratuit et ramène à la fontaine.
 - **Île Givrée** : chaque coup ralentit l'ennemi 2,5 s. **Île des Braises** : chaque coup l'enflamme 3 s (12 % des dégâts par seconde).
+  Les créatures du même élément y sont insensibles (gelées de givre sur la Givrée, gelées de braise sur les Braises) ;
+  ces îles mêlent donc créatures natives et monstres venus d'ailleurs.
 - Pour changer d'île, le jeu sauvegarde puis recharge la nouvelle île derrière un fondu de brume (pas de perte possible).
 
 ## Ce qui est en jeu (étape 1)
