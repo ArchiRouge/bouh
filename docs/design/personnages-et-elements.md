@@ -32,6 +32,10 @@ Pixel art posé à la main, couches d'équipement recoloriées selon l'objet. Co
 
 ![Armes et bouclier v7](img/v7-armes-bouclier.png)
 
+**Armure unique du Maître du jeu** (dorée, diadème ailé, épaulières à ailettes, cape blanche) — réservée à Archibald :
+
+![Maître du jeu](img/v7-maitre-du-jeu.png)
+
 ## Direction des personnages : Grow Stone Online (sprites en jeu)
 
 Les maquettes v1 à v3 (héros « héroïques » de 3,5 têtes, style aquarelle puis Monster Strike) sont **abandonnées pour le design

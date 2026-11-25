@@ -73,6 +73,9 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   techniques, unlocked by per-family mastery (`p.mast`, gained in combat). `kitOf(equip, mast, bar)` = basic attack + the 3 bar slots.
   Stats come from points (`p.pts`, 3 per level, reset at Elya). The old `cls` save field now means "starting weapon" (`START`).
   Shield = `offhand` slot, only with a 1H sword and sword mastery ≥ 5; block at mastery 8.
+- Game Master set (items 33–38, `fx: 'gm'`, unique, never in loot, can't be sold): golden armor drawn in `sprites.js`
+  (`F.gm`, `gmhelm`, white cape), gold name and aura in game. `Sim.grantGM(p)` equips it once; granted to the artifact owner
+  (`Cloud.owner`), to the hero Archi404 in the app when `config.js` has `gm: true`, and on the server to device tokens in `GM_TOKENS`.
 - `C.gearStr(equip)` encodes head/chest/legs/feet/weapon/offhand; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
 
 ## Rendering & smoothness

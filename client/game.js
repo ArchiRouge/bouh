@@ -412,6 +412,8 @@
       const p = this.sim.addPlayer('me', hello.name, hello.look, save, hello.cls);
       this.sim.events.length = 0;
       if (Cloud.owner || (window.ETHERIA_CONFIG && window.ETHERIA_CONFIG.founder)) this.sim.grantFounder(p);
+      // maître du jeu : le propriétaire de la page de test, ou le héros Archi404 dans l'app quand config.gm est activé
+      if (Cloud.owner || (window.ETHERIA_CONFIG && window.ETHERIA_CONFIG.gm && p.name === 'Archi404')) this.sim.grantGM(p);
       setTimeout(() => this.onmsg({ t: 'welcome', id: 'me', x: p.x, y: p.y }), 0);
       this.iv = setInterval(() => { this.sim.step(0.1); const ev = this.sim.events.splice(0); this.onmsg(Object.assign({ t: 's', me: this.sim.meState('me'), ev, n: 1 }, this.sim.publicState())); }, 100);
       return Promise.resolve();
@@ -489,6 +491,7 @@
         for (const A of F.caps || []) if (A.m === ev.lv) setTimeout(() => { sys('Nouvelle capacité : ' + A.name + ' — ' + A.desc); }, 900);
       } break;
       case 'heal': { const t = ent(ev.id); if (t) { burst(t, '#9cf07a', 14, 30); if (t === me) floatAt(me, '+' + ev.v + (ev.by && ev.by !== myId ? ' (soin)' : ''), '#9cf07a'); } break; }
+      case 'gm': if (ev.id === myId) { sys('Ton armure de Maître du jeu est équipée. Elle est unique.'); floatAt(me, 'Maître du jeu', '#ffe070', true); ring(me, 3, '#ffe070', 0.9); burst(me, '#ffe070', 40, 60); burst(me, '#ffffff', 16, 50); } break;
       case 'founder': if (ev.id === myId) { sys('Cadeau du fondateur : les Bottes du Néant (Unique) et un ensemble épique sont équipés !'); floatAt(me, 'Bottes du Néant', '#ff9a3c', true); ring(me, 2.6, '#ff9a3c', 0.8); burst(me, '#b08ae8', 30, 50); } break;
       case 'sw': if (ev.id !== myId) { const o = others.get(ev.id), mb = mobs[ev.m]; if (o && mb) { basicFx(o, mb, ev.fx); setFacing(o, mb.x - o.x, mb.y - o.y); } } break;
       case 'sk': if (ev.id !== myId) { const o = others.get(ev.id); if (o) { o.spin = 0.35; ring(o, 2.4, '#ffe27a', 0.35); } } break;
@@ -670,11 +673,12 @@
     if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e, cs), dx0, dy0 + bob, dw, dh);
     if (e.set.glint && ((time * 1.7 + (e.x || 0)) % 2.2) < 0.25) { const s2 = e.face === 'front' || (e.face === 'side' && e.flip) ? -1 : 1, gx = Math.round(sx + s2 * 9 * ck), gy = Math.round(sy - 17 * ck + bob); g.fillStyle = e.set.glint; g.fillRect(gx - 1, gy, 3, 1); g.fillRect(gx, gy - 1, 1, 3); g.fillStyle = '#ffffff'; g.fillRect(gx, gy, 1, 1); }
     if (scarf && e.set) drawScarf(e, sx, sy + bob, ck);
+    if (cs.gm) for (let k = 0; k < 3; k++) { const a = time * 1.6 + k * 2.09 + (e.x || 0), r = 9 * ck, y0 = sy - 14 * ck + Math.sin(time * 2.2 + k * 1.7) * 6 * ck; g.fillStyle = k === 1 ? '#ffffff' : '#ffe070'; g.globalAlpha = 0.55 + 0.45 * Math.sin(time * 5 + k); g.fillRect(Math.round(sx + Math.cos(a) * r), Math.round(y0), 1, 1); g.globalAlpha = 1; }
     if (e === me && me.buff > 0) for (let k = 0; k < 4; k++) { const a = time * 4 + k * 1.57; g.fillStyle = k % 2 ? '#ff9a6a' : '#ffd060'; g.fillRect(Math.round(sx + Math.cos(a) * 8), Math.round(sy - 10 + Math.sin(a) * 4), 1, 1); }
     if (e.slash > 0) drawSlash(sx, sy - 11 * ck, e.slashAng, 1 - e.slash / 0.18);
     if (e.spin > 0) { const pr = 1 - e.spin / 0.35; for (let k = 0; k < 3; k++) drawSlash(sx, sy - 8, time * 18 + k * 2.09, 1, 11 + pr * 14); }
     if (e.kind === 'npc') { labels.push({ x: sx, y: sy - 35 * ck, t: e.name, c: '#ffe27a', npc: e }); return; }
-    labels.push({ x: sx, y: sy - 35 * ck, t: e === me ? me.name : e.name, c: e === me ? '#a8f080' : '#cfe4ff', lv: e === me ? null : e.lvl });
+    labels.push({ x: sx, y: sy - 35 * ck, t: e === me ? me.name : e.name, c: cs.gm ? '#ffe070' : e === me ? '#a8f080' : '#cfe4ff', lv: e === me ? null : e.lvl });
   }
   function drawMob(m, sx, sy) {
     const sc = m.scale; let lx = 0, ly = 0;

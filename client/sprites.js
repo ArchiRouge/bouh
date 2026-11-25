@@ -249,6 +249,36 @@
   };
   B.shield = disc(7.5, 34, 6.6, true);
 
+
+  /* ---------- armure du Maître du jeu (unique) : or ciselé, épaulières à ailettes, diadème ailé, cape blanche ---------- */
+  const GMR = ['#4a2008', '#94540e', '#dca42a', '#ffdc68', '#fff6c8'].map(hex), GMT = ['#5a2a06', '#c0801c', '#fff0a0', '#ffffff'].map(hex), GMW = ['#6a5a78', '#a89cb0', '#e4dcd8', '#f8f4ee', '#ffffff'].map(hex);
+  const DARKEN = { 5: '4', 4: '3', 3: '2', 2: '1', 1: '1', Y: 'y', y: 'G', G: 'g', g: 'g' };
+  // miroir d'une moitié gauche (colonnes ≤ 18) vers la droite, un ton plus sombre (la lumière vient de la gauche)
+  const mirror = rows => { const out = []; for (const [y, x0, s0] of rows) for (let i = 0; i < s0.length; i++) { const c = s0[i]; if (c !== '.') out.push([y, 37 - (x0 + i), DARKEN[c] || c]); } return out; };
+  const sym = rows => rows.concat(mirror(rows));
+  const GM_WING = [[-6, 1, 'Y'], [-5, 1, 'y5'], [-4, 1, 'y55'], [-3, 2, 'y55'], [-2, 2, 'y554'], [-1, 3, 'y554'], [0, 3, 'y5543'], [1, 4, 'y5543'], [2, 5, 'y543'], [3, 5, 'y43'], [4, 6, 'g3']];
+  const GM_CREST = [[-7, 18, 'Y'], [-6, 17, 'Y5'], [-5, 17, 'y5'], [-4, 16, 'y55'], [-3, 16, 'y54'], [-2, 15, 'y554'], [-1, 15, 'y554']];
+  const GM_DOME = [[0, 12, 'Yy5555y'], [1, 9, 'Yy55555455'], [2, 7, 'Yy5555554455'], [3, 6, 'y555555445555'], [4, 5, 'y5555554455554'], [5, 5, 'y5554445555444'], [6, 4, 'y55544445554443']];
+  const GM_CHEEK = [[8, 5, 'g43'], [9, 5, 'g43'], [10, 6, 'g4'], [11, 6, 'g4'], [12, 6, 'g4'], [13, 7, 'g4'], [14, 7, 'g']];
+  F.gmhelm = sym([...GM_WING, ...GM_CREST, ...GM_DOME, [7, 4, 'gGyyyyyyyyyyyyR'], [6, 18, 'Q'], [8, 16, 'y55'], [9, 17, 'y5'], [10, 18, 'y'], ...GM_CHEEK]);
+  B.gmhelm = sym([...GM_WING, ...GM_CREST, ...GM_DOME, [7, 4, 'gGyyyyyyyyyyyyy'], ...GM_CHEEK]);
+  S.gmhelm = [...GM_WING, ...GM_CREST.map(([y, x, t]) => [y, x - 3, t]), ...dome(13.5, 9, 17, 8, -1, 6, null), [7, 4, 'gGyyyyyyyyyyyyyyyyyyyyyyyG'], [6, 27, 'RQ'], [8, 27, 'y5'], [9, 28, 'y'],
+    [8, 16, 'g43'], [9, 16, 'g43'], [10, 17, 'g4'], [11, 17, 'g4'], [12, 17, 'g4'], [13, 17, 'g']];
+  const GM_ARM = [[20, 5, 'Y'], [20, 9, 'Y'], [21, 4, 'Y5'], [21, 8, 'Y5'], [22, 4, 'y54'], [22, 7, 'y554'], [23, 3, 'y5554y5543'], [24, 3, 'y5555445543'], [25, 3, 'gyyyyyyyGGg'],
+    [26, 4, '35554432'], [27, 4, 'gyyyyGgg'], [28, 8, 'n32n'], [29, 7, 'GyyyG'], [30, 7, '34554'], [31, 7, '3455Y'], [32, 7, 'GyyyG'], [33, 8, '334']];
+  F.gm = {
+    body: [[22, 13, '45'], [22, 23, '43'], [23, 12, '23455yYYy55432'], [24, 12, '34555432455432'], [25, 12, '45555433455543'], [26, 12, '455543RQ345542'], [27, 12, '344432RR234432'],
+      [28, 12, '23yyyYYYyyyy32'], [29, 12, 'n234434443342n'], [30, 12, 'n234434443321n'], [31, 12, 'nn2344344332nn'], [32, 12, 'gGyyyYRQYyyyGg'], [33, 12, 'gGGGGyyyyGGGGg'],
+      [34, 10, '3455543yYYy3455432'], [35, 9, '23455432y55y23455432'], [36, 9, '12344321y44y12344321'], [37, 9, 'gGGGGGg.y33y.gGGGGg'], [38, 18, 'yy']],
+    armL: GM_ARM, armR: mirror(GM_ARM)
+  };
+  const GM_BACKP = [[21, 5, 'Y'], [22, 5, 'y5'], [23, 5, 'y5554'], [24, 4, 'y55543'], [25, 4, 'gyyyyGg']];
+  B.gmPauldrons = sym(GM_BACKP);
+  S.gmSpikes = [[21, 14, 'Y'], [20, 15, 'Y'], [21, 17, 'Y'], [20, 18, 'Y'], [28, 17, 'RQ']];
+  F.gmKnee = [[39, 13, 'Y55y'], [40, 13, 'g44g'], [39, 20, 'y44G'], [40, 20, 'g33g']];
+  B.gmKnee = [[40, 13, 'g44g'], [40, 20, 'g33g']];
+  S.gmKnee = [[39, 19, 'y55y'], [40, 19, 'g44g']];
+
   /* ---------- peintre ---------- */
   // look : [coiffure, couleur des cheveux, tenue, peau, chapeau] ; gear : { slot: { icon, c, rar } }
   // dir : 'front' | 'back' | 'side' ; fr : image de marche 0–3 ; blink : yeux fermés
@@ -260,12 +290,12 @@
     const hair = HAIR[look[1]] || HAIR[0], skin = SKIN[look[3]] || SKIN[0];
     const tunic = ramp5(TUNIC[look[2]] || TUNIC[0]);
     const ch = gear.chest, lg = gear.legs, ft = gear.feet, hd = gear.head, wp = gear.weapon, sh = wp && wp.icon === 'sword' && gear.offhand && gear.offhand.icon === 'shield' ? gear.offhand : null;
-    const shR = sh ? ramp5(sh.c) : null, shT = sh ? (sh.rar >= 2 ? GOLD : [FIX.o, FIX.O, FIX.P, hex('#e0b070')]) : null;
-    const plate = ch && ch.icon === 'plate';
-    const chestR = ch ? (plate ? metal(ch.c) : ramp5(ch.c)) : tunic;
-    const legsR = lg ? ramp5(lg.c) : DEF_LEGS, feetR = ft ? (ft.fx === 'void' ? ramp5('#5a3ab8') : ramp5(ft.c)) : DEF_FEET;
+    const shR = sh ? (sh.fx === 'gm' ? GMR : ramp5(sh.c)) : null, shT = sh ? (sh.fx === 'gm' ? GMT : sh.rar >= 2 ? GOLD : [FIX.o, FIX.O, FIX.P, hex('#e0b070')]) : null;
+    const gm = ch && ch.fx === 'gm', plate = ch && ch.icon === 'plate';
+    const chestR = gm ? GMR : ch ? (plate ? metal(ch.c) : ramp5(ch.c)) : tunic;
+    const legsR = lg ? (lg.fx === 'gm' ? GMR : ramp5(lg.c)) : DEF_LEGS, feetR = ft ? (ft.fx === 'void' ? ramp5('#5a3ab8') : ft.fx === 'gm' ? GMR : ramp5(ft.c)) : DEF_FEET;
     const goldOr = (rar, r) => rar >= 2 ? GOLD : [r[0], r[1], r[3], r[4]];
-    const capeR = ch && ch.rar >= 2 ? ramp5(['#ece8f4', '#5ee870', '#3a6ad0', '#8a3ad0', '#d0402a'][ch.rar]) : null;
+    const capeR = gm ? GMW : ch && ch.rar >= 2 ? ramp5(['#ece8f4', '#5ee870', '#3a6ad0', '#8a3ad0', '#d0402a'][ch.rar]) : null;
     const hairR = [hair[0], hair[1], hair[2], hair[3], hair[4], hair[5]];
     const put = (x, y, c, r) => { x += OX; y += OY; if (x < 0 || y < 0 || x >= W || y >= H) return; const k = (y * W + x) * 4; data[k] = c[0]; data[k + 1] = c[1]; data[k + 2] = c[2]; data[k + 3] = 255; mat[y * W + x] = rampId(r); };
     // dessine une couche : R = rampe des chiffres, T = rampe des liserés (g G y Y)
@@ -278,22 +308,24 @@
         else if (c >= 'a' && c <= 'f') put(x, yy, hairR[c.charCodeAt(0) - 97], hairR);
         else if (c === 's' || c === 't' || c === 'u' || c === 'v') put(x, yy, skin['stuv'.indexOf(c)], skin);
         else if (c === 'g' || c === 'G' || c === 'y' || c === 'Y') put(x, yy, T['gGyY'.indexOf(c)], T);
-        else if (c === 'p' || c === 'q' || c === 'r') put(x, yy, tunic['pqr'.indexOf(c) + 1], tunic);
+        else if (c === 'p' || c === 'q' || c === 'r') { const tr = gm && yy >= 20 ? GMW : tunic; put(x, yy, tr['pqr'.indexOf(c) + 1], tr); }
         else if (FIX[c]) put(x, yy, FIX[c], c === 'L' || c === 'M' || c === 'N' ? FIX_LEATHER : c === 'o' || c === 'O' || c === 'P' ? FIX_WOOD : FIX_DARK);
       }
     };
     const step = fr === 1 ? 1 : fr === 3 ? -1 : 0; // 1 : jambe gauche levée ; -1 : jambe droite levée
     const style = look[0] | 0, hatK = hd ? 0 : look[4] | 0;
     const hatPal = look[4] === 1 ? ramp5('#5e3cb4') : null;
-    const wpR = wp ? (wp.icon === 'staff' || wp.icon === 'bow' ? ramp5(wp.c) : metal(wp.c)) : null;
-    const wpT = wp ? goldOr(wp.rar, STEEL) : GOLD;
+    const wpR = wp ? (wp.fx === 'gm' ? GMR : wp.icon === 'staff' || wp.icon === 'bow' ? ramp5(wp.c) : metal(wp.c)) : null;
+    const wpT = wp ? (wp.fx === 'gm' ? GMT : goldOr(wp.rar, STEEL)) : GOLD;
+    const gmKnee = lg && lg.fx === 'gm', gmHelm = hd && hd.icon === 'gmhelm';
     const cape = (rows0, rows1, front) => { if (!capeR) return; for (let y = rows0; y <= rows1; y++) { const l = y < 28 ? 8 : y < 34 ? 7 : 6, r = 37 - l; let s = ''; for (let x = l; x <= r; x++) { const f = (x - l) % 5; s += front ? (x === l ? '5' : x < l + 5 ? (f !== 4 ? '4' : '3') : x < r - 4 ? (f !== 4 ? '3' : '2') : (f !== 1 ? '2' : '3')) : (x === l ? '4' : f === 2 ? '2' : x < 19 ? '4' : '3'); } if (y === rows1) s = s.split('').map((c, i) => (i % 5) > 2 ? '.' : c).join(''); layer([[y, l, s]], capeR); } };
     if (dir === 'front') {
       cape(23, 44, true);
       if (style === 1) layer(F.hairBack);
-      const A = plate ? F.plate : F.tunic, AT = plate ? goldOr(ch.rar, STEEL) : ch ? goldOr(ch.rar, chestR) : goldOr(0, tunic);
+      const A = gm ? F.gm : plate ? F.plate : F.tunic, AT = gm ? GMT : plate ? goldOr(ch.rar, STEEL) : ch ? goldOr(ch.rar, chestR) : goldOr(0, tunic);
       layer(F.legL, legsR, null, 0, step > 0 ? -2 : 0); layer(F.legR, legsR, null, 0, step < 0 ? -2 : 0);
       layer(F.bootL, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step > 0 ? -2 : 0); layer(F.bootR, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step < 0 ? -2 : 0);
+      if (gmKnee) { layer(F.gmKnee.slice(0, 2), GMR, GMT, 0, step > 0 ? -2 : 0); layer(F.gmKnee.slice(2), GMR, GMT, 0, step < 0 ? -2 : 0); }
       layer(A.body, chestR, AT);
       layer(A.armR, chestR, AT, 0, -step);
       layer(F.face, skin); if (blink) layer(F.blink, skin);
@@ -302,6 +334,7 @@
         layer(F.hair[style] || F.hair[0]);
         if (hd && hd.icon === 'helm') layer(F.helm, metal(hd.c, 0.3), goldOr(hd.rar, metal(hd.c, 0.3)));
         else if (hd && hd.icon === 'crown') layer(F.crown, ramp5(hd.c), goldOr(2, GOLD));
+        else if (gmHelm) layer(F.gmhelm, GMR, GMT);
         else if (hatK === 1) layer(F.hats[1], null, GOLD); else if (hatK) layer(F.hats[hatK]);
       }
       if (wp && F.weapons[wp.icon]) layer(F.weapons[wp.icon], wpR, wpT, 0, step);
@@ -311,8 +344,10 @@
       if (wp && B.weapons[wp.icon]) layer(B.weapons[wp.icon], wpR, wpT);
       layer(B.legL, legsR, null, 0, step > 0 ? -2 : 0); layer(B.legR, legsR, null, 0, step < 0 ? -2 : 0);
       layer(B.bootL, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step > 0 ? -2 : 0); layer(B.bootR, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step < 0 ? -2 : 0);
-      layer(plate ? B.plate : B.tunic, chestR, plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR));
+      if (gmKnee) layer(B.gmKnee, GMR, GMT);
+      layer(plate || gm ? B.plate : B.tunic, chestR, gm ? GMT : plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR));
       if (capeR) cape(23, 44, false);
+      if (gm) layer(B.gmPauldrons, GMR, GMT);
       if (sh) layer(B.shield, shR, shT, 0, -step);
       if (wp && B.weapons[wp.icon] && !capeR) layer(B.weapons[wp.icon], wpR, wpT);
       else if (wp && B.weapons[wp.icon]) layer(B.weapons[wp.icon].filter(r => r[0] < 24), wpR, wpT);
@@ -320,17 +355,19 @@
       else {
         layer(B.head); if (!hd) layer(B.top[style] || []); if (style === 1) layer(B.hairLong);
         if (hd && hd.icon === 'helm') layer(B.helm, metal(hd.c, 0.3), goldOr(hd.rar, metal(hd.c, 0.3)));
-        else if (hd && hd.icon === 'crown') layer(F.crown.filter(r => r[0] >= 3 || true).map(r => r), ramp5(hd.c), GOLD);
+        else if (hd && hd.icon === 'crown') layer(F.crown, ramp5(hd.c), GOLD);
+        else if (gmHelm) layer(B.gmhelm, GMR, GMT);
         else if (hatK === 1) layer(F.hats[1], null, GOLD); else if (hatK === 2) layer(F.hats[2].slice(0, 2)); else if (hatK === 3) layer(F.hats[3]);
       }
     } else {
       // profil : la jambe et le bras arrière sont plus sombres et peints avant le corps
-      const Lg = S.legs[step === 0 ? 0 : step > 0 ? 1 : 2], A = plate ? S.plate : S.tunic, AT = plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR);
+      const Lg = S.legs[step === 0 ? 0 : step > 0 ? 1 : 2], A = plate || gm ? S.plate : S.tunic, AT = gm ? GMT : plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR);
       if (capeR) { for (let y = 23; y <= 43; y++) { const w = 3 + ((y - 23) >> 2); layer([[y, 12 - w + 2, '4'.repeat(1) + '3'.repeat(Math.max(1, w - 2)) + '2']], capeR); } }
       if (style === 1) layer(S.hairLong);
       if (wp && wp.icon === 'staff') layer(S.weapons.staff, wpR, wpT, 0, step ? -1 : 0);
       layer(Lg.back, legsR); layer(Lg.bootB, feetR, goldOr(ft ? ft.rar : 0, feetR));
       layer(Lg.front, legsR); layer(Lg.bootF, feetR, goldOr(ft ? ft.rar : 0, feetR));
+      if (gmKnee && step === 0) layer(S.gmKnee, GMR, GMT);
       layer(A.body, chestR, AT);
       if (sh) layer(S.shield, shR, shT);
       layer(S.face, skin); if (blink) layer(S.blink, skin);
@@ -339,10 +376,12 @@
         layer(S.head); layer(S.top[style] || []);
         if (hd && hd.icon === 'helm') layer(S.helm, metal(hd.c, 0.3), goldOr(hd.rar, metal(hd.c, 0.3)));
         else if (hd && hd.icon === 'crown') layer(S.crown, ramp5(hd.c), GOLD);
+        else if (gmHelm) layer(S.gmhelm, GMR, GMT);
         else if (hatK === 1) layer(S.hats[1], null, GOLD); else if (hatK) layer(S.hats[hatK]);
       }
       if (wp && S.weapons[wp.icon] && wp.icon !== 'staff') layer(S.weapons[wp.icon], wpR, wpT, 0, step ? -1 : 0);
       layer(A.arm, chestR, AT, step, 0);
+      if (gm) layer(S.gmSpikes, GMR, GMT, step, 0);
     }
     // chapeau de mage : les lettres p q r prennent la couleur du chapeau, pas celle de la tenue
     // (géré en repeignant après coup : plus simple que de multiplier les rampes)

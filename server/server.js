@@ -74,6 +74,8 @@ wss.on('connection', ws => {
       if (!save && SEEDS[seedKey]) { save = SEEDS[seedKey]; delete SEEDS[seedKey]; console.log(`[seed] progression importée pour ${m.name}`); }
       const p = sim.addPlayer(id, m.name, m.look, save, m.cls);
       if (FOUNDERS.includes(String(p.name).toLowerCase())) sim.grantFounder(p);
+      // maître du jeu : jeton(s) de l'appareil listés dans la variable d'environnement GM_TOKENS (séparés par des virgules)
+      if ((process.env.GM_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean).includes(token)) sim.grantGM(p);
       c.token = token; clients.set(id, c);
       ws.send(JSON.stringify({ t: 'welcome', id, x: p.x, y: p.y, v: Core.VERSION }));
       console.log(`[+] ${p.name} (${id}) — ${clients.size} en ligne`);

@@ -214,7 +214,7 @@
     const f = [0, 1, 2, 3].map(fr => pc('front', fr)), b = [0, 1, 2, 3].map(fr => pc('back', fr)), sd = [0, 1, 2, 3].map(fr => pc('side', fr));
     const bs = pc('side', 0, true);
     const wp = G.weapon ? G.weapon[1] : -1;
-    s = { front: f, back: b, side: sd, sideL: sd.map(flip), blinkF: pc('front', 0, true), blinkS: bs, blinkSL: flip(bs), glint: wp >= 3 ? (wp === 4 ? '#ffb060' : '#d8a8ff') : null,
+    s = { front: f, back: b, side: sd, sideL: sd.map(flip), blinkF: pc('front', 0, true), blinkS: bs, blinkSL: flip(bs), glint: GE.chest && GE.chest.fx === 'gm' ? '#ffffff' : wp >= 3 ? (wp === 4 ? '#ffb060' : '#d8a8ff') : null, gm: !!(GE.chest && GE.chest.fx === 'gm'),
       w: SPR.W, h: SPR.H, cx: SPR.CX, foot: SPR.FOOT_Y };
     s.hd = s; // (ancien jeu HD : les nouveaux sprites ont déjà tout le détail)
     if (charCache.size > 300) charCache.clear();
@@ -496,6 +496,7 @@
     spore: ['....dddd....', '...dlllcd...', '..dlwlcccd..', '..dllccccd..', '..dccclccd..', '..dcccccld..', '...dcccdd...', '....dddd....'],
     amulet: ['..dddddd....', '.d......d...', '.d......d...', '..d....d....', '...d..d.....', '....gg......', '...gllg.....', '...glccg....', '...gcccg....', '....ggg.....'],
     bow: ['...bb.......', '..b..bl.....', '.b....l.....', 'b.....l.....', 'b..wwwwwwwy.', 'b.....l.....', '.b....l.....', '..b..bl.....', '...bb.......'],
+    gmhelm: ['l.........l.', 'll..l.l..ll.', '.lc.lcl.lc..', '.lccccccccl.', '..cccccccc..', '.dccgwgccd..', '.dcd....dcd.', '.dcd....dcd.', '..d......d..'],
     shield: ['...dddddd...', '..dlllcccd..', '.dllcgcccdd.', '.dlcgggcccd.', '.dccgwgcccd.', '.dcccgccccd.', '.dcccccccdd.', '..dccccccd..', '...dccccd...', '....dddd....'],
     dagger: ['..........l.', '.........lc.', '........lcl.', '.......lcl..', '......lcl...', '...g.lcl....', '....gcl.....', '....bg......', '...b..g.....', '..b.........'],
     spear: ['..........ll', '.........lcl', '........lcc.', '.......gcl..', '......b.....', '.....b......', '....b.......', '...b........', '..b.........', '.b..........'],

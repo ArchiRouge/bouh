@@ -41,7 +41,7 @@
   const SLOT_NAMES = { head: 'Tête', chest: 'Torse', legs: 'Jambes', feet: 'Pieds', weapon: 'Arme', trinket: 'Bijou', offhand: 'Main gauche' };
   const RARITY = [['Commun', '#ece8f4', 1], ['Inhabituel', '#5ee870', 1.3], ['Rare', '#5aa8ff', 1.7], ['Épique', '#c47cff', 2.2], ['Unique', '#ff9a3c', 2.6]];
   const STAT_NAMES = { str: 'Force', sta: 'Endurance', int: 'Intelligence', agi: 'Agilité', armor: 'Armure' };
-  const BAG_SIZE = 16;
+  const BAG_SIZE = 24;
   const ITEMS = [
     { n: 'Épée rouillée', slot: 'weapon', lvl: 1, icon: 'sword', c: '#b4acbc', st: { str: 2 } },
     { n: 'Bâton de saule', slot: 'weapon', lvl: 2, icon: 'staff', c: '#7ec4ee', st: { int: 3, sta: 1 } },
@@ -76,8 +76,16 @@
     { n: 'Dagues de champi', slot: 'weapon', lvl: 4, icon: 'dagger', c: '#e08a4a', st: { agi: 5, str: 1 } },
     { n: 'Lance de frêne', slot: 'weapon', lvl: 1, icon: 'spear', c: '#c09a6a', st: { str: 2, agi: 1 } },
     { n: 'Pique de braise', slot: 'weapon', lvl: 6, icon: 'spear', c: '#f08a3a', st: { str: 6, agi: 2 } },
-    { n: 'Espadon rouillé', slot: 'weapon', lvl: 1, icon: 'great', c: '#b4acbc', st: { str: 3 } }
+    { n: 'Espadon rouillé', slot: 'weapon', lvl: 1, icon: 'great', c: '#b4acbc', st: { str: 3 } },
+    // ensemble du Maître du jeu : unique, jamais dans le butin, ni vendable
+    { n: 'Diadème du Maître du jeu', slot: 'head', lvl: 1, icon: 'gmhelm', c: '#f0c040', st: { sta: 6, int: 6, armor: 12 }, fx: 'gm', unique: 1, lore: "Forgé pour le maître du jeu. Il n'en existe qu'un." },
+    { n: 'Armure du Maître du jeu', slot: 'chest', lvl: 1, icon: 'plate', c: '#f0c040', st: { sta: 9, str: 5, armor: 24 }, fx: 'gm', unique: 1, lore: "L'or garde la mémoire de chaque monde créé." },
+    { n: 'Jambières du Maître du jeu', slot: 'legs', lvl: 1, icon: 'pants', c: '#f0c040', st: { sta: 4, agi: 3, armor: 10 }, fx: 'gm', unique: 1 },
+    { n: 'Solerets du Maître du jeu', slot: 'feet', lvl: 1, icon: 'boots', c: '#f0c040', st: { agi: 4, armor: 8 }, speed: 0.4, fx: 'gm', unique: 1 },
+    { n: 'Lame du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'sword', c: '#f0c040', st: { str: 11, agi: 5, sta: 4 }, fx: 'gm', unique: 1 },
+    { n: 'Égide du Maître du jeu', slot: 'offhand', lvl: 1, icon: 'shield', c: '#f0c040', st: { armor: 16, sta: 6, str: 2 }, fx: 'gm', unique: 1 }
   ];
+  const GM_SET = [33, 34, 35, 36, 37, 38];
   const LOOT = { slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21, 25, 29] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22, 26, 31] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 } };
   function itemStats(inst) { const T = ITEMS[inst[0]], mul = RARITY[inst[1]][2], o = {}; for (const k in T.st) o[k] = Math.max(1, Math.round(T.st[k] * mul)); return o; }
   const itemValue = inst => Math.round((5 + ITEMS[inst[0]].lvl * 4) * RARITY[inst[1]][2]);
@@ -408,6 +416,19 @@
       this.ev({ e: 'founder', id: p.id });
       return true;
     }
+    /* Ensemble unique du Maître du jeu : équipé une seule fois (les pièces remplacées vont au sac ; si le sac est plein,
+       la pièce attend la prochaine connexion). Seul le client ou le serveur décide qui est maître du jeu. */
+    grantGM(p) {
+      const owned = new Set([...Object.values(p.equip).filter(Boolean), ...p.bag].map(i => i[0])); let got = 0;
+      for (const t of GM_SET) {
+        if (owned.has(t)) continue;
+        const sl = ITEMS[t].slot, old = p.equip[sl];
+        if (old && p.bag.length >= BAG_SIZE) continue;
+        if (old) p.bag.push(old); p.equip[sl] = [t, 4]; got++;
+      }
+      if (got) { this.recalc(p, true); this.ev({ e: 'gm', id: p.id, n: got }); }
+      return got;
+    }
     buffMul(p) { return p.buffT > this.t ? 1.4 : 1; }
     recalc(p, full) {
       const fh = p.maxhp ? p.hp / p.maxhp : 1, fm = p.maxmp ? p.mp / p.maxmp : 1;
@@ -527,6 +548,7 @@
         }
         case 'sell': {
           const b = m.b | 0, inst = p.bag[b]; if (!inst) return;
+          if (ITEMS[inst[0]].fx === 'gm') { this.ev({ e: 'msg', id, t: 'Cet objet unique ne se vend pas.' }); return; }
           const v = itemValue(inst); p.gold += v; p.bag.splice(b, 1); this.ev({ e: 'sold', id, t: inst[0], r: inst[1], v }); break;
         }
         case 'scarf': { const sc = clampInt(m.s, 0, 2); if (p.scarves & (1 << sc)) p.scarf = sc; break; }
