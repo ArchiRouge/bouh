@@ -544,6 +544,8 @@
       // îles du voyage : les monstres prennent le niveau du héros qui arrive (±1)
       const L0 = W.isle && W.isle !== 'bourg' ? Math.max(1, (opts && opts.lvl) | 0 || 1) : 0;
       this.fx = (ISLES[W.isle] || {}).fx || null; this.chestOpen = false; this.spawn = W.spawn || SPAWN; this.zones = [];
+      // îles du voyage : combat entre joueurs, et à la mort le sac reste sur le corps 3 minutes
+      this.pvp = !!(W.isle && W.isle !== 'bourg'); this.corpses = []; this.corpseN = 1;
       this.mobs = W.spawns.map((s, k) => { const lvl = L0 ? Math.max(1, L0 + Math.floor(Math.random() * 3) - 1) : s.lvl; return Object.assign({
         k, type: s.type, lvl: s.lvl, x: s.i + .5, y: s.j + .5, hx: s.i + .5, hy: s.j + .5, alive: true, respawnT: 0,
         target: null, returning: false, atkCd: 0, wt: Math.random() * 3, wdx: 0, wdy: 0, tagged: new Set(), moving: false
@@ -656,11 +658,12 @@
           break;
         }
         case 'atk': {
-          const mob = this.mobs[m.m | 0], B = kitOf(p.equip, p.mast, p.bar).basic;
-          if (p.dead || !mob || !mob.alive || p.atkCd > 0) return;
+          const mob = m.p != null ? this.foe(p, m.p) : this.mobs[m.m | 0], B = kitOf(p.equip, p.mast, p.bar).basic;
+          if (p.dead || !mob || mob.dead || mob.alive === false || p.atkCd > 0) return;
           if (Math.hypot(mob.x - p.x, mob.y - p.y) > B.range + (mob.type === 'boss' ? 1.1 : 0.6)) return;
           p.atkCd = B.cd - 0.05;
           let dmg = p.atk * B.mult * (0.85 + Math.random() * 0.3) * this.buffMul(p); const crit = Math.random() < p.crit; if (crit) dmg *= 1.8;
+          if (mob.k == null) { this.ev({ e: 'sw', id, m: -1, pv: mob.id, c: p.cls, fx: B.fx }); this.addMast(p, 1); this.hurt(mob, Math.round(dmg), p, true); break; }
           this.ev({ e: 'sw', id, m: mob.k, c: p.cls, fx: B.fx });
           this.hitMob(mob, Math.round(dmg), p, crit);
           break;
@@ -670,16 +673,18 @@
           if (!A || A.locked || p.dead || p.abCd[i] > this.t || p.mp < A.mp) return;
           let tgt = null;
           if (A.kind === 'aoeTarget' || A.kind === 'single' || A.kind === 'charge') {
-            tgt = this.mobs[m.m | 0];
-            if (!tgt || !tgt.alive || Math.hypot(tgt.x - p.x, tgt.y - p.y) > A.range + 0.8) return;
+            tgt = m.p != null ? this.foe(p, m.p) : this.mobs[m.m | 0];
+            if (!tgt || tgt.dead || tgt.alive === false || Math.hypot(tgt.x - p.x, tgt.y - p.y) > A.range + 0.8) return;
           }
           p.mp -= A.mp; p.abCd[i] = this.t + A.cd - 0.1;
           const pw = A.pw || 1, roll = () => (0.9 + Math.random() * 0.2) * this.buffMul(p) * pw * (1 + (M.dmg || 0));
           const around = (cx, cy, r) => this.mobs.filter(o => o.alive && Math.hypot(o.x - cx, o.y - cy) <= r);
+          const foes = (cx, cy, r) => this.pvp ? around(cx, cy, r).concat([...this.players.values()].filter(o => o !== p && !o.dead && Math.hypot(o.x - cx, o.y - cy) <= r)) : around(cx, cy, r);
           const fireImm = o => MOBDEF[o.type].el === 'fire';
           let hits = 0, kills = 0;
           // effets d'un coup : ralentir, étourdir, saigner, brûler, vulnérabilité, repousser / attirer
           const onHit = o => {
+            if (o.k == null) { if (o.dead) return; if (A.slow || M.slow) o.pslowT = this.t + 2; if (A.bleed || M.bleed || M.burn) { o.pburnT = this.t + 3; o.pburnDps = Math.max(1, p.atk * 0.1 * pw); o.pburnBy = p; } return; }
             if (!o.alive) return;
             if (A.slow || M.slow) { o.slowT = this.t + (A.slow || 0) * pw + (M.slow || 0); o.slowK = M.slowStrong ? 0.3 : 0.5; }
             const st = Math.max(A.stun || 0, M.stun || 0); if (st) o.stunT = this.t + st * pw;
@@ -689,6 +694,7 @@
             if (M.push || M.pull) { const dx = o.x - p.x, dy = o.y - p.y, d = Math.hypot(dx, dy) || 1, s0 = M.push ? 1.2 : -Math.max(0, Math.min(1.2, d - 0.9)); if (s0) moveBy(this.W, o, dx / d * s0, dy / d * s0); }
           };
           const strike = (o, crit) => {
+            if (o.k == null) { if (o.dead) return; const d0 = Math.round(p.atk * A.mult * roll() * (crit ? 1.8 : 1)); hits++; this.addMast(p, 1); this.hurt(o, d0, p, true); if (o.dead) kills++; else onHit(o); return; }
             if (!o.alive) return;
             let dmg = p.atk * A.mult * roll();
             if (M.execute && o.hp < o.maxhp * 0.3) dmg *= 2;
@@ -700,8 +706,8 @@
           };
           const chain = (from, n, r) => { const others = this.mobs.filter(o => o.alive && o !== from && Math.hypot(o.x - from.x, o.y - from.y) <= r).sort((a1, b1) => Math.hypot(a1.x - from.x, a1.y - from.y) - Math.hypot(b1.x - from.x, b1.y - from.y)).slice(0, n); for (const o of others) strike(o, false); return others; };
           const rounds = M.twice ? 2 : 1;
-          if (A.kind === 'aoeSelf') { const L = around(p.x, p.y, A.r); for (let q = 0; q < rounds; q++) for (const o of L) strike(o, false); }
-          else if (A.kind === 'aoeTarget') { const L = around(tgt.x, tgt.y, A.r); for (let q = 0; q < rounds; q++) for (const o of L) strike(o, false); if (M.chain) chain(tgt, M.chain, M.bounce ? 4 : 2.5); }
+          if (A.kind === 'aoeSelf') { const L = foes(p.x, p.y, A.r); for (let q = 0; q < rounds; q++) for (const o of L) strike(o, false); }
+          else if (A.kind === 'aoeTarget') { const L = foes(tgt.x, tgt.y, A.r); for (let q = 0; q < rounds; q++) for (const o of L) strike(o, false); if (M.chain) chain(tgt, M.chain, M.bounce ? 4 : 2.5); }
           else if (A.kind === 'single') { strike(tgt, Math.random() < p.crit); if (M.chain) chain(tgt, M.chain, 2.5); }
           else if (A.kind === 'charge') {
             const d = Math.hypot(tgt.x - p.x, tgt.y - p.y) || 1, nx = tgt.x - (tgt.x - p.x) / d * 0.8, ny = tgt.y - (tgt.y - p.y) / d * 0.8;
@@ -733,7 +739,7 @@
           if (M.killReset && kills) { const j = K.ab.findIndex(o => o.name === M.killReset); if (j >= 0) p.abCd[j] = 0; }
           // expérience de compétence : rien si la technique ne sert à rien (lancée dans le vide, soin à pleine vie)
           if (hits && A.ti >= 0) this.addSk(p, K.fam + ':' + A.ti, A.kind === 'buff' ? 2 : 1 + Math.min(3, hits) + 2 * kills);
-          this.ev({ e: 'ab', id, c: p.cls, a: i, m: tgt ? tgt.k : -1, fx: A.fx, n: A.name, r: A.r || 0, ar: M.arrows || 0, tw: M.twice ? 1 : 0 });
+          this.ev({ e: 'ab', id, c: p.cls, a: i, m: tgt && tgt.k != null ? tgt.k : -1, pv: tgt && tgt.k == null ? tgt.id : undefined, fx: A.fx, n: A.name, r: A.r || 0, ar: M.arrows || 0, tw: M.twice ? 1 : 0 });
           break;
         }
         case 'pot': {
@@ -809,6 +815,14 @@
           const fresh = !(p.isles & ISLE_BIT[to.k]); p.isles |= ISLE_BIT[to.k]; p.isle = to; p.trav = 1;
           p.arr = to.k === 'bourg' ? 0 : 1; // retour au bourg : on réapparaît à la fontaine
           this.ev({ e: 'travel', id, to, via: b.kind, fresh: fresh ? 1 : 0 }); break;
+        }
+        case 'loot': {
+          const cp = this.corpses.find(o => o.id === (m.c | 0)); if (!cp || p.dead || Math.hypot(p.x - cp.x, p.y - cp.y) > 1.6) return;
+          let n = 0; while (cp.items.length && p.bag.length < BAG_SIZE) { p.bag.push(cp.items.shift()); n++; }
+          if (!n) { this.ev({ e: 'msg', id, t: 'Ton sac est plein.' }); return; }
+          this.ev({ e: 'looted', id, n, of: cp.name, own: cp.name === p.name ? 1 : 0, left: cp.items.length });
+          if (!cp.items.length) this.corpses = this.corpses.filter(o => o !== cp);
+          break;
         }
         case 'chest': {
           const c = this.W.chest; if (!c || this.chestOpen || p.dead || Math.hypot(p.x - c.x, p.y - c.y) > 1.6) return;
@@ -924,30 +938,45 @@
       }
       if (p.lvl >= MAX_LVL) p.xp = 0;
     }
-    hurt(p, dmg, m) {
+    // un joueur adverse sur les îles (pvp) ; foe(p, id) : cible valide seulement si le combat entre joueurs est permis
+    foe(p, id) { const o = this.players.get(String(id)); return this.pvp && o && o !== p && !o.dead ? o : null; }
+    // dégâts subis par un héros : src = monstre, ou joueur (îles) ; raw : dégâts déjà tirés au sort
+    hurt(p, dmg, m, raw) {
       if (p.dead) return;
-      dmg = Math.max(1, Math.round(dmg * (0.85 + Math.random() * 0.3) * (1 - (p.red || 0)) * (p.buffT > this.t ? 0.7 : 1)));
+      const isMob = m && m.k != null;
+      dmg = Math.max(1, Math.round(dmg * (raw ? 1 : 0.85 + Math.random() * 0.3) * (1 - (p.red || 0)) * (p.buffT > this.t ? 0.7 : 1)));
       const blk = p.equip.offhand && weaponFam(p.equip) === 'sword' && mLevel(p.mast.sword || 0).lv >= 8 && Math.random() < 0.25 + 0.01 * (skRank(p.sk['sword:block'] || 0, skCap(p.lvl)) - 1);
       if (blk) this.addSk(p, 'sword:block', 2);
       if (blk) dmg = Math.max(1, Math.round(dmg * 0.25));
       if (p.guardT > this.t) dmg = Math.max(1, Math.round(dmg * (1 - p.guardK)));
-      if (p.shieldHP > 0) { const a0 = Math.min(p.shieldHP, dmg); p.shieldHP -= a0; dmg -= a0; if (!dmg) { this.ev({ e: 'hp', id: p.id, v: 0, m: m.k, sh: 1 }); return; } }
+      const src = isMob ? { m: m.k } : { m: -1, by: m && m.id };
+      if (p.shieldHP > 0) { const a0 = Math.min(p.shieldHP, dmg); p.shieldHP -= a0; dmg -= a0; if (!dmg) { this.ev(Object.assign({ e: 'hp', id: p.id, v: 0, sh: 1 }, src)); return; } }
       p.hp -= dmg; p.lastHit = 0;
       // trait de l'élément du monstre
-      const el = m.k != null ? MOBDEF[m.type].el : null;
+      const el = isMob ? MOBDEF[m.type].el : null;
       if (el === 'fire' && !p.dead) { p.pburnT = this.t + 3; p.pburnDps = Math.max(1, m.atk * 0.12); p.pburnBy = m; }
       else if (el === 'ice') p.pslowT = this.t + 2;
       else if (el === 'dark') m.hp = Math.min(m.maxhp, m.hp + dmg * 0.3);
-      this.ev({ e: 'hp', id: p.id, v: dmg, m: m.k, b: blk ? 1 : 0 });
-      if (p.hp <= 0) {
-        p.hp = 0; p.dead = true; p.deadT = 5; p.moving = 0;
-        const loss = Math.floor(p.xp * 0.1); p.xp -= loss;
-        this.ev({ e: 'die', id: p.id, loss });
-        for (const mm of this.mobs) if (mm.target === p.id) { mm.target = null; mm.returning = true; }
+      this.ev(Object.assign({ e: 'hp', id: p.id, v: dmg, b: blk ? 1 : 0 }, src));
+      if (p.hp <= 0) this.die(p, isMob ? null : m);
+    }
+    die(p, killer) {
+      p.hp = 0; p.dead = true; p.deadT = 5; p.moving = 0;
+      const loss = Math.floor(p.xp * 0.1); p.xp -= loss;
+      // îles : tout le sac reste sur le corps (sauf les objets uniques), pillable par n'importe qui pendant 3 minutes
+      let drop = 0;
+      if (this.pvp) {
+        const lost = p.bag.filter(i => !ITEMS[i[0]].unique);
+        if (lost.length) { this.corpses.push({ id: this.corpseN++, x: p.x, y: p.y, name: p.name, items: lost, until: this.t + 180 }); drop = lost.length; }
+        p.bag = p.bag.filter(i => ITEMS[i[0]].unique);
       }
+      this.ev({ e: 'die', id: p.id, loss, drop, by: killer ? killer.name : null });
+      if (killer) this.ev({ e: 'ch', s: 1, t: killer.name + ' a vaincu ' + p.name + ' !' });
+      for (const mm of this.mobs) if (mm.target === p.id) { mm.target = null; mm.returning = true; }
     }
     step(dt) {
       this.t += dt; const W = this.W;
+      if (this.corpses.length) this.corpses = this.corpses.filter(o => o.until > this.t);
       for (const p of this.players.values()) {
         p.atkCd -= dt; p.skillCd -= dt; p.potCd -= dt; p.lastHit += dt;
         if (p.dead) {
@@ -957,7 +986,7 @@
         }
         if (p.lastHit > 4) p.hp = Math.min(p.maxhp, p.hp + p.maxhp * 0.03 * dt);
         if (p.regenT > this.t) p.hp = Math.min(p.maxhp, p.hp + p.regenPs * dt);
-        if (p.pburnT > this.t) { p.pburnAcc = (p.pburnAcc || 0) + p.pburnDps * dt; if (p.pburnAcc >= Math.max(1, p.pburnDps * 0.6)) { const v = Math.round(p.pburnAcc); p.pburnAcc = 0; p.hp -= v; p.lastHit = 0; this.ev({ e: 'hp', id: p.id, v, m: p.pburnBy.k, burn: 1 }); if (p.hp <= 0) { p.hp = 1; this.hurt(p, 1, p.pburnBy); if (p.dead) continue; } } }
+        if (p.pburnT > this.t) { p.pburnAcc = (p.pburnAcc || 0) + p.pburnDps * dt; if (p.pburnAcc >= Math.max(1, p.pburnDps * 0.6)) { const v = Math.round(p.pburnAcc); p.pburnAcc = 0; p.hp -= v; p.lastHit = 0; this.ev({ e: 'hp', id: p.id, v, m: p.pburnBy.k != null ? p.pburnBy.k : -1, burn: 1 }); if (p.hp <= 0) { p.hp = 1; this.hurt(p, 1, p.pburnBy, true); if (p.dead) continue; } } }
         p.mp = Math.min(p.maxmp, p.mp + p.maxmp * 0.04 * dt);
         if (this.t - p.lastMv > 0.5) p.moving = 0;
       }
@@ -1008,7 +1037,7 @@
       const p = [], m = [];
       for (const q of this.players.values()) p.push([q.id, q.name, q.lookStr, +q.x.toFixed(2), +q.y.toFixed(2), q.face, q.flip, q.moving, Math.ceil(q.hp), q.maxhp, q.lvl, q.dead ? 1 : 0, q.scarf, q.cls, q.equip && q.equip.feet && ITEMS[q.equip.feet[0]].fx === 'void' ? 1 : 0, gearStr(q.equip)]);
       for (const q of this.mobs) m.push([+q.x.toFixed(2), +q.y.toFixed(2), Math.max(0, Math.ceil(q.hp)), q.alive ? 1 : 0, q.target != null ? 1 : 0, q.moving ? 1 : 0, q.stunT > this.t ? 1 : q.burnT > this.t ? 3 : q.bleedT > this.t ? 4 : q.slowT > this.t ? 2 : 0]);
-      return { p, m, c: this.chestOpen ? 1 : 0 };
+      return { p, m, c: this.chestOpen ? 1 : 0, cp: this.corpses.map(o => [o.id, +o.x.toFixed(2), +o.y.toFixed(2), o.items.length, o.name, Math.ceil(o.until - this.t)]) };
     }
     meState(id) {
       const p = this.players.get(id); if (!p) return null;

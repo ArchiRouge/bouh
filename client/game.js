@@ -3,8 +3,10 @@
   'use strict';
   const C = window.EtheriaCore, ARTAPI = window.EtheriaArt;
   // île où se trouve le héros (voyage par les ponts) : lue dans la sauvegarde avant de construire le monde
-  const ISLE = (() => { try { const sv = JSON.parse(localStorage.getItem('etheria_solo') || 'null') || (window.ETHERIA_SEED && window.ETHERIA_SEED.solo); return C.cleanIsle(sv && sv.isle); } catch (e) { return { k: 'bourg' }; } })();
-  const W = C.buildWorld(C.SEED, ISLE), ISLE_INFO = C.ISLES[W.isle] || C.ISLES.bourg;
+  const ISLE = (() => { try { const f = sessionStorage.getItem('etheria_isle_force'); if (f) return C.cleanIsle(JSON.parse(f)); } catch (e) { /* ignore */ } try { const sv = JSON.parse(localStorage.getItem('etheria_solo') || 'null') || (window.ETHERIA_SEED && window.ETHERIA_SEED.solo); return C.cleanIsle(sv && sv.isle); } catch (e) { return { k: 'bourg' }; } })();
+  const W = C.buildWorld(C.SEED, ISLE), ISLE_INFO = C.ISLES[W.isle] || C.ISLES.bourg, PVP = W.isle !== 'bourg';
+  const sameIsle = (a, b) => a && b && a.k === b.k && (a.s | 0) === (b.s | 0);
+  function gotoIsle(i, auto) { try { sessionStorage.setItem('etheria_isle_force', JSON.stringify(C.cleanIsle(i))); if (auto) sessionStorage.setItem('etheria_autoplay', '1'); } catch (e) { /* ignore */ } }
   const { MW, MH, TY, HT, idx } = W;
   const NB = MW + MH;
   const TAU = Math.PI * 2, FACES = ['front', 'back', 'side'];
@@ -112,7 +114,7 @@
   const NPCS = [];
   // tuiles de tablier des ponts (planches dessinées par-dessus l'eau) : 'x' ou 'y' selon l'axe du pont
   const DECK = {}; for (const br of W.bridges || []) for (let a = 1; a <= br.L; a++) DECK[idx(br.i + br.di * a, br.j + br.dj * a)] = br.di ? 'x' : 'y';
-  let nearBridge = null, nearChest = false, chestOpen = false, travel = null;
+  let nearBridge = null, nearChest = false, chestOpen = false, travel = null, nearCorpse = null, CORPSES = [];
   let nearNpc = null, nearNode = null, talkRect = null;
   const NODES = W.nodes.map(n => ({ kind: 'node', k: n.k, res: n.res, x: n.x, y: n.y, z: W.hAt(n.x, n.y) })), nodeCd = {};
   const fmt = n => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -267,9 +269,9 @@
     if (me.dead || mode !== 'play' || travel) return;
     if (nearBridge) {
       if (nearBridge.kind === 'ether' && me.ether < C.ETHER_BRIDGE) { floatAt(me, 'Il faut ' + C.ETHER_BRIDGE + ' Éther', '#bfe6ff'); openWalk(); return; }
-      if (netMode === 'online') { sys("Les ponts d'Éther arrivent bientôt dans le monde partagé."); return; }
       link.send({ t: 'cross', b: W.bridges.indexOf(nearBridge) }); return;
     }
+    if (nearCorpse) { link.send({ t: 'loot', c: nearCorpse.id }); return; }
     if (nearChest) { link.send({ t: 'chest' }); return; }
     if (nearNpc) return openNpc(nearNpc);
     if (!nearNode) return;
@@ -495,6 +497,7 @@
 
   function onMsg(m) {
     if (m.t === 'welcome') {
+      if (m.isle && !sameIsle(C.cleanIsle(m.isle), ISLE)) { gotoIsle(m.isle, true); location.reload(); return; } // le serveur nous place sur une autre île
       myId = m.id; me.x = m.x; me.y = m.y; me.z = W.hAt(me.x, me.y); mode = 'play'; $('menu').hidden = true;
       me.gear = C.gearStr(me.equip); me.set = ARTAPI.charSet(look, me.gear);
       sys(netMode === 'online' ? 'Connecté au monde partagé.' : 'Mode solo : aucun serveur configuré.');
@@ -520,6 +523,7 @@
     m.m.forEach((a, k) => { const mb = mobs[k]; if (!mb) return; const [x, y, hp, al, ag, mv, st] = a; mb.status = st | 0; if (!mb.alive && al) { mb.x = x; mb.y = y; } mb.tx = x; mb.ty = y; mb.hp = hp; mb.alive = !!al; mb.aggro = !!ag; mb.moving = !!mv; });
     if (m.me) { const wasDead = me.dead; Object.assign(me, m.me); { const gs = C.gearStr(me.equip); if (gs !== me.gear) { me.gear = gs; me.set = ARTAPI.charSet(look, gs); } } if (!$('craft').hidden) renderCraft(); if (!$('walk').hidden) renderWalk(); if (!$('char').hidden) renderChar(); if (me.lvl !== prefs.lvl) { prefs.lvl = me.lvl; try { localStorage.setItem('etheria_prefs', JSON.stringify({ name: me.name, look, lvl: me.lvl })); } catch (e) { /* ignore */ } } if (!wasDead && me.dead) { joy.active = false; } }
     if (m.c != null) chestOpen = !!m.c;
+    if (m.cp) CORPSES = m.cp.map(([id, x, y, n, name, left]) => ({ kind: 'corpse', id, x, y, z: W.hAt(x, y), n, name, left }));
     for (const ev of m.ev || []) handleEvent(ev);
   }
   const ent = id => id === myId ? me : others.get(id);
@@ -528,13 +532,14 @@
       case 'hm': { const mb = mobs[ev.m]; if (!mb) break; mb.hitFlash = 0.15; const mine = ev.by === myId; floatAt(mb, ev.v, ev.burn ? '#ff9a3c' : ev.bleed ? '#ff5a6a' : mine ? (ev.c ? '#ffd23f' : '#ffffff') : '#b8c4e0', ev.c && mine); burst(mb, ART.slimeLight[mb.type], ev.c ? 9 : 4); break; }
       case 'km': { const mb = mobs[ev.m]; if (!mb) break; burst(mb, ART.slimeLight[mb.type], 18, 20); burst(mb, '#ffffff', 6, 30); mb.alive = false; break; }
       case 'lt': if (ev.id === myId) { const mb = mobs[ev.m]; setTimeout(() => floatAt(mb, '+' + ev.xp + ' XP', '#8cf07a'), 150); setTimeout(() => floatAt(mb, '+' + ev.g + ' PO', '#ffd23f'), 450); if (ev.pot) setTimeout(() => floatAt(mb, '+1 potion', '#ff8ac0'), 750); if (ev.grp) setTimeout(() => floatAt(mb, 'Bonus groupe', '#9fe0ff'), 1000); } break;
-      case 'hp': { const t = ent(ev.id), mb = mobs[ev.m]; if (mb) mb.lunge = 0.15; if (!t) break; t.hitFlash = 0.25; if (t === me) { if (ev.sh) floatAt(me, 'Absorbé', '#bfe6ff'); else { floatAt(me, '-' + ev.v, ev.burn ? '#ff9a3c' : '#ff5a5a'); if (!ev.burn) shake = 0.15; } } if (ev.b) { floatAt(t, 'Bloqué !', '#bfe6ff'); ring(t, 1.2, '#bfe6ff', 0.25); } break; }
+      case 'hp': { const t = ent(ev.id), mb = mobs[ev.m]; if (mb) mb.lunge = 0.15; if (!t) break; t.hitFlash = 0.25; if (t !== me && ev.by === myId) floatAt(t, ev.v, '#ffffff'); if (t === me) { if (ev.sh) floatAt(me, 'Absorbé', '#bfe6ff'); else { floatAt(me, '-' + ev.v, ev.burn ? '#ff9a3c' : '#ff5a5a'); if (!ev.burn) shake = 0.15; } } if (ev.b) { floatAt(t, 'Bloqué !', '#bfe6ff'); ring(t, 1.2, '#bfe6ff', 0.25); } break; }
       case 'lv': { const t = ent(ev.id); if (!t) break; ring(t, 2.5, '#ffe27a', 0.6); burst(t, '#ffe27a', 24, 60); floatAt(t, 'Niveau ' + ev.lv + ' !', '#ffe27a', true); if (t === me) { sys('Niveau ' + ev.lv + ' atteint ! +3 points de caractéristiques à répartir (page personnage).'); } else say(t.name + ' passe niveau ' + ev.lv + ' !', '#9fe0ff'); break; }
-      case 'die': if (ev.id === myId) sys('Vous êtes mort... -' + ev.loss + ' XP'); break;
+      case 'die': if (ev.id === myId) { sys((ev.by ? ev.by + ' t\'a vaincu… ' : 'Vous êtes mort… ') + '-' + ev.loss + ' XP'); if (ev.drop) sys('Ton sac (' + ev.drop + ' objet' + (ev.drop > 1 ? 's' : '') + ') est resté sur ton corps : 3 minutes pour le récupérer avant qu\'un autre ne le pille !'); } break;
+      case 'looted': if (ev.id === myId) { sys(ev.own ? 'Tu as récupéré ' + ev.n + ' objet' + (ev.n > 1 ? 's' : '') + ' sur ton corps.' : 'Tu as pillé ' + ev.n + ' objet' + (ev.n > 1 ? 's' : '') + ' sur le corps de ' + ev.of + '.'); floatAt(me, '+' + ev.n + ' objet' + (ev.n > 1 ? 's' : ''), '#ffe27a'); } break;
       case 'rs': { const t = ent(ev.id); if (t) ring(t, 1.8, '#8fd4ff', 0.5); if (ev.id === myId) sys('Retour au Bourg d\'Argel.'); break; }
       case 'tp': if (ev.dash) { const t = ent(ev.id); if (t) burst(t, '#ffd060', 10, 10); } if (ev.id === myId) { me.x = ev.x; me.y = ev.y; me.z = W.hAt(me.x, me.y); } else { const o = others.get(ev.id); if (o) { o.x = o.tx = ev.x; o.y = o.ty = ev.y; } } break;
       case 'ch': if (ev.s) sys(ev.t); else if (!ignored.has(String(ev.n).toLowerCase())) say(ev.n + ': ' + ev.t, ev.id === myId ? '#b8f0a0' : '#ece6f4'); break;
-      case 'ab': { const t = ent(ev.id); if (t) abilityFx(t, ev, mobs[ev.m]); break; }
+      case 'ab': { const t = ent(ev.id); if (t) abilityFx(t, ev, mobs[ev.m] || (ev.pv ? ent(ev.pv) : null)); break; }
       case 'ml': if (ev.id === myId) {
         const F = C.FAMS[ev.f]; if (!F) break; sys('Maîtrise ' + F.name + ' ' + ev.lv + ' !'); floatAt(me, 'Maîtrise ' + ev.lv, '#9fe0ff', true); ring(me, 2, '#9fe0ff', 0.5);
         for (const A of F.tech) if (A.m === ev.lv) setTimeout(() => { sys('Nouvelle technique : ' + A.name + ' — ' + A.desc); floatAt(me, A.name, '#ffe27a', true); }, 600);
@@ -545,7 +550,7 @@
       case 'travel': if (ev.id === myId && !travel) {
         const I = C.ISLES[ev.to.k] || C.ISLES.bourg; travel = { t: time, name: I.name, col: ev.via === 'ether' ? [120, 80, 200] : [230, 170, 70] };
         joy.active = false; input.atkBtn = false;
-        try { sessionStorage.setItem('etheria_autoplay', '1'); sessionStorage.setItem('etheria_arrive', JSON.stringify({ name: I.name, desc: I.desc || '', fresh: ev.fresh, col: travel.col })); } catch (e) { /* ignore */ }
+        gotoIsle(ev.to, false); try { sessionStorage.setItem('etheria_autoplay', '1'); sessionStorage.setItem('etheria_arrive', JSON.stringify({ name: I.name, desc: I.desc || '', fresh: ev.fresh, col: travel.col })); } catch (e) { /* ignore */ }
         setTimeout(() => { if (link) link.saveNow(); setTimeout(() => location.reload(), 150); }, 1300);
       } break;
       case 'skr': if (ev.id === myId) {
@@ -558,7 +563,7 @@
       case 'imm': { const mb = mobs[ev.m]; if (mb) floatAt(mb, ev.fx === 'burn' ? 'Insensible au feu' : 'Insensible au froid', '#c8c0d8'); break; }
       case 'chest': if (ev.id === myId) { chestOpen = true; sys('Coffre de brume : +' + ev.g + ' PO et deux objets !'); floatAt(me, 'Trésor !', '#ffe27a', true); burst(me, '#ffe27a', 30, 50); } break;
       case 'founder': if (ev.id === myId) { sys('Cadeau du fondateur : les Bottes du Néant (Unique) et un ensemble épique sont équipés !'); floatAt(me, 'Bottes du Néant', '#ff9a3c', true); ring(me, 2.6, '#ff9a3c', 0.8); burst(me, '#b08ae8', 30, 50); } break;
-      case 'sw': if (ev.id !== myId) { const o = others.get(ev.id), mb = mobs[ev.m]; if (o && mb) { basicFx(o, mb, ev.fx); setFacing(o, mb.x - o.x, mb.y - o.y); } } break;
+      case 'sw': if (ev.id !== myId) { const o = others.get(ev.id), mb = mobs[ev.m]; const tv = mb || (ev.pv === myId ? me : others.get(ev.pv)); if (o && tv) { basicFx(o, tv, ev.fx); setFacing(o, tv.x - o.x, tv.y - o.y); } } break;
       case 'sk': if (ev.id !== myId) { const o = others.get(ev.id); if (o) { o.spin = 0.35; ring(o, 2.4, '#ffe27a', 0.35); } } break;
       case 'po': { const t = ent(ev.id); if (t) { burst(t, '#8cf07a', 12, 20); if (t === me) floatAt(me, '+' + ev.v, '#8cf07a'); } break; }
       case 'ga': if (ev.id === myId) { nodeCd[ev.k] = time + C.NODE_CD; const n = W.nodes[ev.k], pos = { x: n.x, y: n.y, z: W.hAt(n.x, n.y) }; floatAt(pos, '+' + ev.n + ' ' + C.RES[ev.res].name, '#bfe6ff'); burst(pos, ev.res === 'herb' ? '#bfe6ff' : ev.res === 'wood' ? '#ffd060' : '#ffb0d4', 12, 20); setTimeout(() => floatAt(me, '+' + ev.g + ' cueillette', '#c8c0d8'), 400); } break;
@@ -581,17 +586,20 @@
   }
 
   /* ---------- mise à jour ---------- */
+  // cible la plus proche : monstres et, sur les îles (combat entre joueurs), les autres héros vivants
+  function nearestFoe(x, y, r) { let best = nearestMob(x, y, r), bd = best ? Math.hypot(best.x - x, best.y - y) : r; if (PVP) for (const o of others.values()) { if (o.dead) continue; const d = Math.hypot(o.x - x, o.y - y); if (d < bd) { bd = d; best = o; } } return best; }
+  const foeMsg = t => t && t.k == null ? { p: t.id } : { m: t ? t.k : -1 };
   function nearestMob(x, y, r) { let best = null, bd = r; for (const m of mobs) { if (!m.alive) continue; const d = Math.hypot(m.x - x, m.y - y); if (d < bd) { bd = d; best = m; } } return best; }
   function updateMe(dt) {
     me.atkCd -= dt; me.skillCd -= dt; me.potCd -= dt; me.slash -= dt; me.atkT -= dt; me.spin -= dt; me.hitFlash -= dt; me.moving = false;
     if (me.dead) { input.skill = input.pot = false; me.anim = 0; return; }
     const [sx, sy] = inputDir();
     if (sx || sy) { let wx = (sx / 16 + sy / 8) / 2, wy = (sy / 8 - sx / 16) / 2; const l = Math.hypot(wx, wy); wx /= l; wy /= l; C.moveBy(W, me, wx * 3 * (me.speed || 1) * dt, wy * 3 * (me.speed || 1) * dt); setFacing(me, wx, wy); me.moving = true; movedOnce = true; }
-    const tgt = nearestMob(me.x, me.y, 6); me.target = tgt;
+    const tgt = nearestFoe(me.x, me.y, 6); me.target = tgt;
     const atk = input.atkBtn || input.atkKey, K0 = CL(), B = K0.basic;
     if (atk && tgt) {
       const d = Math.hypot(tgt.x - me.x, tgt.y - me.y), reach = B.range + (tgt.type === 'boss' ? 0.6 : 0);
-      if (d <= reach) { if (me.atkCd <= 0) { me.atkCd = B.cd; setFacing(me, tgt.x - me.x, tgt.y - me.y); basicFx(me, tgt, B.fx); link.send({ t: 'atk', m: tgt.k }); } }
+      if (d <= reach) { if (me.atkCd <= 0) { me.atkCd = B.cd; setFacing(me, tgt.x - me.x, tgt.y - me.y); basicFx(me, tgt, B.fx); link.send(Object.assign({ t: 'atk' }, foeMsg(tgt))); } }
       else if (!me.moving) { const dx = tgt.x - me.x, dy = tgt.y - me.y, sp = 3 * (me.speed || 1); C.moveBy(W, me, dx / d * sp * dt, dy / d * sp * dt); setFacing(me, dx, dy); me.moving = true; }
     } else if (atk && me.atkCd <= 0 && B.fx === 'slash') { me.atkCd = B.cd; me.slash = 0.18; me.atkT = ATK_T; me.slashAng = me.face === 'side' ? (me.flip ? Math.PI : 0) : me.face === 'front' ? Math.PI / 2 : -Math.PI / 2; }
     if (input.ab >= 0) {
@@ -601,8 +609,8 @@
       else if (me.mp < A.mp) floatAt(me, 'Mana insuffisant', '#7fb2ff');
       else {
         let t2 = null;
-        if (A.kind === 'aoeTarget' || A.kind === 'single' || A.kind === 'charge') { t2 = nearestMob(me.x, me.y, A.range + 0.4); if (!t2) { floatAt(me, 'Aucune cible', '#c8c0d8'); t2 = false; } }
-        if (t2 !== false) { localAbCd[i] = time + A.cd; if (t2) setFacing(me, t2.x - me.x, t2.y - me.y); link.send({ t: 'ab', a: i, m: t2 ? t2.k : -1 }); }
+        if (A.kind === 'aoeTarget' || A.kind === 'single' || A.kind === 'charge') { t2 = nearestFoe(me.x, me.y, A.range + 0.4); if (!t2) { floatAt(me, 'Aucune cible', '#c8c0d8'); t2 = false; } }
+        if (t2 !== false) { localAbCd[i] = time + A.cd; if (t2) setFacing(me, t2.x - me.x, t2.y - me.y); link.send(Object.assign({ t: 'ab', a: i }, foeMsg(t2))); }
       }
     }
     if (input.pot) { input.pot = false; if (me.potCd <= 0) { if (me.potions <= 0) floatAt(me, 'Plus de potion', '#ff8ac0'); else if (me.hp >= me.maxhp) floatAt(me, 'Vie pleine', '#8cf07a'); else { me.potCd = 0.9; link.send({ t: 'pot' }); } } }
@@ -612,6 +620,7 @@
     if (sendT <= 0 && st !== me.sent) { sendT = 0.1; me.sent = st; link.send({ t: 'mv', x: +me.x.toFixed(2), y: +me.y.toFixed(2), f: FACES.indexOf(me.face), fl: me.flip ? 1 : 0, mv: me.moving ? 1 : 0 }); }
     nearBridge = null; for (const br of W.bridges || []) if (Math.hypot(br.ex - me.x, br.ey - me.y) < 1.3) nearBridge = br;
     nearChest = !!(W.chest && !chestOpen && Math.hypot(W.chest.x - me.x, W.chest.y - me.y) < 1.4);
+    nearCorpse = null; for (const cp of CORPSES) if (Math.hypot(cp.x - me.x, cp.y - me.y) < 1.4) nearCorpse = cp;
     nearNode = null; { let bd = 1.3; for (const n of NODES) { const d = Math.hypot(n.x - me.x, n.y - me.y); if (d < bd) { bd = d; nearNode = n; } } }
     nearNpc = null; let nd = 2.2;
     for (const n of NPCS) { const d = Math.hypot(n.x - me.x, n.y - me.y); if (d < 3.5) setFacing(n, me.x - n.x, me.y - n.y); else n.face = 'front'; if (d < nd) { nd = d; nearNpc = n; } }
@@ -736,6 +745,7 @@
         g.fillStyle = c2; g.fillRect(sx - 1, sy - 16, 4, 3); g.fillStyle = c1; g.fillRect(sx, sy - 15, 2, 1); return;
       }
       case 'barch': { const img = e.frames[Math.floor(time * 5) % 4]; if (e.flip) { g.save(); g.translate(sx, 0); g.scale(-1, 1); g.drawImage(img, -11, sy - 33); g.restore(); } else g.drawImage(img, sx - 11, sy - 33); return; }
+      case 'corpse': { const ic = ART.icons.bag; g.drawImage(SHADOW, sx - 7, sy - 3, 14, 5); g.drawImage(ic, sx - (ic.width >> 1), sy - ic.height); if (((time * 2 + e.id) % 1.6) < 0.3) { g.fillStyle = '#fff6c0'; g.fillRect(sx + 3, sy - ic.height - 2, 1, 1); } labels.push({ x: sx, y: sy - ic.height - 2, t: 'Corps de ' + e.name, corpse: 1 }); return; }
       case 'chest': { g.drawImage(SHADOW, sx - 8, sy - 3, 16, 5); g.drawImage(ART.chest[chestOpen ? 1 : 0], sx - 8, sy - 13); if (!chestOpen && ((time * 2) % 1.4) < 0.3) { g.fillStyle = '#fff6c0'; g.fillRect(sx + 3, sy - 15, 1, 1); } return; }
       default: return drawChar(e, sx, sy);
     }
@@ -764,7 +774,7 @@
     if (e.slash > 0) drawSlash(sx, sy - 11 * ck, e.slashAng, 1 - e.slash / 0.18);
     if (e.spin > 0) { const pr = 1 - e.spin / 0.35; for (let k = 0; k < 3; k++) drawSlash(sx, sy - 8, time * 18 + k * 2.09, 1, 11 + pr * 14); }
     if (e.kind === 'npc') { labels.push({ x: sx, y: sy - 35 * ck, t: e.name, c: '#ffe27a', npc: e }); return; }
-    labels.push({ x: sx, y: sy - 35 * ck, t: e === me ? me.name : e.name, c: cs.gm ? '#ffe070' : e === me ? '#a8f080' : '#cfe4ff', lv: e === me ? null : e.lvl });
+    labels.push({ x: sx, y: sy - 35 * ck, t: e === me ? me.name : e.name, c: cs.gm ? '#ffe070' : e === me ? '#a8f080' : PVP ? '#ff9a8a' : '#cfe4ff', lv: e === me ? null : e.lvl, php: PVP && e !== me && e.maxhp ? e.hp / e.maxhp : null, tgt: me.target === e });
   }
   function drawMob(m, sx, sy) {
     const sc = m.scale; let lx = 0, ly = 0;
@@ -810,6 +820,7 @@
     for (const n of NPCS) push(n);
     for (const n of NODES) push(n);
     for (const f of FOOT) push(f);
+    for (const cp of CORPSES) push(cp);
     if (mode === 'play') { me.kind = 'char'; push(me); }
     const wf = Math.floor(time * 3) % 4;
     const sMin = Math.max(0, Math.floor((-ox - 60) / 16 + (-oy - 40) / 8) - 4);
@@ -937,6 +948,8 @@
         }
         continue;
       }
+      if (l.php != null) { const w = 18; bar(x - (w >> 1), y - 9, w, 2, l.php, '#e8414a', '#b02a34', '#3a1018'); if (l.tgt) { const b0 = Math.floor(time * 4) % 2; u.fillStyle = '#ff7a6a'; u.fillRect(x - 2, y - 19 - b0, 5, 1); u.fillRect(x - 1, y - 18 - b0, 3, 1); } }
+      if (l.corpse) { text(u, l.t, x, y - 6, '#e8d8c0', 'center'); continue; }
       if (mode === 'play' || l.t) text(u, l.t + (l.lv ? ' ' + l.lv : ''), x, y - 6, l.c, 'center');
     }
     for (const f of floats) { const e = f.t / f.dur; u.globalAlpha = e > 0.75 ? (1 - e) * 4 : 1; text(u, f.text, (ox + SUBX / RQ + f.x + f.vx * f.t) * K, (oy + SUBY / RQ + f.y - Math.sqrt(e) * 22) * K, f.color, 'center', f.big ? 2 : 1); u.globalAlpha = 1; }
@@ -974,9 +987,10 @@
     const B = btns(); for (const k in B) drawButton(k, B[k]);
     talkRect = null;
     const panelsClosed = $('dialog').hidden && $('craft').hidden && $('walk').hidden && $('char').hidden;
-    if ((nearNpc || nearNode || nearBridge || nearChest) && !me.dead && panelsClosed && !travel) {
+    if ((nearNpc || nearNode || nearBridge || nearChest || nearCorpse) && !me.dead && panelsClosed && !travel) {
       let label, hot;
       if (nearBridge) { label = nearBridge.kind === 'ether' ? "Traverser le Pont d'Éther (" + C.ETHER_BRIDGE + ' Éther)' : 'Rentrer au Bourg d\'Argel'; hot = true; }
+      else if (nearCorpse) { label = 'Piller le corps de ' + nearCorpse.name + ' (' + nearCorpse.n + ')'; hot = true; }
       else if (nearChest) { label = 'Ouvrir le coffre'; hot = true; }
       else if (nearNpc) { const mk = npcMark(nearNpc); label = 'Parler à ' + nearNpc.name; hot = mk === '!' || mk === '?'; }
       else { const R0 = C.RES[nearNode.res], ready = (nodeCd[nearNode.k] || 0) < time; label = me.glvl < R0.req ? 'Cueillette nv' + R0.req + ' requise' : !ready ? 'Repousse dans ' + Math.ceil(nodeCd[nearNode.k] - time) + 's' : me.ether < 1 ? "Pas assez d'Éther" : 'Récolter ' + R0.name; hot = me.glvl >= R0.req && ready && me.ether >= 1; }
@@ -990,7 +1004,7 @@
     // traversée d'un pont : la brume monte (départ), puis se dissipe à l'arrivée sur la nouvelle île
     if (travel) drawVeil(clamp((time - travel.t) / 1.1, 0, 1), travel.col, 'Traversée…', travel.name);
     else if (arrive) { if (arrive.t0 == null) arrive.t0 = time; const f = 1 - clamp((time - arrive.t0 - 0.3) / 1.4, 0, 1); drawVeil(f, arrive.col, '', arrive.name); if (f <= 0) arrive = null; }
-    if (me.dead) { u.fillStyle = 'rgba(30,0,16,.55)'; u.fillRect(0, 0, UW, UH); text(u, 'Vous êtes mort', UW >> 1, Math.round(UH * 0.4), '#ff7a7a', 'center', 2); text(u, 'Retour au bourg dans ' + me.deadT, UW >> 1, Math.round(UH * 0.4) + 20, '#fff', 'center'); }
+    if (me.dead) { u.fillStyle = 'rgba(30,0,16,.55)'; u.fillRect(0, 0, UW, UH); text(u, 'Vous êtes mort', UW >> 1, Math.round(UH * 0.4), '#ff7a7a', 'center', 2); text(u, (PVP ? 'Réapparition au pont dans ' : 'Retour au bourg dans ') + me.deadT, UW >> 1, Math.round(UH * 0.4) + 20, '#fff', 'center'); }
   }
 
   /* ---------- menu de création ---------- */
@@ -1114,7 +1128,7 @@
         let arr = null; try { arr = JSON.parse(sessionStorage.getItem('etheria_arrive') || 'null'); sessionStorage.removeItem('etheria_arrive'); } catch (e) { /* ignore */ }
         if (arr) arrive = { t: 0, name: arr.name, col: arr.col || [120, 80, 200] };
         await play();
-        if (arr) setTimeout(() => { if (arr.fresh) sys('Nouvelle île découverte : ' + arr.name + ' !'); if (arr.desc) sys(arr.desc); }, 700);
+        if (arr) setTimeout(() => { if (arr.fresh) sys('Nouvelle île découverte : ' + arr.name + ' !'); if (arr.desc) sys(arr.desc); if (PVP) sys('Attention : sur les îles, les autres joueurs peuvent t\'attaquer, et si tu meurs ton sac reste sur ton corps (objets uniques protégés).'); }, 700);
       }
     }, 30);
   }

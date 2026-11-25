@@ -95,7 +95,10 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   before `C.buildWorld(C.SEED, isle)`. Crossing a bridge = `cross` message → `travel` event → save, mist fade, `location.reload()`,
   auto-continue (`sessionStorage.etheria_autoplay`). The home island's generation must stay identical (its bridge is added last).
 - Ether bridge (3 Éther, random: 90 % fixed island `givre`/`braise`, 10 % ephemeral `brume` with a seed and a chest), home bridge
-  back to the fountain. Island monsters take the arriving hero's level. Island effects (`slow`, `burn`) skip monsters of the same element (`MOBDEF.el`). Online the server keeps everyone on the home island for now.
+  back to the fountain. Island monsters take the arriving hero's level. Island effects (`slow`, `burn`) skip monsters of the same element (`MOBDEF.el`).
+- Islands are dangerous: PvP (`Sim.pvp`, attack messages take `p: playerId`), and dying drops the bag (not equipped or unique items)
+  on a corpse lootable by anyone for 3 min (`die`, `corpses`, `loot`). Online, the server runs one `Sim` per island (`isles` map,
+  ephemeral ones freed when empty); `welcome` carries the island and the client reloads onto it if needed (`etheria_isle_force`).
 
 ## Rendering & smoothness
 - The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving

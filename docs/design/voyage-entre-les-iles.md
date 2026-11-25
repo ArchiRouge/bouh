@@ -1,7 +1,7 @@
 # Pixels Worlds — voyage entre les îles par les ponts
 
 Statut : **validé ; étape 1 codée** (ponts, traversée, tirage, Île Givrée, Île des Braises, îles éphémères avec coffre).
-En multijoueur, les ponts ne sont pas encore actifs (le serveur garde tout le monde au Bourg).
+En multijoueur, le serveur fait tourner une simulation par île (les îles éphémères sont libérées 5 minutes après le départ du dernier joueur) ; le tchat des joueurs est commun à toutes les îles.
 
 Choix d'Archibald : îles fixes + parfois une île éphémère ; deux ponts sur chaque île (aléatoire + retour) ;
 difficulté adaptée au héros ; maquette avant le code.
@@ -74,3 +74,12 @@ Au lancement : **2 îles** (Givrée et Braises) + les îles éphémères, puis l
 2. Nouveaux monstres et ressources de ces deux îles.
 3. Les quatre autres îles, une par une.
 4. Instances d'îles sur le serveur multijoueur.
+
+## Danger sur les îles (codé)
+
+- **Combat entre joueurs** autorisé sur toutes les îles du voyage ; le Bourg d'Argel reste un refuge.
+  Les noms des autres joueurs y sont rouges, avec leur barre de vie ; l'attaque vise la cible la plus proche (monstre ou joueur).
+- **Mort sur une île** : tout le contenu du sac (hors objets uniques) reste sur le corps pendant 3 minutes ;
+  n'importe qui peut le piller (« Piller le corps de … »), y compris le mort s'il revient à temps. L'équipement porté n'est jamais perdu.
+  On réapparaît au bout du Pont d'Éther de l'île.
+- Code : `Sim.pvp`, `foe()`, `hurt(p, dmg, src)` (source monstre ou joueur), `die()`, `corpses`, message `loot` ; serveur : `isles` (une `Sim` par île).
