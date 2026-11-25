@@ -61,9 +61,14 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 
 ## Art & visible gear
 - Art direction « aquarelle 16 bits »: old-school Zelda readability (clean tiles, clear silhouettes, plum-tinted outlines) + Gris-like harmonised pastel palettes with hue-shifted shadows (violet/teal) and cream lights + chibi heroes with visible gear. Each zone owns a colour, baked at paint time (grass tint, per-zone foliage sets `oak_2`/`oak_3`…) plus a cached per-zone grade that crossfades (`ZONE_LOOK`, `zoneGrade`): bourg warm dawn, prairies gold-jade, bois blue-violet mist + light shafts + fireflies, terres sauvages ember. UI: ink-indigo panels, thin cream borders, gold accents. All art is procedural in `client/assets.js`; atmosphere in `client/game.js`.
-- HD characters (`paintChibiHD`, lazy `charSet(...).hd`): the 24×31 sprite is upscaled with Scale2x (rounder head/chin), then face detail is hand-placed on the 2× grid (anime eyes, brows, nose, mouth, jaw/chin shading, smoothed skin, hair strands) before the finish pass. Used whenever `RQ >= 2` and in the character page; the 1× set remains for `RQ = 1` and small UI portraits.
-- Characters get a top-left rim light, a near-black outline and a soft dark halo (end of `paintChibi`), and are drawn ~1.2× (`charK()`) when the world resolution `RQ` allows a clean pixel grid.
-- Equipped gear is painted onto the character sprite (`paintChibi(look, dir, frame, blink, gear)`); sprites are 24×31 with the body offset by `CHAR_OX/CHAR_OY` = 4.
+- Characters are hand-placed pixel art in the style of Realms of Pixel (validated by Archibald): `client/sprites.js` holds
+  hand-drawn grids per direction (front / back / side, side-left = mirror) and per layer (hair styles, face, tunic, plate +
+  pauldrons, legs, boots, hood / helm / crown, creation hats, sword / axe / staff / bow, cape for rare+ chest pieces).
+  Digits 1–5 in a grid are tones of that layer's material, recoloured from the item colour (`ramp5`, `metal`); letters are
+  fixed colours (skin, eyes, hair a–f, gold g/G/y/Y, leather, wood). Sprites are 46×57, ~2.2 heads, feet at y = 55.
+  `sprites.js` has no DOM dependency (paints into an RGBA array), so it can be tested in Node; `assets.js` `charSet` caches canvases.
+- In the world a character pixel is ~0.6 game pixel, rounded so it lands on whole screen pixels (`charP()` in `game.js`).
+  Don't scale sprites by non-integer screen factors. Draw new gear in the grids pixel by pixel; never go back to vector-then-downsample.
 - `C.gearStr(equip)` encodes head/chest/legs/feet/weapon; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
 
 ## Rendering & smoothness

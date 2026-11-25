@@ -227,7 +227,7 @@
     $('dtext').textContent = txt; $('dobj').textContent = obj ? 'Objectif : ' + obj : ''; $('dobj').hidden = !obj; $('drew').textContent = rew ? 'Récompense : ' + rew : ''; $('drew').hidden = !rew;
     $('dok').textContent = ok; $('dno').hidden = !later; dlgAction = act ? n.id : null; dlgNpc = n.id;
     $('dcraft').hidden = !C.RECIPES.some(r => r.npc === n.id); $('dcraft').textContent = n.id === 'bran' ? 'Forge' : 'Atelier';
-    dpx.clearRect(0, 0, 16, 18); dpx.drawImage(n.set.front[0], 4, 6, 16, 18, 0, 0, 16, 18);
+    dpx.clearRect(0, 0, 32, 36); dpx.drawImage(n.set.front[0], 7, 8, 32, 36, 0, 0, 32, 36);
     dlg.hidden = false;
   }
   function closeDlg() { dlg.hidden = true; }
@@ -342,7 +342,7 @@
     if ($('char').hidden || !me.set) return;
     const set = (prevSet || me.set).hd, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 5) % 4;
     const img = d === 'sideL' ? set.sideL[fr] : d === 'side' ? set.side[fr] : set[d][Math.floor(time * 2) % 4 === 0 && d === 'front' ? 0 : fr];
-    chp.clearRect(0, 0, 64, 68); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(20, 62, 24, 4); chp.drawImage(img, 8, 2);
+    chp.clearRect(0, 0, 64, 68); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(20, 62, 24, 4); chp.drawImage(img, 9, 9);
   }
   const STEPS = window.EtheriaSteps || { native: false, collect: async () => 0 };
   function openWalk() { walkSig = ''; renderWalk(); $('walk').hidden = false; input.atkBtn = false; joy.active = false; }
@@ -592,7 +592,7 @@
     let dx = -(e.svx || 0), dy = -(e.svy || 0); const sp = Math.hypot(dx, dy);
     if (sp < 6) { dx = e.face === 'side' && !e.flip ? -1 : 1; dy = 0.15 + Math.sin(time * 1.3 + (e.bph || 0)) * 0.25; } else { dx /= sp; dy /= sp; }
     const m = Math.hypot(dx, dy); dx /= m; dy /= m;
-    const side = dx >= 0 ? 1 : -1, ny = sy - Math.round(10 * ck);
+    const side = dx >= 0 ? 1 : -1, ny = sy - Math.round(11.5 * ck);
     // nœud autour du cou
     const SCc = C.SCARVES[e.scarf || 0] || C.SCARVES[0];
     if (e.face !== 'back') { g.fillStyle = SCc[0]; g.fillRect(sx - 2 * ck, ny, 4 * ck, 1); g.fillStyle = SCc[1]; g.fillRect(sx - 2 * ck, ny, 2 * ck, 1); }
@@ -632,23 +632,25 @@
       default: return drawChar(e, sx, sy);
     }
   }
-  // échelle des personnages : ~1,2× quand la résolution le permet sans casser la grille de pixels
-  function charK() { const v = Math.round(RQ * 1.2) / RQ; return v > 1 && v <= 1.25 ? v : 1; }
+  // taille d'un pixel de personnage en pixels de jeu : ~0,6, arrondie pour tomber sur un nombre entier de pixels d'écran
+  // (grille nette). ck = même échelle exprimée comme l'ancien facteur (~1,2) pour les effets placés autour du héros.
+  function charP() { return RQ >= 2 ? Math.max(1, Math.round(RQ * 0.6)) / RQ : 0.5; }
+  function charK() { return charP() * 2; }
   function drawChar(e, sx, sy) {
     if (!e.set) return;
-    const ck = charK(), cs = RQ >= 2 ? e.set.hd : e.set; // HD dès que l'écran peut montrer le détail
-    if (e.dead) { g.globalAlpha = 0.45; g.drawImage(cs.front[0], sx - 12 * ck, sy - 30 * ck, 24 * ck, 31 * ck); g.globalAlpha = 1; labels.push({ x: sx, y: sy - 32 * ck, t: e.name, c: '#a8a8b8' }); return; }
+    const p = charP(), ck = p * 2, cs = e.set, dw = cs.w * p, dh = cs.h * p, dx0 = sx - cs.cx * p, dy0 = sy - cs.foot * p;
+    if (e.dead) { g.globalAlpha = 0.45; g.drawImage(cs.front[0], dx0, dy0, dw, dh); g.globalAlpha = 1; labels.push({ x: sx, y: sy - 34 * ck, t: e.name, c: '#a8a8b8' }); return; }
     g.drawImage(SHADOW, sx - 7 * ck, sy - 3, 14 * ck, 5);
     const scarf = e.kind !== 'npc';
     const bob = e.moving && Math.floor(e.anim) % 2 === 1 ? -1 : 0;
-    if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e, cs), sx - 12 * ck, sy - 30 * ck + bob, 24 * ck, 31 * ck);
+    if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e, cs), dx0, dy0 + bob, dw, dh);
     if (e.set.glint && ((time * 1.7 + (e.x || 0)) % 2.2) < 0.25) { const s2 = e.face === 'front' || (e.face === 'side' && e.flip) ? -1 : 1, gx = Math.round(sx + s2 * 9 * ck), gy = Math.round(sy - 17 * ck + bob); g.fillStyle = e.set.glint; g.fillRect(gx - 1, gy, 3, 1); g.fillRect(gx, gy - 1, 1, 3); g.fillStyle = '#ffffff'; g.fillRect(gx, gy, 1, 1); }
     if (scarf && e.set) drawScarf(e, sx, sy + bob, ck);
     if (e === me && me.buff > 0) for (let k = 0; k < 4; k++) { const a = time * 4 + k * 1.57; g.fillStyle = k % 2 ? '#ff9a6a' : '#ffd060'; g.fillRect(Math.round(sx + Math.cos(a) * 8), Math.round(sy - 10 + Math.sin(a) * 4), 1, 1); }
     if (e.slash > 0) drawSlash(sx, sy - 11 * ck, e.slashAng, 1 - e.slash / 0.18);
     if (e.spin > 0) { const pr = 1 - e.spin / 0.35; for (let k = 0; k < 3; k++) drawSlash(sx, sy - 8, time * 18 + k * 2.09, 1, 11 + pr * 14); }
-    if (e.kind === 'npc') { labels.push({ x: sx, y: sy - 33 * ck, t: e.name, c: '#ffe27a', npc: e }); return; }
-    labels.push({ x: sx, y: sy - 33 * ck, t: e === me ? me.name : e.name, c: e === me ? '#a8f080' : '#cfe4ff', lv: e === me ? null : e.lvl });
+    if (e.kind === 'npc') { labels.push({ x: sx, y: sy - 35 * ck, t: e.name, c: '#ffe27a', npc: e }); return; }
+    labels.push({ x: sx, y: sy - 35 * ck, t: e === me ? me.name : e.name, c: e === me ? '#a8f080' : '#cfe4ff', lv: e === me ? null : e.lvl });
   }
   function drawMob(m, sx, sy) {
     const sc = m.scale; let lx = 0, ly = 0;
@@ -813,7 +815,7 @@
     const pw = Math.min(104, UW - 64);
     panel(3, 3, pw, 33);
     u.fillStyle = 'rgba(239,227,200,.8)'; u.fillRect(6, 6, 22, 22); u.fillStyle = '#2e4a5c'; u.fillRect(7, 7, 20, 20); u.fillStyle = '#243a4c'; u.fillRect(7, 17, 20, 10);
-    if (me.set) u.drawImage(me.set.front[0], 4, 6, 16, 18, 9, 8, 16, 18);
+    if (me.set) { u.imageSmoothingEnabled = true; u.drawImage(me.set.front[0], 7, 8, 32, 38, 9, 8, 16, 19); u.imageSmoothingEnabled = false; }
     u.fillStyle = '#e8c37a'; u.fillRect(6, 26, 22, 8); text(u, 'NV' + me.lvl, 17, 27, '#2a1a10', 'center', 1, false);
     text(u, me.name, 32, 5, '#fff2d0');
     const bw = pw - 34;
@@ -885,8 +887,8 @@
     if (!me.set) return; pctx.clearRect(0, 0, preview.width, preview.height);
     const dirs = ['front', 'side', 'back', 'side'], k = Math.floor(time / 1.2) % 4, fr = Math.floor(time * 6) % 4;
     const img = dirs[k] === 'side' ? (k === 3 ? me.set.sideL : me.set.side)[fr] : me.set[dirs[k]][fr];
-    pctx.fillStyle = 'rgba(24,16,48,.3)'; pctx.fillRect(10, 25, 12, 2);
-    pctx.drawImage(img, 4, -4);
+    pctx.fillStyle = 'rgba(24,16,48,.3)'; pctx.fillRect(20, 59, 24, 4);
+    pctx.drawImage(img, 9, 6);
   }
   async function play() {
     if (mode === 'connecting') return;

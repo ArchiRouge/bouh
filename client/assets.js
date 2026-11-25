@@ -190,7 +190,7 @@
     return P.done();
   }
 
-  /* ---------- personnages chibi (l'équipement porté est dessiné sur le sprite) ---------- */
+  /* ---------- personnages (l'équipement porté est dessiné sur le sprite) ---------- */
   const SKINS = [['#ffe4c8', '#f6c49c', '#d8946e'], ['#f0c08e', '#d89c68', '#b0704a'], ['#b8784c', '#94583a', '#6a3a26']].map(R);
   const HAIRS = [['#3a1e14', '#5e3420', '#88502e', '#b47846'], ['#7a1e12', '#b0301c', '#e2522c', '#ff8c56'], ['#a86a12', '#dc9a1e', '#ffcc3a', '#fff19a'], ['#6e74a0', '#a2a8cc', '#d4d8f0', '#ffffff'], ['#1c1e5a', '#2c3a96', '#4664cc', '#80a4ff'], ['#145a2e', '#1f8a3e', '#3cbc4e', '#86ec78'], ['#8a1e62', '#c4348a', '#f05cb4', '#ffa6dc']].map(R);
   const TUNICS = [['#16307a', '#1e50b8', '#3a7cf0', '#7cb4ff'], ['#6a1018', '#a8202a', '#e0402e', '#ff8462'], ['#0f5226', '#1a7e34', '#34b24a', '#7ee06a'], ['#6a3a08', '#a86010', '#e09a1e', '#ffd05a'], ['#3e1262', '#6420a0', '#9a3ede', '#cc86ff'], ['#24242e', '#3a3a4c', '#5a5a74', '#8e8eaa'], ['#0a4250', '#107080', '#1aa8b4', '#62e0e2']].map(R);
@@ -198,259 +198,28 @@
   const BELT = rgb('#5a3018'), GOLD = rgb('#ffd23f'), EYE = rgb('#1a1030'), WHITE = rgb('#ffffff'), BLUSH = rgb('#ff8c8c');
   const IRIS = rgb('#3a6cf0'), IRIS2 = rgb('#1e2e9a');
   const STEEL = R(['#3a4060', '#5c6488', '#8c96b8', '#c8d2ea', '#ffffff']);
-  // rampe à partir de la couleur d'un objet : ombres décalées vers le bleu, lumières vers le blanc chaud
-  const rampCache = new Map();
-  function itemRamp(hex) {
-    let r = rampCache.get(hex); if (r) return r;
-    const b = rgb(hex), sh = [26, 20, 70], li = [255, 250, 230];
-    r = [mix(mul(b, 0.42), sh, 0.38), mix(mul(b, 0.72), sh, 0.16), b, mix(b, li, 0.52)].map(c => c.map(Math.round));
-    rampCache.set(hex, r); return r;
-  }
-  const metal = (hex, k) => itemRamp(hex).map(c => mix(c, STEEL[Math.min(4, 1 + Math.floor(k))], 0.35).map(Math.round));
-  // armes vues de face : lame vers le haut-gauche, H = main (non peinte)
-  const WEAPONS = {
-    sword: ['ll.......', 'lcd......', '.lcd.....', '..lcd....', '...lcd...', '....lcd..', '.....lcdg', '......gH.', '........b'],
-    axe: ['..ll......', '.lccd.....', 'lcccdb....', 'lccd..b...', '.cd....b..', '........b.', '.........H', '..........b'],
-    staff: ['.ll......', 'lWWl.....', 'lWcd.....', '.cdd.....', '....b....', '.....b...', '......b..', '.......b.', '........H', '.........b'],
-    bow: ['wc..', 'w.c.', 'w.c.', 'w..c', 'w..c', 'w..H', 'w..c', 'w..c', 'w.c.', 'w.c.', 'wc..']
-  };
-  function paintWeapon(P, kind, hex, rar, hx, hy, mirror) {
-    const rows = WEAPONS[kind]; if (!rows) return;
-    let ax = 0, ay = 0; rows.forEach((r, y) => { const x = r.indexOf('H'); if (x >= 0) { ax = x; ay = y; } });
-    const ir = kind === 'sword' ? metal(hex, 2) : kind === 'axe' ? itemRamp(hex).map((c, i) => mix(c, STEEL[i + 1], 0.6).map(Math.round)) : itemRamp(hex);
-    const pal = { l: ir[3], c: ir[2], d: ir[1], W: [255, 255, 255], g: rar >= 2 ? GOLD : STEEL[2], b: kind === 'staff' ? BOOT[2] : BOOT[1], w: [240, 232, 214] };
-    rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) { const c = pal[r[x]]; if (!c) continue; const dx = x - ax; P.set(hx + (mirror ? -dx : dx), hy + y - ay, c); } });
-  }
-  function paintChibi(L, dir, fr, blink, G, raw) {
-    G = G || {};
-    const P0 = new Pix(24, 31), OX = 4, OY = 4;
-    const P = { set: (x, y, c, a) => P0.set(x + OX, y + OY, c, a), a: (x, y) => P0.a(x + OX, y + OY) };
-    const gi = sl => G[sl] ? C.ITEMS[G[sl][0]] : null, gr = sl => G[sl] ? G[sl][1] : 0;
-    const sk = SKINS[L[3]], hc = HAIRS[L[1]], style = L[0];
-    const chestI = gi('chest'), legI = gi('legs'), feetI = gi('feet'), headI = gi('head'), wpI = gi('weapon');
-    const tc = chestI ? (chestI.icon === 'plate' ? metal(chestI.c, 1) : itemRamp(chestI.c)) : TUNICS[L[2]];
-    const sleeve = chestI && chestI.icon !== 'plate' ? tc : TUNICS[L[2]];
-    const PANTSc = legI ? itemRamp(legI.c).slice(0, 3) : PANTS;
-    const BOOTc = feetI ? (feetI.fx === 'void' ? R(['#1a0c34', '#3c1e78', '#7a5ad0']) : itemRamp(feetI.c).slice(0, 3)) : BOOT;
-    const trim = gr('chest') >= 2 ? GOLD : BELT;
-    const hat = headI ? 0 : L[4];
-    const step = fr === 1 ? -1 : fr === 3 ? 1 : 0;
-    // arme dans le dos quand on regarde vers le haut (peinte avant le corps)
-    if (wpI && dir === 'back') paintWeapon(P, wpI.icon, wpI.c, gr('weapon'), 11, 20 - step, true);
-    if (dir !== 'side') {
-      const leg = (x0, lift) => {
-        for (let y = 22 - lift; y <= 24 - lift; y++) for (let x = x0; x < x0 + 2; x++) P.set(x, y, x === x0 ? PANTSc[2] : PANTSc[1]);
-        for (let y = 25 - lift; y <= 26 - lift; y++) for (let x = x0 - (x0 < 8 ? 1 : 0); x < x0 + 2 + (x0 > 8 ? 1 : 0); x++) P.set(x, y, y === 25 - lift ? BOOTc[2] : BOOTc[1]);
-        if (feetI && feetI.fx === 'void') P.set(x0, 25 - lift, rgb('#c8b0ff'));
-      };
-      leg(5, step === -1 ? 1 : 0); leg(9, step === 1 ? 1 : 0);
-      for (let y = 17; y <= 21; y++) {
-        const x0 = y === 21 ? 4 : 5, x1 = y === 21 ? 11 : 10;
-        for (let x = x0; x <= x1; x++) {
-          let c = tc[1]; if (x === x0) c = tc[2]; if (x === x1) c = tc[0]; if (y === 17 && x > x0 && x < x1) c = tc[2]; if (y === 21) c = x === x0 ? tc[1] : tc[0];
-          if (y === 20) c = (x === 7 || x === 8) && dir === 'front' ? GOLD : trim;
-          P.set(x, y, c);
-        }
-      }
-      if (dir === 'front') {
-        if (chestI && chestI.icon === 'plate') { P.set(7, 18, tc[3]); P.set(8, 18, tc[2]); P.set(7, 19, tc[2]); }
-        else { P.set(7, 17, sk[1]); P.set(8, 17, sk[2]); }
-        if (gr('chest') >= 2) { P.set(6, 17, GOLD); P.set(9, 17, GOLD); }
-      }
-      const arm = (x, sw, lit) => { for (let y = 17; y <= 19; y++) P.set(x, y + sw, lit ? sleeve[2] : sleeve[0]); P.set(x, 20 + sw, sk[lit ? 0 : 2]); };
-      arm(4, step, true); arm(11, -step, false);
-      if (chestI && chestI.icon === 'plate') { for (const [x, c] of [[3, tc[3]], [4, tc[3]], [11, tc[2]], [12, tc[1]]]) { P.set(x, 17, c); P.set(x, 16, x === 3 || x === 12 ? null : tc[2]); } P.set(3, 18, tc[1]); P.set(12, 18, tc[0]); }
-      if (dir === 'back') { for (let y = 17; y <= 23; y++) for (let x = 5; x <= 10; x++) { if (y > 21 && (x === 5 || x === 10)) continue; P.set(x, y, ramp(tc, 0.55 - (x - 5) * 0.08 - (y - 17) * 0.03, x, y, 0.4)); } }
-    } else {
-      const legS = (x0, back, lift) => { for (let y = 22 - lift; y <= 24 - lift; y++) for (let x = x0; x < x0 + 2; x++) P.set(x, y, back ? PANTSc[0] : PANTSc[1 + (x === x0 ? 1 : 0)]); for (let x = x0; x < x0 + 3; x++) { P.set(x, 25 - lift, back ? BOOTc[1] : BOOTc[2]); P.set(x, 26 - lift, BOOTc[back ? 0 : 1]); } };
-      if (step === 0) { legS(6, true, 0); legS(8, false, 0); }
-      else if (step === -1) { legS(4, true, 0); legS(10, false, 1); }
-      else { legS(10, true, 1); legS(4, false, 0); }
-      for (let y = 17; y <= 21; y++) { const x0 = y === 21 ? 5 : 6, x1 = y === 21 ? 11 : 10; for (let x = x0; x <= x1; x++) { let c = x <= 7 ? tc[0] : x >= 10 ? tc[2] : tc[1]; if (y === 20) c = trim; P.set(x, y, c); } }
-      if (chestI && chestI.icon === 'plate') { P.set(7, 16, tc[2]); P.set(8, 16, tc[3]); P.set(9, 16, tc[2]); P.set(6, 17, tc[1]); P.set(10, 17, tc[3]); }
-      const ax = 8 + step; for (let y = 17; y <= 19; y++) { P.set(ax, y, sleeve[2]); P.set(ax + 1, y, sleeve[1]); } P.set(ax, 20, sk[0]); P.set(ax + 1, 20, sk[1]);
-    }
-    // tête
-    const cx = 8, cy = 11.5;
-    fillEllipse(P, cx, cy, 6.4, 6, (x, y, nx, ny) => { const l = -(nx * 0.6 + ny * 0.8); return l > 0.5 ? sk[0] : l < -0.55 ? sk[2] : sk[1]; });
-    const hairAt = (x, y) => {
-      const nx = (x + 0.5 - cx) / 7.2, ny = (y + 0.5 - (cy - 0.6)) / 6.8, inside = nx * nx + ny * ny <= 1;
-      if (dir === 'back') { if (inside) return true; if (style === 1 && y >= 15 && y <= 22 && x >= 3 && x <= 12) return true; return false; }
-      if (dir === 'side') {
-        if (inside && (y <= 9 || x <= 7)) return true;
-        if (inside && y === 10 && (x === 9 || x === 10 || x === 12)) return true;
-        if (style === 1 && y >= 10 && y <= 20 && x >= 2 && x <= 6) return true;
-        return false;
-      }
-      if (inside && y <= 9) return true;
-      if (inside && y <= 13 && (x <= 2 || x >= 13)) return true;
-      if (inside && y === 10 && [2, 3, 5, 6, 9, 10, 12, 13].includes(x)) return true;
-      if (style === 1 && y >= 10 && y <= 20 && (x === 1 || x === 2 || x === 13 || x === 14)) return true;
-      return false;
-    };
-    for (let y = 2; y < 24; y++) for (let x = 0; x < 16; x++) {
-      if (!hairAt(x, y)) continue;
-      const nx = (x + 0.5 - cx) / 7, ny = (y + 0.5 - cy) / 7, l = -(nx * 0.6 + ny * 0.8);
-      let c = l > 0.45 ? hc[2] : l < -0.35 ? hc[0] : hc[1];
-      if (dir !== 'side' ? (y === 6 && x >= 4 && x <= 6) || (y === 7 && x >= 3 && x <= 4) : (y === 6 && x >= 5 && x <= 8)) c = hc[3];
-      if (y >= 15) c = (x + y) % 3 === 0 ? hc[0] : hc[1];
-      P.set(x, y, c);
-    }
-    if (style === 2 && (!headI || headI.icon === 'crown')) { const sp = dir === 'side' ? [[4, 4], [7, 3], [10, 4]] : [[4, 4], [8, 3], [11, 4]]; for (const [x, y] of sp) { P.set(x, y, hc[1]); P.set(x, y - 1, hc[2]); } }
-    // visage : grands yeux brillants
-    const eye = (x0) => { if (blink) { P.set(x0, 12, EYE); P.set(x0 + 1, 12, EYE); return; } P.set(x0, 11, EYE); P.set(x0 + 1, 11, EYE); P.set(x0, 12, WHITE); P.set(x0 + 1, 12, IRIS); P.set(x0, 13, IRIS); P.set(x0 + 1, 13, IRIS2); };
-    if (dir === 'front') { eye(4); eye(10); P.set(3, 14, BLUSH); P.set(12, 14, BLUSH); P.set(8, 15, mul(sk[2], 0.85)); }
-    else if (dir === 'side') { eye(10); P.set(12, 14, BLUSH); P.set(13, 15, mul(sk[2], 0.85)); }
-    // couvre-chef équipé (remplace le chapeau choisi à la création)
-    if (headI) {
-      const k = headI.icon, rr = k === 'helm' ? metal(headI.c, 2) : itemRamp(headI.c);
-      const shade = (x, y) => { const l = -(((x + 0.5 - cx) / 7) * 0.6 + ((y + 0.5 - cy) / 7) * 0.8); return l > 0.45 ? rr[3] : l > 0 ? rr[2] : l > -0.4 ? rr[1] : rr[0]; };
-      if (k === 'hood' || k === 'helm') {
-        const top = k === 'hood' ? 9 : 8;
-        for (let y = 1; y < 24; y++) for (let x = -1; x < 17; x++) {
-          const nx = (x + 0.5 - cx) / (k === 'hood' ? 7.4 : 7.1), ny = (y + 0.5 - (cy - 0.8)) / (k === 'hood' ? 7.1 : 6.8); if (nx * nx + ny * ny > 1) continue;
-          let on = y <= top;
-          if (dir === 'back') on = k === 'hood' ? true : y <= 12;
-          else if (dir === 'side') on = on || x <= (k === 'hood' ? 6 : 5) && y <= (k === 'hood' ? 16 : 13);
-          else on = on || (k === 'hood' ? (x <= 2 || x >= 13) && y <= 15 : (x <= 1 || x >= 14) && y <= 13);
-          if (on) P.set(x, y, shade(x, y));
-        }
-        if (k === 'helm') {
-          for (let x = 0; x <= 15; x++) if (P.a(x, top)) { P.set(x, top, x < 8 ? rr[3] : rr[2]); if (dir !== 'back' && P.a(x, top - 1)) P.set(x, top - 1, rr[1]); }
-          if (dir !== 'back') { P.set(4, 3, STEEL[4]); P.set(5, 3, STEEL[3]); P.set(3, 4, STEEL[3]); }
-          if (dir === 'back') for (let y = 2; y <= 8; y++) P.set(8, y, rr[3]); else if (dir === 'front') for (let y = 1; y <= 6; y++) P.set(8, y, y < 3 ? rr[3] : rr[2]);
-          if (dir === 'front') { P.set(7, top + 1, rr[2]); P.set(8, top + 1, rr[1]); P.set(7, top + 2, rr[1]); P.set(8, top + 2, rr[0]); }
-          if (dir === 'side') { P.set(11, top + 1, rr[2]); P.set(12, top + 1, rr[1]); }
-          if (gr('head') >= 2) { P.set(dir === 'side' ? 6 : 8, 2, GOLD); P.set(dir === 'side' ? 6 : 8, 1, GOLD); }
-        } else if (dir !== 'back') { for (let x = 3; x <= 12; x++) if (P.a(x, top)) P.set(x, top, rr[0]); }
-        if (k === 'hood' && dir === 'back') { P.set(7, 23, rr[1]); P.set(8, 23, rr[0]); }
-      } else if (k === 'crown') {
-        const y0 = 3, gem = rr[3];
-        for (let x = 3; x <= 12; x++) { P.set(x, y0 + 2, x < 7 ? rr[3] : rr[2]); P.set(x, y0 + 3, rr[1]); }
-        for (const x of [3, 6, 9, 12]) { P.set(x, y0 + 1, rr[2]); P.set(x, y0, rr[3]); }
-        P.set(dir === 'side' ? 10 : 7, y0 + 2, WHITE); P.set(dir === 'side' ? 11 : 8, y0 + 2, gem);
-      }
-    } else if (hat === 1) {
-      const hcol = R(['#24124a', '#3c2478', '#5e3cb4', '#8a6ae0']);
-      for (let y = -4; y <= 5; y++) { const w = Math.max(0, Math.floor((y + 4) * 0.6)); const ax = 9 - Math.floor((y + 4) * 0.12); for (let x = ax - w; x <= ax + w; x++) P.set(x, y + 4, hcol[x < ax ? 2 : 1]); }
-      for (let x = 1; x <= 14; x++) { P.set(x, 9, hcol[x < 6 ? 2 : 1]); P.set(x, 10, hcol[0]); }
-      for (let x = 5; x <= 11; x++) P.set(x, 8, GOLD);
-    } else if (hat === 2) { for (let x = 2; x <= 13; x++) P.set(x, 8, x % 4 === 0 ? rgb('#ff7a62') : rgb('#e0302e')); if (dir !== 'front') { P.set(2, 9, rgb('#e0302e')); P.set(1, 10, rgb('#b0201e')); } }
-    else if (hat === 3) { P.set(8, 3, rgb('#3aaa3a')); P.set(9, 2, rgb('#6ad45a')); P.set(10, 2, rgb('#9cf07a')); P.set(10, 1, rgb('#6ad45a')); P.set(7, 3, rgb('#1e7a2a')); }
-    // arme en main (devant le corps)
-    if (wpI && dir === 'front') paintWeapon(P, wpI.icon, wpI.c, gr('weapon'), 4, 20 + step, false);
-    if (wpI && dir === 'side') paintWeapon(P, wpI.icon, wpI.c, gr('weapon'), 9 + step, 20, true);
-    if (raw) return { P: P0, sk, hc, tc, headI };
-    finishSprite(P0);
-    return P0.done();
-  }
-  // finition : lumière de contour, contour net, halo sombre
-  function finishSprite(P) {
-    // lumière de contour (haut-gauche) : détache les formes
-    { const d = P.d, w = P.w, h = P.h, A = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : d[(y * w + x) * 4 + 3], lit = [];
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (A(x, y) && (!A(x - 1, y) || !A(x, y - 1))) lit.push(y * w + x);
-      for (const k of lit) { const q = k * 4; d[q] = Math.min(255, d[q] * 0.78 + 255 * 0.22); d[q + 1] = Math.min(255, d[q + 1] * 0.78 + 250 * 0.22); d[q + 2] = Math.min(255, d[q + 2] * 0.78 + 235 * 0.22); } }
-    P.outline(0, [30, 16, 40]);
-    // halo sombre semi-transparent autour du contour : le héros ressort sur tous les sols
-    { const d = P.d, w = P.w, h = P.h, A = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : d[(y * w + x) * 4 + 3], halo = [];
-      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (!A(x, y) && (A(x + 1, y) > 200 || A(x - 1, y) > 200 || A(x, y + 1) > 200 || A(x, y - 1) > 200)) halo.push(y * w + x);
-      for (const k of halo) { const q = k * 4; d[q] = 16; d[q + 1] = 10; d[q + 2] = 26; d[q + 3] = 70; } }
-  }
-
-  /* ---------- personnages HD : 2× plus de détails (visage, nez, menton, mèches) ---------- */
-  // Scale2x : double la résolution en arrondissant les escaliers (têtes et mentons plus ronds)
-  function scale2x(src) {
-    const w = src.w, h = src.h, D = new Pix(w * 2, h * 2), a = new Uint32Array(src.d.buffer), b = new Uint32Array(D.d.buffer);
-    const px = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : a[y * w + x];
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const E = px(x, y), B = px(x, y - 1), Dd = px(x - 1, y), F = px(x + 1, y), H = px(x, y + 1);
-      let e0 = E, e1 = E, e2 = E, e3 = E;
-      if (B !== H && Dd !== F) { e0 = Dd === B ? Dd : E; e1 = B === F ? F : E; e2 = Dd === H ? Dd : E; e3 = H === F ? F : E; }
-      const o = (y * 2) * w * 2 + x * 2; b[o] = e0; b[o + 1] = e1; b[o + w * 2] = e2; b[o + w * 2 + 1] = e3;
-    }
-    return D;
-  }
-  const LASH = rgb('#2a1428'), MOUTH = rgb('#b4566a'), SHINE = rgb('#ffffff');
-  function paintChibiHD(L, dir, fr, blink, G) {
-    const r = paintChibi(L, dir, fr, blink, G, true), Q = scale2x(r.P), sk = r.sk, hc = r.hc;
-    const X = x => (x + 4) * 2, Y = y => (y + 4) * 2, W2 = Q.w, H2 = Q.h, d = Q.d;
-    const at = (x, y) => { if (x < 0 || y < 0 || x >= W2 || y >= H2) return null; const k = (y * W2 + x) * 4; return d[k + 3] ? [d[k], d[k + 1], d[k + 2]] : null; };
-    const same = (c, t) => c && c[0] === t[0] && c[1] === t[1] && c[2] === t[2];
-    const isSkin = (x, y) => { const c = at(x, y); return !!c && (same(c, sk[0]) || same(c, sk[1]) || same(c, sk[2]) || same(c, BLUSH)); };
-    const isHair = (x, y) => { const c = at(x, y); return !!c && hc.some(h => same(c, h)); };
-    const put = (x, y, c) => Q.set(x, y, c), skinPut = (x, y, c) => { if (isSkin(x, y)) put(x, y, c); };
-    // mèches : fines lignes sombres et reflets dans les cheveux
-    for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) if (isHair(x, y)) {
-      const c = at(x, y);
-      // mèches continues : lignes obliques qui suivent la chute des cheveux (uniquement à l'intérieur de la masse)
-      const st = ((x - (y >> 1)) % 6 + 6) % 6;
-      if (st === 0 && isHair(x, y - 1) && isHair(x, y + 1) && !same(c, hc[3])) put(x, y, mix(c, hc[0], 0.6).map(Math.round));
-      else if (st === 2 && same(c, hc[2]) && isHair(x - 1, y)) put(x, y, mix(c, hc[3], 0.5).map(Math.round));
-    }
-    // peau lisse : on retire les points d'ombre isolés de l'ancien ombrage (l'ombre reste sur le contour de la mâchoire)
-    if (dir !== 'back') { const fix = []; for (let y = Y(6); y < Y(19); y++) for (let x = 0; x < W2; x++) { const c = at(x, y); if (c && same(c, sk[2]) && isSkin(x - 1, y) && isSkin(x + 1, y) && isSkin(x, y - 1) && isSkin(x, y + 1)) fix.push([x, y]); } for (const [x, y] of fix) put(x, y, sk[1]); }
-    if (dir === 'front') {
-      // yeux d'anime : trait de cils, iris bicolore, reflet
-      const eyeF = (ex, left) => {
-        const x0 = X(ex), y0 = Y(11);
-        for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 4; xx++) if (at(x0 + xx, y0 + yy)) put(x0 + xx, y0 + yy, sk[1]);
-        if (blink) { for (let xx = 0; xx < 4; xx++) put(x0 + xx, y0 + 3, LASH); put(left ? x0 - 1 : x0 + 4, y0 + 2, LASH); return; }
-        const m = xx => left ? xx : 3 - xx;
-        for (let xx = 0; xx < 4; xx++) put(x0 + xx, y0, LASH);
-        put(left ? x0 - 1 : x0 + 4, y0 - 1, LASH);
-        const rows = ['wsid', 'wiid', 'wild', '.ll.'];
-        rows.forEach((row, ry) => { for (let xx = 0; xx < 4; xx++) { const ch = row[xx], X1 = x0 + m(xx); if (ch === 'w') put(X1, y0 + 1 + ry, WHITE); else if (ch === 's') put(X1, y0 + 1 + ry, SHINE); else if (ch === 'i') put(X1, y0 + 1 + ry, IRIS); else if (ch === 'd') put(X1, y0 + 1 + ry, IRIS2); else if (ch === 'l') put(X1, y0 + 1 + ry, mix(IRIS, WHITE, 0.35).map(Math.round)); } });
-      };
-      eyeF(4, true); eyeF(10, false);
-      // sourcils (cachés par la frange quand elle descend)
-      const brow = mix(hc[0], sk[2], 0.35).map(Math.round);
-      for (const [bx, dirx] of [[X(4), 1], [X(10), -1]]) for (let k = 0; k < 4; k++) skinPut(bx + k, Y(11) - 2 - (k === (dirx > 0 ? 3 : 0) ? 1 : 0), brow);
-      // nez : reflet + petite ombre
-      for (let yy = Y(14); yy <= Y(16) + 1; yy++) for (let xx = X(7); xx <= X(8) + 1; xx++) skinPut(xx, yy, sk[1]); // efface l'ancien nez
-      skinPut(X(8) - 1, Y(14), sk[0]); skinPut(X(8), Y(14) + 1, mix(sk[1], sk[2], 0.6).map(Math.round));
-      // bouche : petit trait, plus bas
-      skinPut(X(8) - 1, Y(15) + 1, MOUTH); skinPut(X(8), Y(15) + 1, mix(MOUTH, sk[1], 0.45).map(Math.round));
-      // joues : rose plus doux
-      for (const bx of [X(3), X(12)]) { skinPut(bx, Y(14) + 1, BLUSH); skinPut(bx + 1, Y(14) + 1, mix(BLUSH, sk[1], 0.5).map(Math.round)); skinPut(bx, Y(14), sk[1]); skinPut(bx + 1, Y(14), sk[1]); }
-    } else if (dir === 'side') {
-      const x0 = X(10), y0 = Y(11);
-      for (let yy = 0; yy < 6; yy++) for (let xx = 0; xx < 4; xx++) if (isSkin(x0 + xx, y0 + yy) || (at(x0 + xx, y0 + yy) && !isHair(x0 + xx, y0 + yy))) put(x0 + xx, y0 + yy, sk[1]);
-      if (blink) { for (let xx = 0; xx < 3; xx++) put(x0 + xx, y0 + 3, LASH); }
-      else { for (let xx = 0; xx < 3; xx++) put(x0 + xx, y0, LASH); put(x0 + 3, y0 - 1, LASH); put(x0, y0 + 1, WHITE); put(x0 + 1, y0 + 1, SHINE); put(x0 + 2, y0 + 1, IRIS2); put(x0, y0 + 2, WHITE); put(x0 + 1, y0 + 2, IRIS); put(x0 + 2, y0 + 2, IRIS2); put(x0 + 1, y0 + 3, mix(IRIS, WHITE, 0.35).map(Math.round)); put(x0 + 2, y0 + 3, IRIS); }
-      const brow = mix(hc[0], sk[2], 0.35).map(Math.round); for (let k = 0; k < 3; k++) skinPut(x0 + k, y0 - 2, brow);
-      // profil : nez qui dépasse, bouche, menton
-      for (let yy = Y(14); yy <= Y(15) + 1; yy++) { let xr = -1; for (let xx = W2 - 1; xx >= 0; xx--) if (isSkin(xx, yy)) { xr = xx; break; } if (xr < 0) continue; if (yy === Y(14) + 1) { put(xr + 1, yy, sk[1]); put(xr + 1, yy + 1, sk[2]); } }
-      for (let xx = W2 - 1; xx >= 0; xx--) if (isSkin(xx, Y(15) + 1)) { put(xx - 1, Y(15) + 1, MOUTH); break; }
-      skinPut(X(12), Y(14) + 1, BLUSH);
-    }
-    if (dir !== 'back') {
-      // mâchoire et menton : ombre sur le bas du visage, reflet au menton, ombre portée sur le cou
-      for (let x = 0; x < W2; x++) { let yb = -1; for (let y = Y(13); y < Y(19); y++) if (isSkin(x, y) && !isSkin(x, y + 1)) { yb = y; break; } if (yb < 0) continue; const right = dir === 'side' ? x < X(9) : x > X(8); if (right) put(x, yb, sk[2]); }
-      const cx = dir === 'side' ? X(10) : X(8) - 1; for (let y = Y(18); y > Y(14); y--) if (isSkin(cx, y)) { if (isSkin(cx, y - 1)) put(cx, y - 1, sk[0]); break; }
-      for (let x = X(7); x <= X(8) + 1; x++) for (let y = Y(17); y <= Y(17) + 1; y++) if (isSkin(x, y) && y === Y(17)) put(x, y, sk[2]);
-    }
-    finishSprite(Q);
-    return Q.done();
-  }
+  /* Les personnages sont peints par sprites.js (pixel art posé à la main, en couches) ; ici on les met en cache
+     sous forme de canvas : 4 images de marche par direction, clignement des yeux, profil gauche = miroir. */
+  const SPR = window.EtheriaSprites;
+  function sprCanvas(im) { const c = document.createElement('canvas'); c.width = im.w; c.height = im.h; const o = c.getContext('2d'), d = o.createImageData(im.w, im.h); d.data.set(im.data); o.putImageData(d, 0, 0); return c; }
   const charCache = new Map();
   function flip(src) { const c = document.createElement('canvas'); c.width = src.width; c.height = src.height; const g = c.getContext('2d'); g.translate(src.width, 0); g.scale(-1, 1); g.drawImage(src, 0, 0); return c; }
   /* look : apparence choisie à la création ; gear : chaîne C.gearStr(équipement) (facultative) */
   function charSet(look, gear) {
     const key = look.join('') + '|' + (gear || '');
     let s = charCache.get(key); if (s) return s;
-    const L = C.cleanLook(look), G = C.parseGear(gear);
-    const pc = (d, fr, bl) => paintChibi(L, d, fr, bl, G);
+    const L = C.cleanLook(look), G = C.parseGear(gear), GE = {};
+    for (const sl of Object.keys(G)) { const it = C.ITEMS[G[sl][0]]; if (it) GE[sl] = { icon: it.icon, c: it.c, rar: G[sl][1], fx: it.fx }; }
+    const pc = (d, fr, bl) => sprCanvas(SPR.paint(L, GE, d, fr, bl));
     const f = [0, 1, 2, 3].map(fr => pc('front', fr)), b = [0, 1, 2, 3].map(fr => pc('back', fr)), sd = [0, 1, 2, 3].map(fr => pc('side', fr));
     const bs = pc('side', 0, true);
     const wp = G.weapon ? G.weapon[1] : -1;
-    s = { front: f, back: b, side: sd, sideL: sd.map(flip), blinkF: pc('front', 0, true), blinkS: bs, blinkSL: flip(bs), glint: wp >= 3 ? (wp === 4 ? '#ffb060' : '#d8a8ff') : null };
-    // jeu HD (2× plus de détails) peint à la demande, quand la résolution d'affichage peut le montrer
-    let hd = null;
-    Object.defineProperty(s, 'hd', { get() { if (!hd) { const ph = (d, fr, bl) => paintChibiHD(L, d, fr, bl, G); const hs = [0, 1, 2, 3].map(fr => ph('side', fr)), hbs = ph('side', 0, true); hd = { front: [0, 1, 2, 3].map(fr => ph('front', fr)), back: [0, 1, 2, 3].map(fr => ph('back', fr)), side: hs, sideL: hs.map(flip), blinkF: ph('front', 0, true), blinkS: hbs, blinkSL: flip(hbs), glint: s.glint }; } return hd; } });
+    s = { front: f, back: b, side: sd, sideL: sd.map(flip), blinkF: pc('front', 0, true), blinkS: bs, blinkSL: flip(bs), glint: wp >= 3 ? (wp === 4 ? '#ffb060' : '#d8a8ff') : null,
+      w: SPR.W, h: SPR.H, cx: SPR.CX, foot: SPR.FOOT_Y };
+    s.hd = s; // (ancien jeu HD : les nouveaux sprites ont déjà tout le détail)
     if (charCache.size > 300) charCache.clear();
     charCache.set(key, s); return s;
   }
-  const CHAR_OX = 4, CHAR_OY = 4; // décalage du personnage dans son sprite 24×31
 
   /* ---------- monstres ---------- */
   const SLIMES = {
@@ -788,5 +557,5 @@
     art.buildMs = Math.round(performance.now() - t0);
     return art;
   }
-  window.EtheriaArt = { buildAll, itemIcon, charSet, paintChibi, TUNICS, HAIRS, SKINS, CHAR_OX, CHAR_OY };
+  window.EtheriaArt = { buildAll, itemIcon, charSet, TUNICS, HAIRS, SKINS };
 })();

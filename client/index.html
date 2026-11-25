@@ -40,7 +40,7 @@ input:focus{box-shadow:0 0 0 2px #ffe27a}
 .link{display:block;margin:10px auto 0;min-height:44px;padding:0 12px;font:inherit;font-size:15px;color:#9fe0ff;background:none;border:0;text-decoration:underline;cursor:pointer}.link[hidden]{display:none}
 .dlg{align-self:end;margin-bottom:max(10px,env(safe-area-inset-bottom))}
 .dhead{display:flex;gap:12px;align-items:center}
-#dport{position:static;width:48px;height:54px;background:#24284a;border:2px solid #1a0f1c;box-shadow:0 0 0 2px var(--gold);flex:none}
+#dport{position:static;width:64px;height:72px;background:#24284a;border:2px solid #1a0f1c;box-shadow:0 0 0 2px var(--gold);flex:none}
 h2{margin:0;font-size:24px;color:#f3d9a4;font-weight:600}#drole{margin:0;font-size:14px;color:#c8c0d8}
 #dtitle{margin:12px 0 0;font-size:14px;color:#9fe0ff;letter-spacing:.02em}
 #dtext{margin:6px 0 0;font-size:17px;line-height:1.4}
@@ -106,7 +106,7 @@ h3{margin:14px 0 6px;font-size:16px;letter-spacing:.08em;color:#e8c37a;font-weig
   <form id="form" class="card" autocomplete="off">
     <h1>Pixels Worlds<small>bêta</small></h1>
     <div class="hero">
-      <canvas id="preview" width="32" height="32"></canvas>
+      <canvas id="preview" width="64" height="64"></canvas>
       <label id="namebox">Nom du héros<input id="name" maxlength="12" placeholder="Aventurier" enterkeyhint="go"></label>
       <div id="resume" hidden><p class="welcome">Bon retour,</p><p id="rname"></p><p id="rlvl"></p></div>
     </div>
@@ -118,7 +118,7 @@ h3{margin:14px 0 6px;font-size:16px;letter-spacing:.08em;color:#e8c37a;font-weig
 </div>
 <div id="dialog" class="overlay" hidden>
   <div class="card dlg" role="dialog" aria-labelledby="dname">
-    <div class="dhead"><canvas id="dport" width="16" height="18"></canvas><div><h2 id="dname"></h2><p id="drole"></p></div></div>
+    <div class="dhead"><canvas id="dport" width="32" height="36"></canvas><div><h2 id="dname"></h2><p id="drole"></p></div></div>
     <p id="dtitle"></p>
     <p id="dtext"></p>
     <p id="dobj"></p>
@@ -186,6 +186,7 @@ h3{margin:14px 0 6px;font-size:16px;letter-spacing:.08em;color:#e8c37a;font-weig
 <script src="config.js"></script>
 <script src="seed-save.js"></script>
 <script src="core.js"></script>
+<script src="sprites.js"></script>
 <script src="assets.js"></script>
 <script src="steps.js"></script>
 <script src="persist.js"></script>

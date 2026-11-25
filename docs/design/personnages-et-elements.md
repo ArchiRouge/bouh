@@ -1,7 +1,14 @@
 # Pixels Worlds — design des personnages, monstres et éléments
 
-Statut : **maquette v4 (personnages), en attente de validation**. Rien de ce document n'est encore codé dans le jeu.
+Statut : **personnages en pixel art posé à la main, style Realms of Pixel : validé et intégré au jeu** (`client/sprites.js`).
+Les systèmes de jeu ci-dessous (maîtrise d'arme, éléments, nouveaux emplacements) ne sont **pas encore codés**.
 Règle de travail : on valide le design ici (maquettes en images), puis un plan d'implémentation, puis seulement le code.
+
+## Personnages en jeu (v7, validés)
+
+Pixel art posé à la main, couches d'équipement recoloriées selon l'objet. Colonnes : face (repos, pas gauche, pas droit, clignement), profil (repos, deux foulées), dos.
+
+![Personnages v7](img/v7-personnages-pixel.png)
 
 ## Direction des personnages : Grow Stone Online (sprites en jeu)
 
