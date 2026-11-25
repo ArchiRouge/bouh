@@ -101,7 +101,7 @@
   const look = C.cleanLook(prefs.look || [0, 2, 0, 0, 0]);
   const me = { name: prefs.name || '', x: C.SPAWN.x, y: C.SPAWN.y, z: 1, face: 'front', flip: false, moving: false, anim: 0, hp: 60, maxhp: 60, mp: 30, maxmp: 30, lvl: 1, xp: 0, need: 18, gold: 0, potions: 3, dead: 0, deadT: 0, atkCd: 0, skillCd: 0, potCd: 0, slash: 0, slashAng: 0, spin: 0, hitFlash: 0, target: null, set: null, sent: '' };
   const others = new Map();
-  const mobs = W.spawns.map((s, k) => { const st = C.mobStats(s.type, s.lvl); return { k, type: s.type, lvl: s.lvl, name: C.MOBDEF[s.type].name, x: s.i + .5, y: s.j + .5, tx: s.i + .5, ty: s.j + .5, z: HT[idx(s.i, s.j)], hp: st.maxhp, maxhp: st.maxhp, alive: true, aggro: false, moving: false, hitFlash: 0, lunge: 0, phase: Math.random() * TAU, flip: false, scale: s.type === 'boss' ? 2 : 1 }; });
+  const mobs = W.spawns.map((s, k) => { const st = C.mobStats(s.type, s.lvl); return { k, type: s.type, lvl: s.lvl, name: C.MOBDEF[s.type].name, x: s.i + .5, y: s.j + .5, tx: s.i + .5, ty: s.j + .5, z: HT[idx(s.i, s.j)], hp: st.maxhp, maxhp: st.maxhp, alive: true, aggro: false, moving: false, hitFlash: 0, lunge: 0, phase: Math.random() * TAU, flip: false, scale: s.type === 'boss' ? 2 : (C.MOBDEF[s.type].sc || 1) }; });
   const ePx = e => [(e.x - e.y) * 16, (e.x + e.y) * 8 - e.z * 8];
   const screenAng = (a, b) => { const dx = b.x - a.x, dy = b.y - a.y; return Math.atan2((dx + dy) * 0.5, dx - dy); };
   function setFacing(e, dx, dy) { const sx = dx - dy, sy = (dx + dy) * 0.5; if (Math.abs(sx) > Math.abs(sy) * 1.3) { e.face = 'side'; e.flip = sx < 0; } else e.face = sy < 0 ? 'back' : 'front'; }
@@ -528,7 +528,7 @@
       case 'hm': { const mb = mobs[ev.m]; if (!mb) break; mb.hitFlash = 0.15; const mine = ev.by === myId; floatAt(mb, ev.v, ev.burn ? '#ff9a3c' : ev.bleed ? '#ff5a6a' : mine ? (ev.c ? '#ffd23f' : '#ffffff') : '#b8c4e0', ev.c && mine); burst(mb, ART.slimeLight[mb.type], ev.c ? 9 : 4); break; }
       case 'km': { const mb = mobs[ev.m]; if (!mb) break; burst(mb, ART.slimeLight[mb.type], 18, 20); burst(mb, '#ffffff', 6, 30); mb.alive = false; break; }
       case 'lt': if (ev.id === myId) { const mb = mobs[ev.m]; setTimeout(() => floatAt(mb, '+' + ev.xp + ' XP', '#8cf07a'), 150); setTimeout(() => floatAt(mb, '+' + ev.g + ' PO', '#ffd23f'), 450); if (ev.pot) setTimeout(() => floatAt(mb, '+1 potion', '#ff8ac0'), 750); if (ev.grp) setTimeout(() => floatAt(mb, 'Bonus groupe', '#9fe0ff'), 1000); } break;
-      case 'hp': { const t = ent(ev.id), mb = mobs[ev.m]; if (mb) mb.lunge = 0.15; if (!t) break; t.hitFlash = 0.25; if (t === me) { if (ev.sh) floatAt(me, 'Absorbé', '#bfe6ff'); else { floatAt(me, '-' + ev.v, '#ff5a5a'); shake = 0.15; } } if (ev.b) { floatAt(t, 'Bloqué !', '#bfe6ff'); ring(t, 1.2, '#bfe6ff', 0.25); } break; }
+      case 'hp': { const t = ent(ev.id), mb = mobs[ev.m]; if (mb) mb.lunge = 0.15; if (!t) break; t.hitFlash = 0.25; if (t === me) { if (ev.sh) floatAt(me, 'Absorbé', '#bfe6ff'); else { floatAt(me, '-' + ev.v, ev.burn ? '#ff9a3c' : '#ff5a5a'); if (!ev.burn) shake = 0.15; } } if (ev.b) { floatAt(t, 'Bloqué !', '#bfe6ff'); ring(t, 1.2, '#bfe6ff', 0.25); } break; }
       case 'lv': { const t = ent(ev.id); if (!t) break; ring(t, 2.5, '#ffe27a', 0.6); burst(t, '#ffe27a', 24, 60); floatAt(t, 'Niveau ' + ev.lv + ' !', '#ffe27a', true); if (t === me) { sys('Niveau ' + ev.lv + ' atteint ! +3 points de caractéristiques à répartir (page personnage).'); } else say(t.name + ' passe niveau ' + ev.lv + ' !', '#9fe0ff'); break; }
       case 'die': if (ev.id === myId) sys('Vous êtes mort... -' + ev.loss + ' XP'); break;
       case 'rs': { const t = ent(ev.id); if (t) ring(t, 1.8, '#8fd4ff', 0.5); if (ev.id === myId) sys('Retour au Bourg d\'Argel.'); break; }
@@ -754,6 +754,8 @@
     if (e === me && me.stealth) g.globalAlpha = 0.45;
     if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e, cs), dx0, dy0 + bob, dw, dh);
     g.globalAlpha = 1;
+    if (e === me && me.pburn) for (let k = 0; k < 3; k++) { const ph = (time * 2.4 + k * 0.33) % 1; g.fillStyle = ph < 0.5 ? '#ffd060' : '#ff7a3a'; g.fillRect(Math.round(sx - 4 * ck + k * 4 * ck), Math.round(sy - 6 * ck - ph * 12), 1, 2); }
+    if (e === me && me.pslow && Math.floor(time * 5) % 2) { g.fillStyle = '#a8dcff'; g.fillRect(Math.round(sx - 6 * ck), Math.round(sy - 4), 1, 1); g.fillRect(Math.round(sx + 6 * ck), Math.round(sy - 6), 1, 1); }
     if (e === me && me.shield > 0) for (let k = 0; k < 10; k++) { const a = time * 2 + k * 0.63; g.fillStyle = k % 2 ? '#bfe6ff' : '#ffffff'; g.fillRect(Math.round(sx + Math.cos(a) * 10 * ck), Math.round(sy - 12 * ck + Math.sin(a) * 4 * ck), 1, 1); }
     if (e.set.glint && ((time * 1.7 + (e.x || 0)) % 2.2) < 0.25) { const s2 = e.face === 'front' || (e.face === 'side' && e.flip) ? -1 : 1, gx = Math.round(sx + s2 * 9 * ck), gy = Math.round(sy - 17 * ck + bob); g.fillStyle = e.set.glint; g.fillRect(gx - 1, gy, 3, 1); g.fillRect(gx, gy - 1, 1, 3); g.fillStyle = '#ffffff'; g.fillRect(gx, gy, 1, 1); }
     if (scarf && e.set) drawScarf(e, sx, sy + bob, ck);
@@ -770,7 +772,13 @@
     g.drawImage(SHADOW, sx - 7 * sc, sy - 3 * sc, 14 * sc, 5 * sc);
     const blink = m.hitFlash > 0 && Math.floor(time * 30) % 2;
     let top;
-    if (m.type === 'champi') {
+    if (ART.mobs[m.type]) {
+      // bestiaire : 2 images (marche ou battement d'ailes), regard vers la cible ; les volants flottent
+      const fl = ART.floaters[m.type], fr = Math.floor(time * (fl ? 6 : m.moving ? 7 : 1.5) + m.phase) % 2, img = ART.mobs[m.type][fr], sc2 = m.scale || 1;
+      const w = Math.round(img.width * sc2), h = Math.round(img.height * sc2), bob = fl ? Math.round(Math.sin(time * 3 + m.phase) * 1.5) - 3 : 0;
+      if (!blink) { if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); g.drawImage(img, -(w >> 1), sy - h + 1 + bob + ly, w, h); g.restore(); } else g.drawImage(img, sx - (w >> 1) + lx, sy - h + 1 + bob + ly, w, h); }
+      top = sy - h + bob;
+    } else if (m.type === 'champi') {
       const img = ART.champi[m.moving ? Math.floor(time * 6) % 2 : 0], bob = m.moving ? Math.abs(Math.sin(time * 9 + m.phase)) * -1.5 | 0 : 0;
       if (!blink) { if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); g.drawImage(img, -9, sy - 19 + bob + ly); g.restore(); } else g.drawImage(img, sx - 9 + lx, sy - 19 + bob + ly); }
       top = sy - 20;
@@ -923,7 +931,8 @@
         if (l.hp != null) { const w = Math.round(l.w * K) + 4; bar(x - (w >> 1), yy - 2, w, 2, l.hp, '#e8414a', '#b02a34', '#3a1018'); yy -= 4; }
         if (me.target === m && mode === 'play' && !me.dead) {
           const diff = m.lvl - me.lvl, col = diff >= 3 ? '#ff7a6a' : diff <= -3 ? '#a8a8b8' : '#ffffff';
-          text(u, m.name + ' nv' + m.lvl, x, yy - 9, col, 'center');
+          text(u, m.name + ' nv' + m.lvl, x + 3, yy - 9, col, 'center');
+          { const E0 = C.ELEMENTS[(C.MOBDEF[m.type] || {}).el]; if (E0) { const tw = textW(m.name + ' nv' + m.lvl); u.fillStyle = '#1a0f1c'; u.fillRect(x + 3 - (tw >> 1) - 7, yy - 9, 6, 6); u.fillStyle = E0[1]; u.fillRect(x + 3 - (tw >> 1) - 6, yy - 8, 4, 4); } }
           const b = Math.floor(time * 4) % 2; u.fillStyle = '#ffd23f'; u.fillRect(x - 2, yy - 15 - b, 5, 1); u.fillRect(x - 1, yy - 14 - b, 3, 1); u.fillRect(x, yy - 13 - b, 1, 1);
         }
         continue;

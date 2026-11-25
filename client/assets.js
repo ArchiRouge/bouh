@@ -601,6 +601,104 @@
     else { P.set(7, 6, gold[2]); P.set(8, 6, gold[1]); P.set(7, 8, gold[0]); P.set(8, 8, gold[0]); }
     P.outline(0.4); return P.done();
   }
+
+  /* ---------- bestiaire : six silhouettes déclinées par élément (2 images chacune, regard vers la droite) ---------- */
+  const MP = {
+    lapin: { body: R(['#7a5a4a', '#a8806a', '#d0aa8a', '#ecd2b4', '#fff2e0']), acc: rgb('#ffb0c0') },
+    abeille: { body: R(['#6a4a08', '#b0801a', '#e8b830', '#ffe070', '#fff6c0']), acc: rgb('#2a2030'), wing: rgb('#e8f4ff') },
+    loup: { body: R(['#26223a', '#3c3858', '#5a5880', '#8a88aa', '#c0c0d8']), acc: rgb('#ff5a7a') },
+    chauvesouris: { body: R(['#1e1430', '#34224e', '#4e3672', '#7a5aa0', '#a888c8']), acc: rgb('#ff4a6a'), wing: rgb('#5a3a80') },
+    souche: { body: R(['#3a2414', '#5e3a20', '#8a5a30', '#b07a44', '#d4a46a']), acc: rgb('#7ad070'), leaf: R(['#1f5a2a', '#2e8a3a', '#5ab84a', '#9ae070']) },
+    salamandre: { body: R(['#5a1610', '#9a2c18', '#d8502a', '#f08a3a', '#ffc070']), acc: rgb('#ffe070') },
+    golem: { body: R(['#3a5070', '#5a80a8', '#88b4d8', '#bce0f4', '#f0fcff']), acc: rgb('#fff6a0') },
+    follet: { body: R(['#c8902a', '#f0c040', '#ffe070', '#fff4b0', '#ffffff']), acc: rgb('#7a4a10') },
+    spectre: { body: R(['#1a1430', '#2e2450', '#4a3a78', '#7a68a8', '#b4a8d8']), acc: rgb('#7af0ff') },
+    pingouin: { body: R(['#141a30', '#1e2a48', '#2e4068', '#4a6090', '#7a90b8']), acc: rgb('#ffa040'), belly: R(['#c8d4e8', '#e8eef8', '#ffffff']) },
+    loupneige: { body: R(['#6a7898', '#9aaac8', '#c4d2ea', '#e6eef8', '#ffffff']), acc: rgb('#4a9aff') },
+    esprit: { body: R(['#2a6aa8', '#4a98d8', '#8ac8f4', '#c8ecff', '#ffffff']), acc: rgb('#1a3060') },
+    magma: { body: R(['#1a1014', '#2e1a1c', '#4a2a26', '#6a3a30', '#8a4c3a']), acc: rgb('#ff8a2a'), glow: R(['#c03a10', '#ff6a1a', '#ffb040', '#fff0a0']) },
+    cendre: { body: R(['#2a2020', '#4a3836', '#6e524c', '#947068', '#b89488']), acc: rgb('#ffb040'), wing: rgb('#ff7a2a') }
+  };
+  const lit = (pal, nx, ny, x, y, base) => ramp(pal, (base == null ? 0.52 : base) + 0.42 * -(nx * 0.55 + ny * 0.83), x, y, 0.6);
+  function eyes(P, pts, big) { for (const [x, y] of pts) { P.set(x, y, EYE); P.set(x, y + 1, EYE); if (big) { P.set(x + 1, y, EYE); P.set(x + 1, y + 1, EYE); } P.set(x, y, WHITE); } }
+  // quadrupède : lapin, loups
+  function paintBeast(k, fr, small) {
+    const M = MP[k], W0 = small ? 16 : 22, H0 = small ? 15 : 17, P = new Pix(W0, H0), sc = small ? 0.7 : 1;
+    const bx = W0 * 0.45, by = H0 - 7 * sc, hx = W0 - 5 * sc, hy = H0 - 10.5 * sc;
+    const legs = small ? [[4, 0], [9, 1]] : [[5, 0], [8, 1], [13, 0], [16, 1]];
+    for (const [lx, ph] of legs) { const lift = (fr + ph) % 2; for (let y = H0 - 4 - lift; y < H0 - lift; y++) { P.set(lx, y, M.body[1]); P.set(lx + 1, y, M.body[ph ? 1 : 2]); } }
+    if (!small) { for (let t = 0; t < 5; t++) P.set(1 + t * 0.6 | 0, by - 2 - t * 0.6 + (fr ? 1 : 0) | 0, M.body[2]); }
+    else fillEllipse(P, 2.2, by - 0.5, 1.8, 1.6, () => M.body[4]);
+    fillEllipse(P, bx, by, 7.5 * sc, 4.6 * sc, (x, y, nx, ny) => lit(M.body, nx, ny, x, y));
+    fillEllipse(P, hx, hy, 4.2 * sc, 3.8 * sc, (x, y, nx, ny) => lit(M.body, nx, ny, x, y, 0.58));
+    if (small) { for (let y = 0; y < 6; y++) { P.set(hx - 2, hy - 4 - y, M.body[y < 2 ? 2 : 3]); P.set(hx - 1, hy - 4 - y, M.body[3]); P.set(hx + 1, hy - 4 - y + (fr ? 1 : 0), M.body[2]); } P.set(hx - 1, hy - 6, M.acc); }
+    else { for (const ex of [-2, 1]) { P.set(hx + ex, hy - 4, M.body[3]); P.set(hx + ex, hy - 5, M.body[2]); P.set(hx + ex + 1, hy - 4, M.body[2]); } fillEllipse(P, hx + 3, hy + 1, 2, 1.4, (x, y) => M.body[4]); }
+    P.set(hx + 1, hy - 1, EYE); P.set(hx + 1, hy, EYE); P.set(hx + 2, hy - 1, M.acc === rgb('#ffb0c0') ? EYE : M.acc); P.set(hx + 1, hy - 1, WHITE);
+    P.set(Math.round(hx + 4 * sc), Math.round(hy + 0.5), EYE);
+    P.outline(0.42); return P.done();
+  }
+  // volant : abeille, chauves-souris (ailes haut / bas)
+  function paintFlyer(k, fr) {
+    const M = MP[k], P = new Pix(20, 17), up = fr === 0;
+    for (const s of [-1, 1]) for (let t = 0; t < 6; t++) for (let u = 0; u <= (k === 'abeille' ? 2 : 3) - (t >> 1); u++) P.set(10 + s * (4 + t), (up ? 6 - t + u : 9 + (t >> 1) + u) | 0, k === 'abeille' ? (u ? M.wing : rgb('#b8d8f0')) : u ? M.wing : M.body[0]);
+    fillEllipse(P, 10, 9.5, 5.2, 4.8, (x, y, nx, ny) => { let c = lit(M.body, nx, ny, x, y); if (k === 'abeille' && (y === 9 || y === 11)) c = M.acc; return c; });
+    if (k !== 'abeille') for (const s of [-1, 1]) { P.set(10 + s * 3, 4, M.body[2]); P.set(10 + s * 3, 5, M.body[3]); P.set(10 + s * 2, 5, M.body[2]); }
+    else { P.set(8, 4, M.acc); P.set(12, 4, M.acc); P.set(7, 3, M.acc); P.set(13, 3, M.acc); P.set(15, 11, M.acc); P.set(16, 11, M.acc); }
+    eyes(P, [[8, 8], [11, 8]], false); if (k !== 'abeille') { P.set(9, 8, M.acc); P.set(12, 8, M.acc); }
+    if (k === 'cendre') { P.set(4, up ? 3 : 12, M.acc); P.set(16, up ? 3 : 12, M.acc); }
+    P.outline(0.42); return P.done();
+  }
+  // golems : souche (bois), cristal (lumière), magma (feu)
+  function paintGolem(k, fr) {
+    const M = MP[k], P = new Pix(22, 24), b = fr ? 1 : 0;
+    for (const lx of [7, 13]) for (let y = 19; y < 24; y++) { P.set(lx, y, M.body[1]); P.set(lx + 1, y, M.body[2]); P.set(lx + 2, y, M.body[1]); }
+    for (let y = 7 + b; y < 20; y++) for (let x = 5; x < 17; x++) { const nx = (x + 0.5 - 11) / 6, ny = (y + 0.5 - 13) / 6.5; if (Math.abs(nx) > 1 || (Math.abs(nx) > 0.8 && Math.abs(ny) > 0.8)) continue; P.set(x, y, lit(M.body, nx, ny, x, y)); }
+    for (const s of [-1, 1]) for (let y = 9 + b; y < 18 + (s > 0 ? 1 - b : b); y++) { const x0 = s < 0 ? 2 : 17; P.set(x0, y, M.body[s < 0 ? 3 : 1]); P.set(x0 + 1, y, M.body[2]); P.set(x0 + 2, y, M.body[s < 0 ? 2 : 1]); }
+    fillEllipse(P, 11, 5 + b, 4, 3.4, (x, y, nx, ny) => lit(M.body, nx, ny, x, y, 0.6));
+    for (const ex of [9, 12]) { P.set(ex, 5 + b, M.acc); P.set(ex + 1, 5 + b, M.acc); }
+    if (k === 'golem') { for (const [x, y] of [[8, 9], [9, 8], [13, 10], [12, 14], [7, 15]]) P.set(x, y + b, M.body[4]); P.set(11, 1 + b, M.body[4]); P.set(10, 2 + b, M.body[3]); P.set(12, 2 + b, M.body[3]); }
+    if (k === 'souche') { for (let x = 6; x < 17; x++) P.set(x, 7 + b, M.body[0]); for (const [x, y] of [[7, 0], [8, 1], [13, 0], [14, 1], [11, 0]]) { P.set(x, y + b, M.leaf[2]); P.set(x, y + b + 1, M.leaf[1]); } for (let y = 10; y < 18; y += 3) { P.set(8, y + b, M.body[0]); P.set(14, y + 1 + b, M.body[0]); } }
+    if (k === 'magma') for (const [x, y, l] of [[8, 10, 6], [13, 9, 5], [10, 15, 4], [6, 13, 3], [15, 14, 3]]) for (let t = 0; t < l; t++) P.set(x + (t % 2), y + t * 0.5 + b | 0, M.glow[(t + fr) % 4]);
+    P.outline(0.42); return P.done();
+  }
+  // esprits : follet (lumière), spectre (ténèbres), esprit de givre (eau)
+  function paintWisp(k, fr) {
+    const M = MP[k], P = new Pix(16, 20);
+    fillEllipse(P, 8, 7, 5.6, 5.4, (x, y, nx, ny) => lit(M.body, nx, ny, x, y, 0.6));
+    for (let y = 11; y < 19; y++) { const w = Math.max(0, 5 - (y - 11) * 0.7), sway = Math.sin(y * 0.8 + fr * Math.PI) * 1.4; for (let x = Math.round(8 - w + sway); x <= Math.round(8 + w + sway); x++) P.set(x, y, M.body[y > 15 ? 1 : 2]); }
+    if (k === 'follet') for (let y = -1; y < 3; y++) P.set(8 + (y % 2), y + 1, M.body[4]);
+    if (k === 'spectre') { for (const [x, y] of [[4, 9], [12, 9]]) { P.set(x, y, M.body[1]); P.set(x - (x < 8 ? 1 : -1), y + 1, M.body[1]); } }
+    P.set(6, 6, M.acc); P.set(6, 7, M.acc); P.set(10, 6, M.acc); P.set(10, 7, M.acc); if (k !== 'spectre') { P.set(6, 6, WHITE); P.set(10, 6, WHITE); P.set(8, 9, M.acc); }
+    P.outline(k === 'follet' ? 0.6 : 0.42); return P.done();
+  }
+  function paintLizard(k, fr) {
+    const M = MP[k], P = new Pix(26, 13);
+    for (const [lx, ph] of [[8, 0], [11, 1], [16, 0], [19, 1]]) { const f = (fr + ph) % 2; P.set(lx - f, 11, M.body[1]); P.set(lx, 12, M.body[0]); P.set(lx + 1, 12, M.body[1]); P.set(lx, 10, M.body[1]); }
+    for (let t = 0; t < 8; t++) P.set(t, 8 + Math.round(Math.sin(t * 0.7 + fr * 2) * 0.8), M.body[t < 3 ? 1 : 2]);
+    fillEllipse(P, 14, 8, 8, 3, (x, y, nx, ny) => { const c = lit(M.body, nx, ny, x, y); return (x + y) % 4 === 0 && ny < 0 ? M.acc : c; });
+    fillEllipse(P, 22, 7, 3.6, 2.8, (x, y, nx, ny) => lit(M.body, nx, ny, x, y, 0.6));
+    P.set(23, 6, EYE); P.set(23, 5, WHITE); P.set(25, 8, M.body[0]);
+    P.outline(0.42); return P.done();
+  }
+  function paintPenguin(k, fr) {
+    const M = MP[k], P = new Pix(16, 18), b = fr ? 1 : 0;
+    P.set(5, 17, M.acc); P.set(6, 17, M.acc); P.set(9, 17, M.acc); P.set(10, 17, M.acc);
+    fillEllipse(P, 8, 10, 6, 7, (x, y, nx, ny) => lit(M.body, nx, ny, x, y));
+    fillEllipse(P, 8.5, 11.5, 3.8, 5, (x, y, nx, ny) => ramp(M.belly, 0.6 - ny * 0.3, x, y, 0.4));
+    for (const s of [-1, 1]) for (let t = 0; t < 4; t++) P.set(s < 0 ? 2 - (t > 1 && b ? 1 : 0) : 13 + (t > 1 && b ? 1 : 0), 9 + t, M.body[1]);
+    eyes(P, [[6, 6], [10, 6]], false); P.set(8, 8, M.acc); P.set(9, 8, M.acc); P.set(8, 9, rgb('#d07020'));
+    P.outline(0.42); return P.done();
+  }
+  function bestiary() {
+    const A = {}, two = f => [f(0), f(1)];
+    A.lapin = two(fr => paintBeast('lapin', fr, true)); A.loup = two(fr => paintBeast('loup', fr)); A.loupneige = two(fr => paintBeast('loupneige', fr));
+    A.abeille = two(fr => paintFlyer('abeille', fr)); A.chauvesouris = two(fr => paintFlyer('chauvesouris', fr)); A.cendre = two(fr => paintFlyer('cendre', fr));
+    A.souche = two(fr => paintGolem('souche', fr)); A.golem = two(fr => paintGolem('golem', fr)); A.magma = two(fr => paintGolem('magma', fr));
+    A.follet = two(fr => paintWisp('follet', fr)); A.spectre = two(fr => paintWisp('spectre', fr)); A.esprit = two(fr => paintWisp('esprit', fr));
+    A.salamandre = two(fr => paintLizard('salamandre', fr)); A.pingouin = two(fr => paintPenguin('pingouin', fr));
+    return A;
+  }
+  const FLOATERS = { abeille: 1, chauvesouris: 1, cendre: 1, follet: 1, spectre: 1, esprit: 1 };
   function buildAll(W) {
     const t0 = performance.now();
     const terrain = buildTerrain(W);
@@ -619,11 +717,12 @@
       slime: paintSlime(SLIMES.slime), ember: paintSlime(SLIMES.ember), boss: paintSlime(SLIMES.boss), frost: paintSlime(SLIMES.frost),
       deck: { x: paintDeck('x'), y: paintDeck('y') }, arch: { ether: paintArch('ether'), home: paintArch('home') }, chest: [paintChest(false), paintChest(true)],
       champi: [paintChampi(0), paintChampi(1)], crown: CROWN,
+      mobs: bestiary(), floaters: FLOATERS,
       houses: [0, 1, 2, 3].map(paintHouse), lamp: paintLamp(), barrel: paintBarrel(), crate: paintCrate(),
       fountain: [0, 1, 2].map(paintFountain),
       tuft: [paintTuft(0), paintTuft(1)], flowers: [1, 2, 3, 4, 5, 6].map(paintFlowers), mini: paintMiniShroom(), pebble: [paintPebble(1), paintPebble(2)],
       icons: ICONS, charSet, nodes: { herb: paintHerbNode(), wood: paintWoodNode(), quartz: paintQuartzNode() },
-      slimeLight: { slime: SLIMES.slime[4], ember: SLIMES.ember[4], boss: SLIMES.boss[4], champi: CAP[4], frost: SLIMES.frost[4] }
+      slimeLight: Object.assign({ slime: SLIMES.slime[4], ember: SLIMES.ember[4], boss: SLIMES.boss[4], champi: CAP[4], frost: SLIMES.frost[4] }, Object.fromEntries(Object.keys(MP).map(k => [k, MP[k].body[3]])))
     };
     art.buildMs = Math.round(performance.now() - t0);
     return art;

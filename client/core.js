@@ -22,19 +22,38 @@
   const MW = 56, MH = 56, CX = 28.5, CY = 28.5;
   const SPAWN = { x: 28.5, y: 31.3 };
   const ZONES = [[9, "Bourg d'Argel"], [15, 'Prairies de Lumen'], [20.5, 'Bois des Champis'], [99, 'Terres sauvages']];
+  /* Éléments des monstres : chacun a un trait en combat.
+     Feu : ses coups brûlent · Eau : ses coups ralentissent · Bois : se régénère · Lumière : encaisse 20 % de moins · Ténèbres : draine la vie */
+  const ELEMENTS = { fire: ['Feu', '#ff8a4a'], ice: ['Eau', '#7ab4ff'], wood: ['Bois', '#7ad070'], light: ['Lumière', '#fff0a0'], dark: ['Ténèbres', '#b88ae8'] };
+  // hp / atk / spd : multiplicateurs ; sc : taille d'affichage
   const MOBDEF = {
-    slime: { name: 'Gelée verte', aggr: false },
-    champi: { name: 'Champi des bois', aggr: true },
+    slime: { name: 'Gelée verte', aggr: false, el: 'wood' },
+    champi: { name: 'Champi des bois', aggr: true, el: 'wood' },
     ember: { name: 'Gelée de braise', aggr: true, el: 'fire' },
     frost: { name: 'Gelée de givre', aggr: false, el: 'ice' },
-    boss: { name: 'Roi Gelée', aggr: true, boss: true }
+    boss: { name: 'Roi Gelée', aggr: true, boss: true, el: 'dark' },
+    lapin: { name: 'Lapin des prés', aggr: false, el: 'wood', hp: 0.8, spd: 1.3 },
+    abeille: { name: 'Abeille dorée', aggr: true, el: 'light', hp: 0.6, atk: 0.9, spd: 1.2 },
+    loup: { name: 'Loup des brumes', aggr: true, el: 'dark', hp: 1.1, atk: 1.25, spd: 1.35 },
+    chauvesouris: { name: 'Chauve-souris', aggr: true, el: 'dark', hp: 0.7, atk: 0.9, spd: 1.4 },
+    souche: { name: 'Souche grincheuse', aggr: false, el: 'wood', hp: 1.8, atk: 1.1, spd: 0.7 },
+    salamandre: { name: 'Salamandre', aggr: true, el: 'fire', hp: 1, atk: 1.15, spd: 1.2 },
+    golem: { name: 'Golem de cristal', aggr: false, el: 'light', hp: 2.4, atk: 1.4, spd: 0.6, sc: 1.2 },
+    follet: { name: 'Feu follet', aggr: true, el: 'light', hp: 0.7, atk: 1.1, spd: 1.3 },
+    spectre: { name: 'Spectre', aggr: true, el: 'dark', hp: 1.2, atk: 1.3, spd: 1.1 },
+    pingouin: { name: 'Pingouin-boule', aggr: false, el: 'ice', hp: 1.1, spd: 0.9 },
+    loupneige: { name: 'Loup des neiges', aggr: true, el: 'ice', hp: 1.2, atk: 1.25, spd: 1.35 },
+    esprit: { name: 'Esprit de givre', aggr: true, el: 'ice', hp: 0.9, atk: 1.2, spd: 1.1 },
+    magma: { name: 'Golem de magma', aggr: true, el: 'fire', hp: 2.2, atk: 1.5, spd: 0.65, sc: 1.2 },
+    cendre: { name: 'Chauve-souris de cendre', aggr: true, el: 'fire', hp: 0.8, atk: 1, spd: 1.45 }
   };
+  // difficulté relevée : PV ×1,7 et attaque ×1,5 par rapport aux débuts du jeu (un héros bien équipé reste à l'aise)
   function mobStats(type, lvl) {
-    const boss = type === 'boss';
+    const D = MOBDEF[type], boss = type === 'boss';
     return {
-      maxhp: Math.round((18 + lvl * 14) * (boss ? 9 : 1)), atk: (3 + lvl * 2.4) * (boss ? 1.5 : 1),
-      xp: Math.round((5 + lvl * 5) * (boss ? 8 : 1)), speed: boss ? 1.7 : 1.25 + lvl * 0.05,
-      aggressive: MOBDEF[type].aggr, range: boss ? 1.6 : 0.95, aggroR: boss ? 4.5 : type === 'champi' ? 2.2 : 3.2, respawn: boss ? 60 : 9
+      maxhp: Math.round((18 + lvl * 14) * 1.7 * (boss ? 9 : D.hp || 1)), atk: (3 + lvl * 2.4) * 1.5 * (boss ? 1.5 : D.atk || 1),
+      xp: Math.round((5 + lvl * 5) * (boss ? 8 : 1) * (0.8 + 0.2 * (D.hp || 1))), speed: boss ? 1.7 : (1.25 + lvl * 0.05) * (D.spd || 1),
+      aggressive: D.aggr, range: boss ? 1.6 : (D.sc ? 1.15 : 0.95), aggroR: boss ? 4.5 : type === 'champi' ? 2.2 : 3.4, respawn: boss ? 60 : 9
     };
   }
   /* ---------------- objets, caractéristiques & équipement ---------------- */
@@ -86,13 +105,42 @@
     { n: 'Lame du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'sword', c: '#f0c040', st: { str: 11, agi: 5, sta: 4 }, fx: 'gm', unique: 1 },
     { n: 'Égide du Maître du jeu', slot: 'offhand', lvl: 1, icon: 'shield', c: '#f0c040', st: { armor: 16, sta: 6, str: 2 }, fx: 'gm', unique: 1 },
     { n: 'Grimoire du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'tome', c: '#f0c040', st: { int: 12, sta: 4, agi: 3 }, fx: 'gm', unique: 1, lore: "Le livre où le monde a été écrit ; l'orbe obéit à sa voix." },
-    { n: "Grimoire d'apprenti", slot: 'weapon', lvl: 2, icon: 'tome', c: '#6a4ab0', st: { int: 4, sta: 1 } }
+    { n: "Grimoire d'apprenti", slot: 'weapon', lvl: 2, icon: 'tome', c: '#6a4ab0', st: { int: 4, sta: 1 } },
+    // butin des nouveaux monstres (41 et suivants)
+    { n: 'Capuche de lapin', slot: 'head', lvl: 2, icon: 'hood', c: '#e8d8c8', st: { agi: 2, armor: 2 } },
+    { n: 'Dard doré', slot: 'weapon', lvl: 2, icon: 'dagger', c: '#f0c850', st: { agi: 3 } },
+    { n: 'Pelisse de loup', slot: 'chest', lvl: 5, icon: 'tunic', c: '#5a5878', st: { sta: 4, agi: 2, armor: 8 } },
+    { n: 'Croc de loup', slot: 'weapon', lvl: 5, icon: 'dagger', c: '#c8c0d8', st: { agi: 6 } },
+    { n: 'Ailes de nuit', slot: 'trinket', lvl: 4, icon: 'amulet', c: '#5a3a7a', st: { agi: 3, int: 2 } },
+    { n: 'Écorce vive', slot: 'offhand', lvl: 5, icon: 'shield', c: '#7a5a32', st: { armor: 9, sta: 3 } },
+    { n: 'Bâton de souche', slot: 'weapon', lvl: 5, icon: 'staff', c: '#8a6a3a', st: { int: 6, sta: 2 } },
+    { n: 'Écailles de salamandre', slot: 'chest', lvl: 7, icon: 'plate', c: '#d0502a', st: { sta: 6, armor: 14 } },
+    { n: 'Bottes de salamandre', slot: 'feet', lvl: 7, icon: 'boots', c: '#e06a3a', st: { agi: 4, armor: 5 } },
+    { n: 'Cœur de cristal', slot: 'trinket', lvl: 8, icon: 'shard', c: '#c8f0ff', st: { int: 5, sta: 4 } },
+    { n: 'Espadon de cristal', slot: 'weapon', lvl: 8, icon: 'great', c: '#a8e0f0', st: { str: 10 } },
+    { n: 'Lanterne du follet', slot: 'trinket', lvl: 6, icon: 'spore', c: '#fff0a0', st: { int: 4, agi: 2 } },
+    { n: 'Voile du spectre', slot: 'head', lvl: 8, icon: 'hood', c: '#3a3050', st: { int: 6, armor: 6 } },
+    { n: 'Grimoire des ombres', slot: 'weapon', lvl: 8, icon: 'tome', c: '#4a2a6a', st: { int: 9, sta: 2 } },
+    { n: 'Bonnet de pingouin', slot: 'head', lvl: 5, icon: 'hood', c: '#3a4a6a', st: { sta: 3, armor: 4 } },
+    { n: 'Fourrure des neiges', slot: 'chest', lvl: 6, icon: 'tunic', c: '#e8eef8', st: { sta: 6, armor: 10 } },
+    { n: 'Lance de glace', slot: 'weapon', lvl: 6, icon: 'spear', c: '#a8d8f0', st: { str: 7, agi: 2 } },
+    { n: 'Grimoire de givre', slot: 'weapon', lvl: 6, icon: 'tome', c: '#7ab4e4', st: { int: 7, sta: 2 } },
+    { n: 'Plastron de magma', slot: 'chest', lvl: 8, icon: 'plate', c: '#a83a1a', st: { sta: 8, str: 3, armor: 18 } },
+    { n: 'Hache de magma', slot: 'weapon', lvl: 8, icon: 'axe', c: '#e0502a', st: { str: 11, sta: 2 } },
+    { n: 'Ailes de cendre', slot: 'trinket', lvl: 6, icon: 'amulet', c: '#6a4a4a', st: { agi: 4, str: 2 } },
+    { n: 'Jambières de cendre', slot: 'legs', lvl: 6, icon: 'pants', c: '#5a3a3a', st: { agi: 3, armor: 7 } }
   ];
   const GM_EQUIP = [33, 34, 35, 36, 39], GM_BAG = [37, 38]; // le maître du jeu est mage : sceptre en main, lame et égide au sac
-  const LOOT = { frost: { ch: 0.13, items: [7, 13, 15, 26, 29, 31, 1, 21, 40] }, slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32, 40] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21, 25, 29] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22, 26, 31] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 } };
+  // butin : un objet tombe rarement (≈ 3 %), dans la liste propre au monstre ; le Roi Gelée donne toujours quelque chose
+  const LOOT = { slime: { ch: 0.03, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32, 40] }, champi: { ch: 0.03, items: [7, 13, 15, 17, 1, 21, 25, 29] },
+    ember: { ch: 0.035, items: [3, 4, 11, 16, 22, 26, 31] }, frost: { ch: 0.035, items: [7, 13, 15, 26, 29, 31, 1, 21, 40] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 },
+    lapin: { ch: 0.03, items: [41, 12, 14] }, abeille: { ch: 0.03, items: [42, 41] }, loup: { ch: 0.035, items: [43, 44, 13] }, chauvesouris: { ch: 0.03, items: [45, 44] },
+    souche: { ch: 0.04, items: [46, 47, 10] }, salamandre: { ch: 0.035, items: [48, 49, 16] }, golem: { ch: 0.05, items: [50, 51, 18] }, follet: { ch: 0.035, items: [52, 54] },
+    spectre: { ch: 0.04, items: [53, 54] }, pingouin: { ch: 0.03, items: [55, 56] }, loupneige: { ch: 0.035, items: [56, 57, 43] }, esprit: { ch: 0.035, items: [58, 26] },
+    magma: { ch: 0.05, items: [59, 60] }, cendre: { ch: 0.035, items: [61, 62] } };
   function itemStats(inst) { const T = ITEMS[inst[0]], mul = RARITY[inst[1]][2], o = {}; for (const k in T.st) o[k] = Math.max(1, Math.round(T.st[k] * mul)); return o; }
   const itemValue = inst => Math.round((5 + ITEMS[inst[0]].lvl * 4) * RARITY[inst[1]][2]);
-  function rollRarity(min) { const r = Math.random(); const v = r < 0.02 ? 3 : r < 0.12 ? 2 : r < 0.4 ? 1 : 0; return Math.min(3, Math.max(min || 0, v)); }
+  function rollRarity(min) { const r = Math.random(); const v = r < 0.006 ? 3 : r < 0.045 ? 2 : r < 0.22 ? 1 : 0; return Math.min(3, Math.max(min || 0, v)); }
   const UNIQUE_BOOTS = 24, UNIQUE_CHANCE = { frost: 0.001, boss: 0.05, ember: 0.002, champi: 0.001, slime: 0.0005 };
   function cleanInst(a) { if (!Array.isArray(a)) return null; const t = a[0] | 0, r = a[1] | 0; if (!(t >= 0 && t < ITEMS.length && r >= 0 && r < RARITY.length)) return null; return [t, ITEMS[t].unique ? 4 : Math.min(r, 3)]; }
   /* ---------------- classes & compétences ---------------- */
@@ -316,9 +364,9 @@
      le Pont du Bourg (doré) ramène toujours au Bourg d'Argel. 90 % : une île fixe ; 10 % : une île éphémère. */
   const ISLES = {
     bourg: { name: "Bourg d'Argel", theme: 'bourg' },
-    givre: { name: 'Île Givrée', theme: 'givre', seed: 7101, fx: 'slow', mobs: ['frost', 'frost', 'champi', 'slime'], res: ['quartz', 'wood'], trees: ['pine', 'pine', 'pine', 'oak', 'rock'], desc: 'Le froid mord : tes coups ralentissent les ennemis (sauf les créatures de givre).' },
-    braise: { name: 'Île des Braises', theme: 'braise', seed: 7202, fx: 'burn', mobs: ['ember', 'ember', 'champi', 'slime'], res: ['quartz', 'herb'], trees: ['rock', 'rock', 'pine', 'bush', 'oak'], desc: 'La terre brûle : tes coups enflamment les ennemis (sauf les créatures de feu).' },
-    brume: { name: 'Île de Brume', theme: 'brume', eph: 1, mobs: ['slime', 'champi', 'ember', 'frost'], res: ['herb', 'wood', 'quartz'], trees: ['oak', 'pine', 'blossom', 'bush'], desc: "Île éphémère : un coffre rare t'attend. Elle disparaîtra quand tu partiras." }
+    givre: { name: 'Île Givrée', theme: 'givre', seed: 7101, fx: 'slow', mobs: ['frost', 'frost', 'pingouin', 'loupneige', 'esprit', 'champi', 'slime'], res: ['quartz', 'wood'], trees: ['pine', 'pine', 'pine', 'oak', 'rock'], desc: 'Le froid mord : tes coups ralentissent les ennemis (sauf les créatures de givre).' },
+    braise: { name: 'Île des Braises', theme: 'braise', seed: 7202, fx: 'burn', mobs: ['ember', 'salamandre', 'magma', 'cendre', 'ember', 'champi', 'slime'], res: ['quartz', 'herb'], trees: ['rock', 'rock', 'pine', 'bush', 'oak'], desc: 'La terre brûle : tes coups enflamment les ennemis (sauf les créatures de feu).' },
+    brume: { name: 'Île de Brume', theme: 'brume', eph: 1, mobs: ['follet', 'spectre', 'loup', 'chauvesouris', 'souche', 'slime', 'champi', 'frost'], res: ['herb', 'wood', 'quartz'], trees: ['oak', 'pine', 'blossom', 'bush'], desc: "Île éphémère : un coffre rare t'attend. Elle disparaîtra quand tu partiras." }
   };
   const FIXED_ISLES = ['givre', 'braise'], ETHER_BRIDGE = 3, BRIDGE_LEN = 4;
   const ISLE_BIT = { bourg: 1, givre: 2, braise: 4, brume: 8 };
@@ -452,6 +500,8 @@
       }
       if (spawns.length >= 52) break;
     }
+    const VAR = { slime: [['lapin', 0.25], ['abeille', 0.37]], champi: [['loup', 0.2], ['chauvesouris', 0.35], ['souche', 0.47]], ember: [['salamandre', 0.25], ['golem', 0.4], ['spectre', 0.52], ['follet', 0.6]] };
+    for (const sp of spawns) { const h = hash(sp.i, sp.j, 901), v = VAR[sp.type] && VAR[sp.type].find(o => h < o[1]); if (v) sp.type = v[0]; }
     spawns.push({ type: 'boss', lvl: 12, i: bossPt[0], j: bossPt[1] });
     // points de cueillette (non bloquants)
     const nodes = [], taken = new Set(spawns.map(s => s.i + ',' + s.j));
@@ -596,7 +646,7 @@
         case 'mv': {
           if (p.dead) return;
           const x = +m.x, y = +m.y; if (!isFinite(x) || !isFinite(y)) return;
-          const allowed = 3.6 * (p.speed || 1) * (p.hasteT > this.t ? 1.3 : 1) * (this.t - p.lastMv) + 0.7;
+          const allowed = 3.6 * (p.speed || 1) * (p.hasteT > this.t ? 1.3 : 1) * (this.t - p.lastMv) + 0.7; // (ralenti : la vitesse permise reste la normale)
           if (Math.hypot(x - p.x, y - p.y) > allowed || !W.walkable(Math.floor(x), Math.floor(y))) { this.ev({ e: 'tp', id, x: p.x, y: p.y }); p.lastMv = this.t; return; }
           p.x = x; p.y = y; p.face = (m.f | 0) % 3; p.flip = m.fl ? 1 : 0; p.moving = m.mv ? 1 : 0; p.lastMv = this.t;
           break;
@@ -820,6 +870,8 @@
     }
     hitMob(m, dmg, p, crit) {
       if (m.vulnT > this.t) dmg = Math.round(dmg * (1 + m.vulnK));
+      if (MOBDEF[m.type].el === 'light') dmg = Math.max(1, Math.round(dmg * 0.8));
+      m.hitT = this.t;
       m.hp -= dmg; m.tagged.add(p.id); this.addMast(p, 1);
       // effet de l'île, sauf sur les créatures du même élément (le feu ne brûle pas une gelée de braise)
       const el = MOBDEF[m.type].el, imm = (this.fx === 'slow' && el === 'ice') || (this.fx === 'burn' && el === 'fire');
@@ -875,6 +927,11 @@
       if (p.guardT > this.t) dmg = Math.max(1, Math.round(dmg * (1 - p.guardK)));
       if (p.shieldHP > 0) { const a0 = Math.min(p.shieldHP, dmg); p.shieldHP -= a0; dmg -= a0; if (!dmg) { this.ev({ e: 'hp', id: p.id, v: 0, m: m.k, sh: 1 }); return; } }
       p.hp -= dmg; p.lastHit = 0;
+      // trait de l'élément du monstre
+      const el = m.k != null ? MOBDEF[m.type].el : null;
+      if (el === 'fire' && !p.dead) { p.pburnT = this.t + 3; p.pburnDps = Math.max(1, m.atk * 0.12); p.pburnBy = m; }
+      else if (el === 'ice') p.pslowT = this.t + 2;
+      else if (el === 'dark') m.hp = Math.min(m.maxhp, m.hp + dmg * 0.3);
       this.ev({ e: 'hp', id: p.id, v: dmg, m: m.k, b: blk ? 1 : 0 });
       if (p.hp <= 0) {
         p.hp = 0; p.dead = true; p.deadT = 5; p.moving = 0;
@@ -894,6 +951,7 @@
         }
         if (p.lastHit > 4) p.hp = Math.min(p.maxhp, p.hp + p.maxhp * 0.03 * dt);
         if (p.regenT > this.t) p.hp = Math.min(p.maxhp, p.hp + p.regenPs * dt);
+        if (p.pburnT > this.t) { p.pburnAcc = (p.pburnAcc || 0) + p.pburnDps * dt; if (p.pburnAcc >= Math.max(1, p.pburnDps * 0.6)) { const v = Math.round(p.pburnAcc); p.pburnAcc = 0; p.hp -= v; p.lastHit = 0; this.ev({ e: 'hp', id: p.id, v, m: p.pburnBy.k, burn: 1 }); if (p.hp <= 0) { p.hp = 1; this.hurt(p, 1, p.pburnBy); if (p.dead) continue; } } }
         p.mp = Math.min(p.maxmp, p.mp + p.maxmp * 0.04 * dt);
         if (this.t - p.lastMv > 0.5) p.moving = 0;
       }
@@ -915,6 +973,7 @@
         m.atkCd -= dt; m.moving = false;
         if (m.burnT > this.t) { m.burnAcc = (m.burnAcc || 0) + m.burnDps * dt; if (m.burnAcc >= Math.max(1, m.burnDps * 0.6)) { const v = Math.round(m.burnAcc); m.burnAcc = 0; m.hp -= v; this.ev({ e: 'hm', m: m.k, v, c: 0, by: m.burnBy, burn: 1 }); if (m.hp <= 0) { this.killMob(m); continue; } } }
         if (m.bleedT > this.t) { m.bleedAcc = (m.bleedAcc || 0) + m.bleedDps * dt; if (m.bleedAcc >= Math.max(1, m.bleedDps * 0.6)) { const v = Math.round(m.bleedAcc); m.bleedAcc = 0; m.hp -= v; this.ev({ e: 'hm', m: m.k, v, c: 0, by: m.bleedBy, bleed: 1 }); if (m.hp <= 0) { const bp = this.players.get(m.bleedBy); if (bp) m.tagged.add(bp.id); this.killMob(m); continue; } } }
+        if (MOBDEF[m.type].el === 'wood' && !(m.hitT > this.t - 3) && m.hp < m.maxhp) m.hp = Math.min(m.maxhp, m.hp + m.maxhp * 0.02 * dt);
         if (m.stunT > this.t) continue;
         const slow = m.slowT > this.t ? (m.slowK || 0.5) : 1;
         let tp = m.target != null ? this.players.get(m.target) : null;
@@ -947,9 +1006,9 @@
     }
     meState(id) {
       const p = this.players.get(id); if (!p) return null;
-      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed * (p.hasteT > this.t ? 1.3 : 1), cls: p.cls, mast: p.mast, sk: p.sk, skc: p.skc, shield: Math.round(p.shieldHP || 0), stealth: p.stealthT > this.t ? 1 : 0, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
+      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed * (p.hasteT > this.t ? 1.3 : 1) * (p.pslowT > this.t ? 0.65 : 1), pburn: p.pburnT > this.t ? 1 : 0, pslow: p.pslowT > this.t ? 1 : 0, cls: p.cls, mast: p.mast, sk: p.sk, skc: p.skc, shield: Math.round(p.shieldHP || 0), stealth: p.stealthT > this.t ? 1 : 0, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
     }
   }
 
-  return { SK_MAX, skNeed, skTotal, skCap, skRank, skInfo, skLvlFor, ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
+  return { ELEMENTS, SK_MAX, skNeed, skTotal, skCap, skRank, skInfo, skLvlFor, ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
 });
