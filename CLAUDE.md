@@ -79,8 +79,9 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - Bestiary (`docs/design/bestiaire.md`): 19 monster types in `MOBDEF` (element `el`, hp/atk/spd multipliers, `sc` size); element traits
   (fire burns the hero, ice slows, wood regenerates, light takes less damage, dark drains); art in `assets.js` `bestiary()`.
   Home-island variants are picked by `hash()` after spawning (no extra `rnd()` calls). Loot is rare (`LOOT`, ≈ 3 %).
+- Hero level max 50 (`MAX_LVL`), XP per level `14 × L^2.5` (≈ 60 h+ to level 50; don't make it faster).
 - Skill ranks (`docs/design/competences.md`): each technique gains XP when useful (`addSk`), ranks 1–10, cap = 1 + level / 5,
-  +5 % power / −2 % cooldown per rank; at ranks 4 and 8 the player picks one of two effects (`MS` table, `p.skc`, generic
+  +5 % power / −3 % cooldown per rank, and Intelligence cuts cooldowns by int / (int + 150), max −40 % (`techCd`); at ranks 4 and 8 the player picks one of two effects (`MS` table, `p.skc`, generic
   modifiers applied in `kitOf` and the `ab` handler); Elya resets the choices. Save fields `sk`, `skc`.
 - Game Master set (items 33–38, `fx: 'gm'`, unique, never in loot, can't be sold): golden armor drawn in `sprites.js`
   (`F.gm`, `gmhelm`, white cape), gold name and aura in game. `Sim.grantGM(p)` equips it once; granted to the artifact owner

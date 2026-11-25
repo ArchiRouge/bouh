@@ -20,9 +20,11 @@ toutes les techniques démarrent au rang 1.
 - **Rangs** : du rang r au rang r+1, `26 × r^1,6` points (rang 2 : 26, rang 5 : ≈ 240, rang 10 : ≈ 3 500 au total),
   soit environ 1 200 utilisations utiles.
 - **Plafond** : rang max = `1 + niveau / 5`. Niveau 5 → rang 2, niveau 15 → rang 4 (1er palier), niveau 35 → rang 8
-  (2e palier), niveau 45 → rang 10.
+  (2e palier), niveau 45 → rang 10. Le niveau maximum du héros est 50 (au moins ~50 h de jeu : XP `14 × niveau^2,5`).
 - **Réserve** : au plafond, l'expérience remplit encore le rang suivant ; la technique monte dès le niveau requis.
-- **Chaque rang** : +5 % de puissance (dégâts, soins, durées d'étourdissement, de ralentissement et du cri) et −2 % de recharge.
+- **Chaque rang** : +5 % de puissance (dégâts, soins, durées d'étourdissement, de ralentissement et du cri) et −3 % de recharge.
+- **Intelligence** : réduit la recharge de toutes les techniques de `Int / (Int + 150)`, jusqu'à −40 % (Int 28 : −16 %, Int 60 : −29 %).
+  Les deux se multiplient : Boule de feu passe de 4 s à 2,5 s au rang 10 avec 28 d'Intelligence.
 - **Blocage** progresse en bloquant : 25 % de chances au rang 1, +1 % par rang.
 - **Interface** : rang et barre dans l'onglet Compétences, plafond expliqué, chiffre de rang sur les boutons (doré au rang 10),
   message à chaque montée de rang.

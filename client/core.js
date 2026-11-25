@@ -244,7 +244,7 @@
      Rang 1 à 10 ; du rang r au rang r+1 : 26 × r^1,6 points (environ 1 200 utilisations utiles pour le rang 10).
      Plafond tenu par le niveau du héros : rang max = 1 + niveau / 5 (rang 10 au niveau 45). Au plafond, l'expérience
      remplit encore le rang suivant (« prête à monter ») et la compétence monte dès le niveau requis.
-     Chaque rang : +5 % de puissance (dégâts, soins, durées) et −2 % de recharge. Paliers aux rangs 4 et 8 (à venir). */
+     Chaque rang : +5 % de puissance (dégâts, soins, durées) et −3 % de recharge (plus l'Intelligence). Paliers aux rangs 4 et 8 (à venir). */
   const SK_MAX = 10, skNeed = r => Math.round(26 * Math.pow(r, 1.6));
   function skTotal(r) { let t = 0; for (let k = 1; k < r; k++) t += skNeed(k); return t; }
   const skCap = lvl => Math.min(SK_MAX, 1 + Math.floor(Math.max(1, lvl) / 5)), skLvlFor = r => 5 * (r - 1);
@@ -253,15 +253,18 @@
     const cap = skCap(lvl), raw = skRank(total), r = Math.min(raw, cap), next = r < SK_MAX ? skTotal(r + 1) : 0;
     return { r, cap, cur: r < SK_MAX ? total - skTotal(r) : 0, need: r < SK_MAX ? skNeed(r) : 0, ready: r < SK_MAX && total >= next, lvlNext: r < SK_MAX ? skLvlFor(r + 1) : 0 };
   }
+  // temps de recharge d'une technique : −3 % par rang (usage) et jusqu'à −40 % avec l'Intelligence (int / (int + 150))
+  const intCdK = intel => Math.min(0.4, Math.max(0, intel || 0) / ((intel || 0) + 150));
+  const techCd = (base, rank, intel, minus) => Math.max(0.5, Math.round((base * (1 - 0.03 * (rank - 1)) * (1 - intCdK(intel)) - (minus || 0)) * 10) / 10);
   function weaponFam(equip) { const w = equip && equip.weapon, T = w && ITEMS[w[0]]; return T ? (FAM_OF[T.icon] || 'sword') : 'none'; }
-  function kitOf(equip, mast, bar, sk, lvl, skc) {
+  function kitOf(equip, mast, bar, sk, lvl, skc, intel) {
     const fam = weaponFam(equip), F = FAMS[fam], ml = mLevel((mast || {})[fam] || 0).lv, T = F.tech, cap = skCap(lvl || 1);
     const ranked = i => {
       const key = fam + ':' + i, r = skRank(((sk || {})[key]) || 0, cap), ch = ((skc || {})[key]) || [], M = {}, Tm = T[i].ms;
       if (Tm) for (let j = 0; j < 2; j++) if (r >= (j ? 8 : 4) && ch[j] >= 0 && Tm[j][ch[j]]) { const mo = Tm[j][ch[j]].mods; for (const k in mo) M[k] = typeof mo[k] === 'number' && typeof M[k] === 'number' ? M[k] + mo[k] : mo[k]; }
       const A = Object.assign({ ti: i, rank: r, pw: 1 + 0.05 * (r - 1) }, T[i]);
       A.mods = M; A.pending = Tm ? [0, 1].filter(j => r >= (j ? 8 : 4) && !(ch[j] >= 0)) : [];
-      A.cd = Math.max(0.5, Math.round((T[i].cd * (1 - 0.02 * (r - 1)) - (M.cd || 0)) * 10) / 10);
+      A.cd = techCd(T[i].cd, r, intel, M.cd);
       if (A.r != null || M.r) A.r = (A.r || 0) + (M.r || 0); if (A.range != null) A.range += M.range || 0;
       return A;
     };
@@ -307,7 +310,8 @@
     { id: 'spear', npc: 'bran', name: 'Lance de frêne', desc: 'Lance inhabituelle (nv1)', req: 2, cost: { wood: 5, herb: 2 }, item: [30, 1] }
   ];
   const dayKey = () => new Date().toISOString().slice(0, 10);
-  const xpNeed = l => Math.floor(18 * Math.pow(l, 1.6));
+  // niveau max 50, au moins ~50 h de jeu : environ 1 h pour le niveau 10, 6 h pour le 20, 37 h pour le 40, 60 h et plus pour le 50
+  const MAX_LVL = 50, xpNeed = l => Math.round(14 * Math.pow(l, 2.5));
   const LOOK_MAX = [3, 7, 7, 3, 4]; // coiffure, couleur cheveux, tenue, peau, chapeau
   /* Apparence de l'équipement (visible en jeu) : tête, torse, jambes, pieds, arme, main gauche → « t.r » par emplacement, « - » si vide. */
   const GEAR_SLOTS = ['head', 'chest', 'legs', 'feet', 'weapon', 'offhand'];
@@ -551,7 +555,7 @@
       const s = save || {};
       const p = {
         id, name: cleanName(name), look: cleanLook(look), x: this.spawn.x + (Math.random() - .5) * (this.spawn === SPAWN ? 1 : 0.3), y: this.spawn.y, face: 0, flip: 0, moving: 0,
-        lvl: Math.max(1, s.lvl | 0), xp: Math.max(0, s.xp | 0), gold: Math.max(0, s.gold | 0), potions: s.potions == null ? 3 : Math.max(0, s.potions | 0),
+        lvl: Math.min(MAX_LVL, Math.max(1, s.lvl | 0)), xp: Math.max(0, s.xp | 0), gold: Math.max(0, s.gold | 0), potions: s.potions == null ? 3 : Math.max(0, s.potions | 0),
         dead: false, deadT: 0, atkCd: 0, skillCd: 0, potCd: 0, lastHit: 99, lastMv: this.t, chatT: 0,
         q: clampInt(s.q, 0, QUESTS.length), qs: clampInt(s.qs, 0, 2), qn: clampInt(s.qn, 0, 99)
       };
@@ -662,7 +666,7 @@
           break;
         }
         case 'ab': {
-          const K = kitOf(p.equip, p.mast, p.bar, p.sk, p.lvl, p.skc), i = m.a | 0, A = K.ab[i], M = (A && A.mods) || {};
+          const K = kitOf(p.equip, p.mast, p.bar, p.sk, p.lvl, p.skc, p.stats && p.stats.int), i = m.a | 0, A = K.ab[i], M = (A && A.mods) || {};
           if (!A || A.locked || p.dead || p.abCd[i] > this.t || p.mp < A.mp) return;
           let tgt = null;
           if (A.kind === 'aoeTarget' || A.kind === 'single' || A.kind === 'charge') {
@@ -910,13 +914,15 @@
       if (p.qn >= Q.n) { p.qs = 2; this.ev({ e: 'qc', id: p.id, q: p.q }); }
     }
     gainXP(p, v) {
+      if (p.lvl >= MAX_LVL) { p.xp = 0; return; }
       p.xp += v;
-      while (p.xp >= xpNeed(p.lvl)) {
+      while (p.lvl < MAX_LVL && p.xp >= xpNeed(p.lvl)) {
         p.xp -= xpNeed(p.lvl); p.lvl++; this.recalc(p, true);
         this.ev({ e: 'lv', id: p.id, lv: p.lvl });
         // le plafond monte : les compétences « prêtes » passent leur rang
         for (const k in p.sk) { const a = skRank(p.sk[k], skCap(p.lvl - 1)), b = skRank(p.sk[k], skCap(p.lvl)); if (b > a) this.ev({ e: 'skr', id: p.id, k, r: b }); }
       }
+      if (p.lvl >= MAX_LVL) p.xp = 0;
     }
     hurt(p, dmg, m) {
       if (p.dead) return;
@@ -1006,9 +1012,9 @@
     }
     meState(id) {
       const p = this.players.get(id); if (!p) return null;
-      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed * (p.hasteT > this.t ? 1.3 : 1) * (p.pslowT > this.t ? 0.65 : 1), pburn: p.pburnT > this.t ? 1 : 0, pslow: p.pslowT > this.t ? 1 : 0, cls: p.cls, mast: p.mast, sk: p.sk, skc: p.skc, shield: Math.round(p.shieldHP || 0), stealth: p.stealthT > this.t ? 1 : 0, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
+      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: p.lvl >= MAX_LVL ? 0 : xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed * (p.hasteT > this.t ? 1.3 : 1) * (p.pslowT > this.t ? 0.65 : 1), pburn: p.pburnT > this.t ? 1 : 0, pslow: p.pslowT > this.t ? 1 : 0, cls: p.cls, mast: p.mast, sk: p.sk, skc: p.skc, shield: Math.round(p.shieldHP || 0), stealth: p.stealthT > this.t ? 1 : 0, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
     }
   }
 
-  return { ELEMENTS, SK_MAX, skNeed, skTotal, skCap, skRank, skInfo, skLvlFor, ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
+  return { MAX_LVL, intCdK, techCd, ELEMENTS, SK_MAX, skNeed, skTotal, skCap, skRank, skInfo, skLvlFor, ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
 });

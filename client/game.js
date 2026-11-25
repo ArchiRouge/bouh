@@ -201,7 +201,7 @@
 
   /* ---------- entrées ---------- */
   const input = { atkBtn: false, atkKey: false, ab: -1, pot: false };
-  const CL = () => C.kitOf(me.equip, me.mast, me.bar, me.sk, me.lvl, me.skc); // arme en main → attaque de base + 3 techniques
+  const CL = () => C.kitOf(me.equip, me.mast, me.bar, me.sk, me.lvl, me.skc, me.stats && me.stats.int); // arme en main → attaque de base + 3 techniques
   const localAbCd = [0, 0, 0];
   const joy = { active: false, id: null, ox: 0, oy: 0, x: 0, y: 0 }, keys = {}, pointers = new Map(), btnDown = {};
   function btns() { const b = UH - 12 - SB, K0 = CL(); return { atk: { x: UW - 27, y: b - 18, r: 18, icon: 'a_' + K0.basic.icon }, s0: { x: UW - 62, y: b - 6, r: 12, icon: 'a_' + K0.ab[0].icon, ab: 0 }, s1: { x: UW - 59, y: b - 38, r: 12, icon: 'a_' + K0.ab[1].icon, ab: 1 }, s2: { x: UW - 31, y: b - 57, r: 12, icon: 'a_' + K0.ab[2].icon, ab: 2 }, pot: { x: UW - 91, y: b - 4, r: 10, icon: 'potion' }, chat: { x: UW - 64, y: 16 + ST, r: 9, icon: 'chat' }, bag: { x: UW - 64, y: 38 + ST, r: 9, icon: 'bag' }, zoom: { x: UW - 64, y: 60 + ST, r: 9, icon: 'zoom' } }; }
@@ -340,7 +340,7 @@
     const sig = JSON.stringify([me.equip, me.bag, me.lvl, me.xp, me.gold, sel, charTab, bagFilter, sellArm, me.mast, me.pts, me.bar, me.free, me.fr, me.sk, me.skc]); if (sig === charSig) return; charSig = sig;
     const K0 = CL(), bag = me.bag || [];
     $('chtitle').textContent = me.name; $('chsub').textContent = 'Niveau ' + me.lvl + ' · ' + K0.name + ' (maîtrise ' + K0.ml + ') · ' + fmt(me.gold || 0) + ' PO';
-    const xpf = me.need ? Math.min(1, (me.xp || 0) / me.need) : 0; $('chxp').style.width = (xpf * 100).toFixed(1) + '%'; $('chxpt').textContent = 'XP ' + fmt(me.xp || 0) + ' / ' + fmt(me.need || 0);
+    const xpf = me.need ? Math.min(1, (me.xp || 0) / me.need) : 1; $('chxp').style.width = (xpf * 100).toFixed(1) + '%'; $('chxpt').textContent = me.need ? 'XP ' + fmt(me.xp || 0) + ' / ' + fmt(me.need) : 'Niveau maximum (' + C.MAX_LVL + ')';
     $('slotsL').innerHTML = ['head', 'chest', 'legs', 'feet'].map(slotHTML).join('');
     $('slotsR').innerHTML = ['weapon', 'offhand', 'trinket'].map(slotHTML).join('');
     // stats actuelles, et différence si un objet est essayé
@@ -348,7 +348,7 @@
     const dv = (a, b) => tr ? Math.round(b) - Math.round(a) : 0, S2 = now.stats, T2 = tr ? tr.stats : S2;
     $('chattr').innerHTML = statRows([['Force', S2.str, dv(S2.str, T2.str)], ['Endurance', S2.sta, dv(S2.sta, T2.sta)], ['Intelligence', S2.int, dv(S2.int, T2.int)], ['Agilité', S2.agi, dv(S2.agi, T2.agi)], ['Armure', S2.armor, dv(S2.armor, T2.armor)]]);
     const P = (x) => Math.round(x * 100);
-    $('chstats').innerHTML = statRows([['Attaque', Math.round(now.atk), tr ? dv(now.atk, tr.atk) : 0], ['Points de vie', now.maxhp, tr ? dv(now.maxhp, tr.maxhp) : 0], ['Points de mana', now.maxmp, tr ? dv(now.maxmp, tr.maxmp) : 0], ['Critique', P(now.crit), tr ? P(tr.crit) - P(now.crit) : 0, ' %'], ['Réduction', P(now.red), tr ? P(tr.red) - P(now.red) : 0, ' %'], ['Vitesse', P(now.speed), tr ? P(tr.speed) - P(now.speed) : 0, ' %']]);
+    $('chstats').innerHTML = statRows([['Attaque', Math.round(now.atk), tr ? dv(now.atk, tr.atk) : 0], ['Points de vie', now.maxhp, tr ? dv(now.maxhp, tr.maxhp) : 0], ['Points de mana', now.maxmp, tr ? dv(now.maxmp, tr.maxmp) : 0], ['Critique', P(now.crit), tr ? P(tr.crit) - P(now.crit) : 0, ' %'], ['Réduction', P(now.red), tr ? P(tr.red) - P(now.red) : 0, ' %'], ['Vitesse', P(now.speed), tr ? P(tr.speed) - P(now.speed) : 0, ' %'], ['Recharge (Int.)', '−' + P(C.intCdK(now.stats.int)), tr ? P(C.intCdK(now.stats.int)) - P(C.intCdK(tr.stats.int)) : 0, ' %']]);
     // points de caractéristiques (3 par niveau) ; réinitialisation chez Elya
     const free = me.free | 0, PN = { str: 'Force', sta: 'Endurance', int: 'Intelligence', agi: 'Agilité' };
     $('chpts').innerHTML = (free > 0 ? `<p class="ptsn">${free} point${free > 1 ? 's' : ''} à répartir</p><div class="ptsb">${Object.keys(PN).map(k => `<button type="button" data-pt="${k}">+ ${PN[k]}</button>`).join('')}</div>` : '')
@@ -360,14 +360,14 @@
     const rankHTML = key => { const I = C.skInfo(((me.sk || {})[key]) || 0, me.lvl);
       const note = I.r >= C.SK_MAX ? 'Rang maximum atteint.' : I.ready ? 'Prête à monter : rang ' + (I.r + 1) + ' au niveau ' + I.lvlNext + '.' : I.r >= I.cap ? 'Rang max ' + I.cap + ' à ton niveau : rang ' + (I.r + 1) + ' au niveau ' + I.lvlNext + '.' : 'Elle progresse quand tu t\'en sers.';
       const mile = '';
-      return `<div class="skr${I.r >= C.SK_MAX ? ' max' : ''}"><b>Rang ${I.r} / ${C.SK_MAX}</b> <span>${I.r > 1 ? '+' + (I.r - 1) * 5 + ' % de puissance · −' + (I.r - 1) * 2 + ' % de recharge' : 'puissance de base'}</span><div class="xp"><i style="width:${I.need ? Math.min(100, I.cur / I.need * 100).toFixed(1) : 100}%"></i><span>${I.need ? I.cur + ' / ' + I.need : 'Max'}</span></div><small>${note}${mile}</small></div>`; };
+      return `<div class="skr${I.r >= C.SK_MAX ? ' max' : ''}"><b>Rang ${I.r} / ${C.SK_MAX}</b> <span>${I.r > 1 ? '+' + (I.r - 1) * 5 + ' % de puissance · −' + (I.r - 1) * 3 + ' % de recharge' : 'puissance de base'}</span><div class="xp"><i style="width:${I.need ? Math.min(100, I.cur / I.need * 100).toFixed(1) : 100}%"></i><span>${I.need ? I.cur + ' / ' + I.need : 'Max'}</span></div><small>${note}${mile}</small></div>`; };
     // paliers des rangs 4 et 8 : choix entre deux effets (définitif, Elya peut tout réinitialiser)
     const mileHTML = (key, T, rk) => { if (!T.ms) return ''; const ch = ((me.skc || {})[key]) || [-1, -1];
       return T.ms.map((pair, j) => { const req = j ? 8 : 4;
         if (ch[j] >= 0) { const o = pair[ch[j]]; return `<p class="mile on"><b>Rang ${req} · ${o.n}</b> — ${o.d}</p>`; }
         if (rk >= req) return `<div class="mile pick"><b>Rang ${req} atteint : choisis un effet</b>${pair.map((o, c) => `<button type="button" data-skk="${key}" data-skj="${j}" data-skc="${c}"><b>${o.n}</b><small>${o.d}</small></button>`).join('')}</div>`;
         return `<p class="mile"><b>Rang ${req}</b> — ${pair.map(o => o.n).join(' ou ')}</p>`; }).join(''); };
-    const techs = K0.F.tech.map((A, i) => { const lock = A.m > K0.ml, slot = inBar.indexOf(i), rk = C.skRank(((me.sk || {})[K0.fam + ':' + i]) || 0, C.skCap(me.lvl)), cd = Math.round(A.cd * (1 - 0.02 * (rk - 1)) * 10) / 10;
+    const techs = K0.F.tech.map((A, i) => { const lock = A.m > K0.ml, slot = inBar.indexOf(i), rk = C.skRank(((me.sk || {})[K0.fam + ':' + i]) || 0, C.skCap(me.lvl)), cd = C.techCd(A.cd, rk, me.stats && me.stats.int);
       return `<li class="${lock ? 'lock' : ''}"><img src="${ico(A.icon)}" alt=""><div><b>${A.name}${slot >= 0 ? ' <span class="inbar">case ' + (slot + 1) + '</span>' : ''}</b><small>${lock ? 'Maîtrise ' + A.m + ' · ' : ''}${A.mp} PM · recharge ${lock ? A.cd : cd} s · ${A.desc}</small>${lock ? '' : rankHTML(K0.fam + ':' + i) + mileHTML(K0.fam + ':' + i, A, rk)}${lock ? '' : `<span class="barb">${[0, 1, 2].map(s0 => `<button type="button" data-bs="${s0}" data-bk="${i}" class="${slot === s0 ? 'on' : ''}" aria-label="Mettre en case ${s0 + 1}">${s0 + 1}</button>`).join('')}</span>`}</div></li>`; }).join('');
     const caps = (K0.F.caps || []).map(A => `<li class="${A.m > K0.ml ? 'lock' : ''}"><img src="${ico(A.m === 5 ? 'charge' : 'shout')}" alt=""><div><b>${A.name}</b><small>${A.m > K0.ml ? 'Maîtrise ' + A.m + ' · ' : ''}${A.desc}</small>${A.m === 8 && A.m <= K0.ml ? rankHTML('sword:block') : ''}</div></li>`).join('');
     const others0 = Object.keys(C.FAMS).filter(f => f !== 'none' && f !== K0.fam && (me.mast || {})[f]).map(f => C.FAMS[f].name + ' ' + C.mLevel(me.mast[f]).lv).join(' · ');
@@ -952,7 +952,7 @@
     const bw = pw - 34;
     bar(32, 13, bw, 7, me.hp / me.maxhp, '#dc6a68', '#a8465a', '#2e1424'); text(u, Math.ceil(me.hp) + '/' + me.maxhp, 32 + (bw >> 1), 13, '#ffffff', 'center');
     bar(32, 23, bw, 4, me.mp / me.maxmp, '#78a8dc', '#4f78b0', '#161a3a');
-    bar(32, 30, bw, 2, me.xp / me.need, '#b2d896', '#7aa870', '#1a2a20');
+    bar(32, 30, bw, 2, me.need ? me.xp / me.need : 1, '#b2d896', '#7aa870', '#1a2a20');
     u.drawImage(ART.icons.coin, 5, 40); text(u, String(me.gold), 12, 39, '#ffd23f');
     { const xe = 18 + textW(String(me.gold)); u.drawImage(ART.icons.ether, xe, 40); text(u, String(me.ether || 0), xe + 7, 39, '#bfe6ff'); const xg = xe + 12 + textW(String(me.ether || 0)); text(u, 'Cueil. nv' + (me.glvl || 1), xg, 39, '#c8c0d8'); hudWalk = { x: 3, y: 37 + ST, w: xg + textW('Cueil. nv' + (me.glvl || 1)), h: 10 }; }
     // tchat
