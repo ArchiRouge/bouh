@@ -82,6 +82,13 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   sets staff mastery to the sword's level and moves stat points to Intelligence.
 - `C.gearStr(equip)` encodes head/chest/legs/feet/weapon/offhand; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
 
+## Islands and bridges
+- `docs/design/voyage-entre-les-iles.md`. The world is one island at a time: `game.js` reads the island from the save (`isle`)
+  before `C.buildWorld(C.SEED, isle)`. Crossing a bridge = `cross` message → `travel` event → save, mist fade, `location.reload()`,
+  auto-continue (`sessionStorage.etheria_autoplay`). The home island's generation must stay identical (its bridge is added last).
+- Ether bridge (3 Éther, random: 90 % fixed island `givre`/`braise`, 10 % ephemeral `brume` with a seed and a chest), home bridge
+  back to the fountain. Island monsters take the arriving hero's level. Online the server keeps everyone on the home island for now.
+
 ## Rendering & smoothness
 - The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving
   characters glide at screen-pixel precision; static art stays on the game-pixel grid. `adaptQuality()` halves `RQ` if the

@@ -26,6 +26,7 @@
     slime: { name: 'Gelée verte', aggr: false },
     champi: { name: 'Champi des bois', aggr: true },
     ember: { name: 'Gelée de braise', aggr: true },
+    frost: { name: 'Gelée de givre', aggr: false },
     boss: { name: 'Roi Gelée', aggr: true, boss: true }
   };
   function mobStats(type, lvl) {
@@ -87,11 +88,11 @@
     { n: 'Sceptre du Maître du jeu', slot: 'weapon', lvl: 1, icon: 'staff', c: '#f0c040', st: { int: 12, sta: 4, agi: 3 }, fx: 'gm', unique: 1, lore: "L'orbe obéit à la voix de celui qui a écrit le monde." }
   ];
   const GM_EQUIP = [33, 34, 35, 36, 39], GM_BAG = [37, 38]; // le maître du jeu est mage : sceptre en main, lame et égide au sac
-  const LOOT = { slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21, 25, 29] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22, 26, 31] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 } };
+  const LOOT = { frost: { ch: 0.13, items: [7, 13, 15, 26, 29, 31, 1, 21] }, slime: { ch: 0.12, items: [0, 1, 6, 9, 12, 14, 20, 25, 28, 30, 32] }, champi: { ch: 0.12, items: [7, 13, 15, 17, 1, 21, 25, 29] }, ember: { ch: 0.14, items: [3, 4, 11, 16, 22, 26, 31] }, boss: { ch: 1, items: [5, 8, 23, 27], minR: 2 } };
   function itemStats(inst) { const T = ITEMS[inst[0]], mul = RARITY[inst[1]][2], o = {}; for (const k in T.st) o[k] = Math.max(1, Math.round(T.st[k] * mul)); return o; }
   const itemValue = inst => Math.round((5 + ITEMS[inst[0]].lvl * 4) * RARITY[inst[1]][2]);
   function rollRarity(min) { const r = Math.random(); const v = r < 0.02 ? 3 : r < 0.12 ? 2 : r < 0.4 ? 1 : 0; return Math.min(3, Math.max(min || 0, v)); }
-  const UNIQUE_BOOTS = 24, UNIQUE_CHANCE = { boss: 0.05, ember: 0.002, champi: 0.001, slime: 0.0005 };
+  const UNIQUE_BOOTS = 24, UNIQUE_CHANCE = { frost: 0.001, boss: 0.05, ember: 0.002, champi: 0.001, slime: 0.0005 };
   function cleanInst(a) { if (!Array.isArray(a)) return null; const t = a[0] | 0, r = a[1] | 0; if (!(t >= 0 && t < ITEMS.length && r >= 0 && r < RARITY.length)) return null; return [t, ITEMS[t].unique ? 4 : Math.min(r, 3)]; }
   /* ---------------- classes & compétences ---------------- */
   const CLASSES = [
@@ -258,8 +259,84 @@
       done: "Le cristal… il recommence à chanter ! Grâce à toi et à tes compagnons, Pixels Worlds respire de nouveau. Merci, gardien. Ce n'est que le début de l'histoire." }
   ];
 
+  /* ---------------- îles et ponts ----------------
+     Le Pont d'Éther (violet) tire une île au hasard à chaque passage et coûte de l'Éther (gagné en marchant) ;
+     le Pont du Bourg (doré) ramène toujours au Bourg d'Argel. 90 % : une île fixe ; 10 % : une île éphémère. */
+  const ISLES = {
+    bourg: { name: "Bourg d'Argel", theme: 'bourg' },
+    givre: { name: 'Île Givrée', theme: 'givre', seed: 7101, fx: 'slow', mobs: ['frost', 'frost', 'frost', 'champi'], res: ['quartz', 'wood'], trees: ['pine', 'pine', 'pine', 'oak', 'rock'], desc: 'Le froid mord : tes coups ralentissent les ennemis.' },
+    braise: { name: 'Île des Braises', theme: 'braise', seed: 7202, fx: 'burn', mobs: ['ember', 'ember', 'ember', 'champi'], res: ['quartz', 'herb'], trees: ['rock', 'rock', 'pine', 'bush', 'oak'], desc: 'La terre brûle : tes coups enflamment les ennemis.' },
+    brume: { name: 'Île de Brume', theme: 'brume', eph: 1, mobs: ['slime', 'champi', 'ember', 'frost'], res: ['herb', 'wood', 'quartz'], trees: ['oak', 'pine', 'blossom', 'bush'], desc: "Île éphémère : un coffre rare t'attend. Elle disparaîtra quand tu partiras." }
+  };
+  const FIXED_ISLES = ['givre', 'braise'], ETHER_BRIDGE = 3, BRIDGE_LEN = 4;
+  const ISLE_BIT = { bourg: 1, givre: 2, braise: 4, brume: 8 };
+  function cleanIsle(o) { if (!o || !ISLES[o.k]) return { k: 'bourg' }; return ISLES[o.k].eph ? { k: o.k, s: (o.s >>> 0) || 1 } : { k: o.k }; }
+  function rollIsle(cur) {
+    if (Math.random() < 0.1) return { k: 'brume', s: (Math.random() * 4294967295) >>> 0 || 1 };
+    const pool = FIXED_ISLES.filter(k => k !== cur); return { k: pool[Math.floor(Math.random() * pool.length)] };
+  }
+  // pont le long d'un axe (« x » : vers le bas-droite de l'écran, « y » : vers le bas-gauche), depuis une rive basse
+  function findBridge(TY, HT, SOL, idx, inb, axis, avoid, prefer) {
+    const di = axis === 'x' ? 1 : 0, dj = axis === 'x' ? 0 : 1; let best = null, bs = -1e9;
+    for (let j = 1; j < MH - 1; j++) for (let i = 1; i < MW - 1; i++) {
+      const k = idx(i, j); if (SOL[k] || TY[k] === 0 || HT[k] > 1) continue;
+      let ok = true;
+      for (let s = 1; s <= BRIDGE_LEN + 1 && ok; s++) { const a = i + di * s, b = j + dj * s; if (!inb(a, b) || TY[idx(a, b)] !== 0) ok = false;
+        if (ok && s >= 2) for (const o of [-1, 1]) { const a2 = a + dj * o, b2 = b + di * o; if (inb(a2, b2) && TY[idx(a2, b2)] !== 0) ok = false; } }
+      if (!ok || (avoid && Math.hypot(i - avoid.i, j - avoid.j) < 8)) continue;
+      const sc = i + j - (prefer ? Math.abs((axis === 'x' ? j : i) - prefer) * 3 : 0);
+      if (sc > bs) { bs = sc; best = { i, j }; }
+    }
+    if (!best) return null;
+    const { i, j } = best;
+    return { i, j, di, dj, L: BRIDGE_LEN, hx: i + .5, hy: j + .5, ex: i + di * BRIDGE_LEN + .5, ey: j + dj * BRIDGE_LEN + .5, ix: i - di + .5, iy: j - dj + .5 };
+  }
+  function layDeck(b, SOL, HT, idx) { for (let s = 1; s <= b.L; s++) { const k = idx(b.i + b.di * s, b.j + b.dj * s); SOL[k] = 0; HT[k] = 0; } }
+  // îles du voyage : même taille de carte, relief et décor selon le thème, sans village
+  function buildIsle(key, seed) {
+    const I = ISLES[key], rnd = mulberry32(seed), N = MW * MH;
+    const TY = new Uint8Array(N), HT = new Uint8Array(N), SOL = new Uint8Array(N);
+    const idx = (i, j) => j * MW + i, inb = (i, j) => i >= 0 && j >= 0 && i < MW && j < MH, tdist = (i, j) => Math.hypot(i + .5 - CX, j + .5 - CY);
+    const s1 = rnd() * 1000 | 0, s2 = rnd() * 1000 | 0;
+    for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) {
+      const k = idx(i, j), d = tdist(i, j) / (MW / 2) * 1.08;
+      let n = 0.6 * fbm(i / 9, j / 9, s1) + 0.4 * fbm(i / 4.5, j / 4.5, s2); n = n * 0.55 + (1 - d) * 0.74 - 0.03;
+      if (n < 0.3 || d > 0.97) { TY[k] = 0; HT[k] = 0; } else if (n < 0.36) { TY[k] = 1; HT[k] = 0; } else { TY[k] = 2; HT[k] = n < 0.5 ? 1 : n < 0.62 ? 2 : 3; }
+    }
+    for (let it = 0; it < 8; it++) for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) {
+      const k = idx(i, j); if (!TY[k]) continue; let m = 9;
+      for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (inb(i + a, j + b)) m = Math.min(m, HT[idx(i + a, j + b)]);
+      if (HT[k] > m + 1) HT[k] = m + 1;
+    }
+    for (let k = 0; k < N; k++) if (TY[k] === 0) SOL[k] = 1;
+    const eb = findBridge(TY, HT, SOL, idx, inb, 'x', null, null), bridges = [];
+    if (eb) { eb.kind = 'ether'; bridges.push(eb); }
+    const hb = findBridge(TY, HT, SOL, idx, inb, 'y', eb, null); if (hb) { hb.kind = 'home'; bridges.push(hb); }
+    for (const b of bridges) layDeck(b, SOL, HT, idx);
+    const spawn = eb ? { x: eb.ix, y: eb.iy } : { x: CX, y: CY };
+    const near = (i, j, r) => bridges.some(b => Math.hypot(i + .5 - b.ix, j + .5 - b.iy) < r || Math.hypot(i + .5 - b.hx, j + .5 - b.hy) < r);
+    const props = [];
+    for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) {
+      const k = idx(i, j); if (TY[k] !== 2 || SOL[k] || near(i, j, 2.6)) continue;
+      const r = rnd(); if (r < 0.11) { const t = I.trees[Math.floor(rnd() * I.trees.length)]; SOL[k] = 1; props.push({ type: t, i, j, v: Math.floor(rnd() * 3), w: 1, h: 1 }); }
+      else if (r < 0.14) { SOL[k] = 1; props.push({ type: 'bush', i, j, v: Math.floor(rnd() * 3), w: 1, h: 1 }); }
+    }
+    const walkable = (i, j) => inb(i, j) && !SOL[idx(i, j)];
+    const cand = []; for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) if (walkable(i, j) && TY[idx(i, j)] === 2 && Math.hypot(i + .5 - spawn.x, j + .5 - spawn.y) > 5 && !near(i, j, 3)) cand.push([i, j]);
+    for (let i = cand.length - 1; i > 0; i--) { const r = Math.floor(rnd() * (i + 1)); [cand[i], cand[r]] = [cand[r], cand[i]]; }
+    const spawns = [];
+    for (const c of cand) { if (spawns.every(p => Math.hypot(p.i - c[0], p.j - c[1]) > 2.7)) spawns.push({ type: I.mobs[Math.floor(rnd() * I.mobs.length)], lvl: 1, i: c[0], j: c[1] }); if (spawns.length >= 30) break; }
+    const nodes = [], taken = new Set(spawns.map(s => s.i + ',' + s.j));
+    for (const [i, j] of cand) { if (nodes.length >= 9) break; if (taken.has(i + ',' + j) || nodes.some(n => Math.hypot(n.x - i - .5, n.y - j - .5) < 4)) continue; nodes.push({ k: nodes.length, res: I.res[nodes.length % I.res.length], x: i + 0.3 + rnd() * 0.4, y: j + 0.3 + rnd() * 0.4 }); taken.add(i + ',' + j); }
+    let chest = null; if (I.eph) { let bd = -1; for (const [i, j] of cand) { const d = Math.hypot(i + .5 - spawn.x, j + .5 - spawn.y); if (d > bd && !taken.has(i + ',' + j)) { bd = d; chest = { x: i + .5, y: j + .5 }; } } }
+    const hAt = (x, y) => { const i = Math.floor(x), j = Math.floor(y); return inb(i, j) ? HT[idx(i, j)] : 0; };
+    return { MW, MH, CX, CY, TY, HT, SOL, props, spawns, nodes, idx, inb, tdist, walkable, hAt, zoneOf: () => I.name, isle: key, theme: I.theme, bridges, spawn, chest };
+  }
+
   /* ---------------- monde ---------------- */
-  function buildWorld(seed) {
+  // isle : { k, s } (île du voyage) ; sans argument, l'île d'origine (Bourg d'Argel), toujours identique
+  function buildWorld(seed, isle) {
+    if (isle && isle.k && isle.k !== 'bourg' && ISLES[isle.k]) return buildIsle(isle.k, ISLES[isle.k].eph ? isle.s : ISLES[isle.k].seed);
     const rnd = mulberry32(seed || SEED);
     const N = MW * MH;
     const TY = new Uint8Array(N), HT = new Uint8Array(N), SOL = new Uint8Array(N);
@@ -336,7 +413,9 @@
     }
     const hAt = (x, y) => { const i = Math.floor(x), j = Math.floor(y); return inb(i, j) ? HT[idx(i, j)] : 0; };
     const zoneOf = (x, y) => { const d = Math.hypot(x - CX, y - CY); for (const z of ZONES) if (d < z[0]) return z[1]; };
-    return { MW, MH, CX, CY, TY, HT, SOL, props, spawns, nodes, idx, inb, tdist, walkable, hAt, zoneOf };
+    // Pont d'Éther au bout de la route de l'est (posé après tout le reste : le monde d'origine ne change pas)
+    const eb = findBridge(TY, HT, SOL, idx, inb, 'x', null, 28), bridges = []; if (eb) { eb.kind = 'ether'; bridges.push(eb); layDeck(eb, SOL, HT, idx); }
+    return { MW, MH, CX, CY, TY, HT, SOL, props, spawns, nodes, idx, inb, tdist, walkable, hAt, zoneOf, isle: 'bourg', theme: 'bourg', bridges, spawn: SPAWN, chest: null };
   }
 
   function canStand(W, fx, fy, x, y) {
@@ -354,19 +433,22 @@
   const clampInt = (v, a, b) => { v = v | 0; return v < a ? a : v > b ? b : v; };
   /* ---------------- simulation ---------------- */
   class Sim {
-    constructor(W) {
+    constructor(W, opts) {
       this.W = W; this.t = 0; this.players = new Map(); this.events = []; this.bossWarn = 0;
-      this.mobs = W.spawns.map((s, k) => Object.assign({
+      // îles du voyage : les monstres prennent le niveau du héros qui arrive (±1)
+      const L0 = W.isle && W.isle !== 'bourg' ? Math.max(1, (opts && opts.lvl) | 0 || 1) : 0;
+      this.fx = (ISLES[W.isle] || {}).fx || null; this.chestOpen = false; this.spawn = W.spawn || SPAWN;
+      this.mobs = W.spawns.map((s, k) => { const lvl = L0 ? Math.max(1, L0 + Math.floor(Math.random() * 3) - 1) : s.lvl; return Object.assign({
         k, type: s.type, lvl: s.lvl, x: s.i + .5, y: s.j + .5, hx: s.i + .5, hy: s.j + .5, alive: true, respawnT: 0,
         target: null, returning: false, atkCd: 0, wt: Math.random() * 3, wdx: 0, wdy: 0, tagged: new Set(), moving: false
-      }, mobStats(s.type, s.lvl)));
+      }, mobStats(s.type, lvl), { lvl }); });
       for (const m of this.mobs) m.hp = m.maxhp;
     }
     ev(o) { this.events.push(o); }
     addPlayer(id, name, look, save, cls) {
       const s = save || {};
       const p = {
-        id, name: cleanName(name), look: cleanLook(look), x: SPAWN.x + (Math.random() - .5), y: SPAWN.y, face: 0, flip: 0, moving: 0,
+        id, name: cleanName(name), look: cleanLook(look), x: this.spawn.x + (Math.random() - .5) * (this.spawn === SPAWN ? 1 : 0.3), y: this.spawn.y, face: 0, flip: 0, moving: 0,
         lvl: Math.max(1, s.lvl | 0), xp: Math.max(0, s.xp | 0), gold: Math.max(0, s.gold | 0), potions: s.potions == null ? 3 : Math.max(0, s.potions | 0),
         dead: false, deadT: 0, atkCd: 0, skillCd: 0, potCd: 0, lastHit: 99, lastMv: this.t, chatT: 0,
         q: clampInt(s.q, 0, QUESTS.length), qs: clampInt(s.qs, 0, 2), qn: clampInt(s.qn, 0, 99)
@@ -387,6 +469,9 @@
       if (freePts(p.lvl, p.pts) < 0) p.pts = { str: 0, sta: 0, int: 0, agi: 0 };
       p.bar = {}; if (s.bar && typeof s.bar === 'object') for (const f in FAMS) if (Array.isArray(s.bar[f])) p.bar[f] = s.bar[f].slice(0, 3).map(v => clampInt(v, 0, 9));
       p.fr = s.fr == null ? 1 : clampInt(s.fr, 0, 1); // une réinitialisation gratuite des points
+      // voyage : île actuelle, îles découvertes ; « arr » = on vient de traverser, on apparaît au bout du Pont d'Éther
+      p.isle = cleanIsle(s.isle); p.isles = clampInt(s.isles, 0, 1 << 20) | 1; p.arr = 0;
+      if (s.arr && this.W.bridges) { const b = this.W.bridges.find(o => o.kind === 'ether') || this.W.bridges[0]; if (b) { p.x = b.ix; p.y = b.iy; } }
       for (const a of (s.bag || []).slice(0, BAG_SIZE)) { const it = cleanInst(a); if (it) p.bag.push(it); }
       const gr = s.gear || {}; if (gr.blade) p.bag.push([2, 1]); if (gr.armor) p.bag.push([10, 1]); if (gr.charm) p.bag.push([18, 2]);
       p.ether = clampInt(s.ether == null ? DAILY_GIFT : s.ether, 0, ETHER_MAX); p.glvl = clampInt(s.glvl || 1, 1, 50); p.gxp = clampInt(s.gxp, 0, 99999);
@@ -406,7 +491,7 @@
     }
     /* Format de sauvegarde : ne JAMAIS renommer ni retirer un champ (les héros existants doivent survivre aux mises à jour).
        Ajouter un champ = lui donner une valeur par défaut dans addPlayer. */
-    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr }; }
+    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr, isle: p.isle, isles: p.isles, arr: p.arr }; }
     grantFounder(p) {
       if (p.gifts & 1) return false;
       const wpn = [[5, 3], [23, 3], [4, 3], [29, 3], [31, 3], [3, 3]], k = p.cls < wpn.length ? p.cls : 0;
@@ -561,6 +646,24 @@
           const v = itemValue(inst); p.gold += v; p.bag.splice(b, 1); this.ev({ e: 'sold', id, t: inst[0], r: inst[1], v }); break;
         }
         case 'scarf': { const sc = clampInt(m.s, 0, 2); if (p.scarves & (1 << sc)) p.scarf = sc; break; }
+        case 'cross': {
+          const b = this.W.bridges && this.W.bridges[m.b | 0]; if (!b || p.dead || p.trav) return;
+          if (Math.hypot(p.x - b.ex, p.y - b.ey) > 1.6) return;
+          let to;
+          if (b.kind === 'ether') {
+            if (p.ether < ETHER_BRIDGE) { this.ev({ e: 'msg', id, t: 'Il faut ' + ETHER_BRIDGE + " Éther pour traverser (l'Éther se gagne en marchant)." }); return; }
+            p.ether -= ETHER_BRIDGE; to = rollIsle(this.W.isle);
+          } else to = { k: 'bourg' };
+          const fresh = !(p.isles & ISLE_BIT[to.k]); p.isles |= ISLE_BIT[to.k]; p.isle = to; p.trav = 1;
+          p.arr = to.k === 'bourg' ? 0 : 1; // retour au bourg : on réapparaît à la fontaine
+          this.ev({ e: 'travel', id, to, via: b.kind, fresh: fresh ? 1 : 0 }); break;
+        }
+        case 'chest': {
+          const c = this.W.chest; if (!c || this.chestOpen || p.dead || Math.hypot(p.x - c.x, p.y - c.y) > 1.6) return;
+          this.chestOpen = true; const pool = [...new Set(Object.values(LOOT).flatMap(l => l.items))], g = 20 + p.lvl * 12;
+          p.gold += g; this.giveItem(p, [pool[Math.floor(Math.random() * pool.length)], rollRarity(2)]); this.giveItem(p, [pool[Math.floor(Math.random() * pool.length)], rollRarity(1)]);
+          this.ev({ e: 'chest', id, g }); break;
+        }
         case 'pt': { const k = String(m.s); if (!(k in p.pts) || freePts(p.lvl, p.pts) <= 0) return; p.pts[k]++; this.recalc(p); break; }
         case 'respec': {
           const npc = NPCS.elya; if (p.dead || Math.hypot(p.x - npc.x, p.y - npc.y) > 2.8) return;
@@ -603,6 +706,8 @@
     }
     hitMob(m, dmg, p, crit) {
       m.hp -= dmg; m.tagged.add(p.id); this.addMast(p, 1);
+      if (this.fx === 'slow') m.slowT = this.t + 2.5;
+      else if (this.fx === 'burn') { m.burnT = this.t + 3; m.burnBy = p.id; m.burnDps = Math.max(1, dmg * 0.12); }
       if (m.target == null) { m.target = p.id; m.returning = false; }
       const d = Math.hypot(m.x - p.x, m.y - p.y) || 1; moveBy(this.W, m, (m.x - p.x) / d * 0.12, (m.y - p.y) / d * 0.12);
       this.ev({ e: 'hm', m: m.k, v: dmg, c: crit ? 1 : 0, by: p.id });
@@ -661,7 +766,7 @@
         p.atkCd -= dt; p.skillCd -= dt; p.potCd -= dt; p.lastHit += dt;
         if (p.dead) {
           p.deadT -= dt;
-          if (p.deadT <= 0) { p.dead = false; p.x = SPAWN.x; p.y = SPAWN.y; p.hp = p.maxhp; p.mp = p.maxmp; p.lastMv = this.t; this.ev({ e: 'rs', id: p.id }); this.ev({ e: 'tp', id: p.id, x: p.x, y: p.y }); }
+          if (p.deadT <= 0) { p.dead = false; p.x = this.spawn.x; p.y = this.spawn.y; p.hp = p.maxhp; p.mp = p.maxmp; p.lastMv = this.t; this.ev({ e: 'rs', id: p.id }); this.ev({ e: 'tp', id: p.id, x: p.x, y: p.y }); }
           continue;
         }
         if (p.lastHit > 4) p.hp = Math.min(p.maxhp, p.hp + p.maxhp * 0.03 * dt);
@@ -679,6 +784,7 @@
           continue;
         }
         m.atkCd -= dt; m.moving = false;
+        if (m.burnT > this.t) { m.burnAcc = (m.burnAcc || 0) + m.burnDps * dt; if (m.burnAcc >= Math.max(1, m.burnDps * 0.6)) { const v = Math.round(m.burnAcc); m.burnAcc = 0; m.hp -= v; this.ev({ e: 'hm', m: m.k, v, c: 0, by: m.burnBy, burn: 1 }); if (m.hp <= 0) { this.killMob(m); continue; } } }
         if (m.stunT > this.t) continue;
         const slow = m.slowT > this.t ? 0.5 : 1;
         let tp = m.target != null ? this.players.get(m.target) : null;
@@ -706,8 +812,8 @@
     publicState() {
       const p = [], m = [];
       for (const q of this.players.values()) p.push([q.id, q.name, q.lookStr, +q.x.toFixed(2), +q.y.toFixed(2), q.face, q.flip, q.moving, Math.ceil(q.hp), q.maxhp, q.lvl, q.dead ? 1 : 0, q.scarf, q.cls, q.equip && q.equip.feet && ITEMS[q.equip.feet[0]].fx === 'void' ? 1 : 0, gearStr(q.equip)]);
-      for (const q of this.mobs) m.push([+q.x.toFixed(2), +q.y.toFixed(2), Math.max(0, Math.ceil(q.hp)), q.alive ? 1 : 0, q.target != null ? 1 : 0, q.moving ? 1 : 0, q.stunT > this.t ? 1 : q.slowT > this.t ? 2 : 0]);
-      return { p, m };
+      for (const q of this.mobs) m.push([+q.x.toFixed(2), +q.y.toFixed(2), Math.max(0, Math.ceil(q.hp)), q.alive ? 1 : 0, q.target != null ? 1 : 0, q.moving ? 1 : 0, q.stunT > this.t ? 1 : q.burnT > this.t ? 3 : q.slowT > this.t ? 2 : 0]);
+      return { p, m, c: this.chestOpen ? 1 : 0 };
     }
     meState(id) {
       const p = this.players.get(id); if (!p) return null;
@@ -715,5 +821,5 @@
     }
   }
 
-  return { CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
+  return { ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
 });

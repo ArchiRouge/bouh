@@ -1,6 +1,7 @@
 # Pixels Worlds — voyage entre les îles par les ponts
 
-Statut : **maquette, en attente de validation**. Rien n'est codé.
+Statut : **validé ; étape 1 codée** (ponts, traversée, tirage, Île Givrée, Île des Braises, îles éphémères avec coffre).
+En multijoueur, les ponts ne sont pas encore actifs (le serveur garde tout le monde au Bourg).
 
 Choix d'Archibald : îles fixes + parfois une île éphémère ; deux ponts sur chaque île (aléatoire + retour) ;
 difficulté adaptée au héros ; maquette avant le code.
@@ -51,10 +52,19 @@ Au lancement : **2 îles** (Givrée et Braises) + les îles éphémères, puis l
 - **Multijoueur** : le serveur fait tourner une simulation par île, créée à la demande et libérée quand elle est vide ;
   chaque île éphémère est une instance privée (le joueur ou son groupe).
 
-## Question ouverte
+## Décisions
 
-Le Pont d'Éther pourrait **coûter de l'Éther** (par exemple 3, gagné en marchant dans la vraie vie) : la marche réelle
-deviendrait le carburant de l'exploration. Le Pont du Bourg resterait gratuit.
+- Le Pont d'Éther **coûte 3 Éther** (gagné en marchant dans la vraie vie) ; le Pont du Bourg est gratuit et ramène à la fontaine.
+- **Île Givrée** : chaque coup ralentit l'ennemi 2,5 s. **Île des Braises** : chaque coup l'enflamme 3 s (12 % des dégâts par seconde).
+- Pour changer d'île, le jeu sauvegarde puis recharge la nouvelle île derrière un fondu de brume (pas de perte possible).
+
+## Ce qui est en jeu (étape 1)
+
+- `core.js` : `ISLES`, `buildIsle`, `findBridge` (pont posé sur une rive basse), `rollIsle`, messages `cross` et `chest`,
+  champs de sauvegarde `isle`, `isles`, `arr` ; monstres au niveau du héros ; effets `slow` / `burn`.
+- `assets.js` : palettes de terrain par île, sapins et chênes givrés, gelée de givre, planches de pont, arches animées, coffre.
+- `game.js` : île lue dans la sauvegarde au démarrage, poteaux à lanternes et arches dans le décor, invites
+  « Traverser » / « Rentrer » / « Ouvrir le coffre », fondu de traversée, reprise automatique sur la nouvelle île.
 
 ## Étapes après validation
 

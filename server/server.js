@@ -74,6 +74,7 @@ wss.on('connection', ws => {
       if (!save && SEEDS[seedKey]) { save = SEEDS[seedKey]; delete SEEDS[seedKey]; console.log(`[seed] progression importée pour ${m.name}`); }
       const p = sim.addPlayer(id, m.name, m.look, save, m.cls);
       if (FOUNDERS.includes(String(p.name).toLowerCase())) sim.grantFounder(p);
+      p.isle = { k: 'bourg' }; p.arr = 0; // en ligne, tout le monde est au Bourg d'Argel pour l'instant
       // maître du jeu : jeton(s) de l'appareil listés dans la variable d'environnement GM_TOKENS (séparés par des virgules)
       if ((process.env.GM_TOKENS || '').split(',').map(t => t.trim()).filter(Boolean).includes(token)) sim.grantGM(p);
       c.token = token; clients.set(id, c);
@@ -81,6 +82,7 @@ wss.on('connection', ws => {
       console.log(`[+] ${p.name} (${id}) — ${clients.size} en ligne`);
       return;
     }
+    if (m && (m.t === 'cross' || m.t === 'chest')) return; // les ponts d'Éther ne sont pas encore gérés par le serveur (une simulation par île à venir)
     sim.handle(id, m);
   });
   ws.on('close', () => {

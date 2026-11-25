@@ -49,24 +49,40 @@
   }
 
   /* ---------- palettes ---------- */
-  const GRASS = R(['#2e5260', '#357468', '#47967a', '#66b088', '#90c896', '#bce0a4', '#e8f2c4']);
-  const SAND = R(['#b98f86', '#d2a894', '#e6c3a4', '#f3dcbc', '#fbefd8']);
+  let GRASS = R(['#2e5260', '#357468', '#47967a', '#66b088', '#90c896', '#bce0a4', '#e8f2c4']);
+  let SAND = R(['#b98f86', '#d2a894', '#e6c3a4', '#f3dcbc', '#fbefd8']);
   const STONE = R(['#5f5c7e', '#7a7798', '#9693b2', '#b5b1cc', '#d8d3e6']);
   const PATHC = R(['#8c6a6e', '#a8807a', '#c39c8c', '#dab9a2', '#eed6bd']);
-  const CLIFF = R(['#3a2c4c', '#523b5e', '#6e4e6c', '#8c6478', '#ab8088', '#c9a09c']);
-  const MOSS = R(['#2c4a5a', '#356460', '#4a8068', '#6a9e74']);
+  let CLIFF = R(['#3a2c4c', '#523b5e', '#6e4e6c', '#8c6478', '#ab8088', '#c9a09c']);
+  let MOSS = R(['#2c4a5a', '#356460', '#4a8068', '#6a9e74']);
   const SANDC = R(['#6e4e62', '#8a6670', '#a8807e', '#c49c8e']);
   const STONEC = R(['#3c3a5c', '#504e70', '#666486', '#7e7c9c']);
-  const WATER = R(['#1e3f66', '#26567a', '#2f6f8a', '#3f8a98', '#62a8aa', '#96c8bc', '#d0e8d8']);
-  const FOAM = rgb('#f4f0e0');
+  let WATER = R(['#1e3f66', '#26567a', '#2f6f8a', '#3f8a98', '#62a8aa', '#96c8bc', '#d0e8d8']);
+  let FOAM = rgb('#f4f0e0');
   C.ART_WATER_BG = '#26567a';
 
   /* ---------- couleur propre à chaque zone (bourg, prairies, bois, terres sauvages) ---------- */
   const ZT1 = rgb('#d8d27a'), ZT2 = rgb('#3e6a96'), ZT3 = rgb('#b8744a');
   const smooth = (v, a, b) => { const t = clamp((v - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
   function zoneW(i, j) { const d = Math.hypot(i + 0.5 - C.CX, j + 0.5 - C.CY), a = smooth(d, 8, 10), b = smooth(d, 14, 16), c = smooth(d, 19.5, 21.5); return [1 - a, a * (1 - b), b * (1 - c), c]; }
+  /* ---------- palettes des îles du voyage (le Bourg garde les siennes) ---------- */
+  const BASE_PAL = { GRASS, SAND, CLIFF, MOSS, WATER, FOAM };
+  const ISLE_PAL = {
+    givre: { GRASS: R(['#5a6a92', '#7a8cb4', '#9aaed0', '#bcd0e6', '#d8e6f4', '#eef4fc', '#ffffff']), SAND: R(['#8a94b0', '#a4b0c8', '#c0cade', '#dce4f0', '#f2f6fc']),
+      CLIFF: R(['#2c3058', '#3c4470', '#506088', '#6a80a4', '#8aa0c0', '#aac0d8']), MOSS: R(['#4a6a90', '#6a8eb4', '#8eb4d4', '#b4d8ec']),
+      WATER: R(['#183a5a', '#1e5278', '#2a6c90', '#4a90aa', '#78b4c4', '#aad4dc', '#e0f2f4']), FOAM: rgb('#ffffff') },
+    braise: { GRASS: R(['#1e1418', '#2e1e22', '#42282a', '#5a3430', '#764438', '#9a5a40', '#c27a4a']), SAND: R(['#3a2622', '#54342c', '#704638', '#8c5a44', '#a87050']),
+      CLIFF: R(['#1a1018', '#2a1820', '#3e222a', '#542e30', '#6c3c38', '#8a4e42']), MOSS: R(['#6a1a10', '#a8301a', '#e0602a', '#ffa040']),
+      WATER: R(['#2a0e1a', '#3e1424', '#561c2a', '#742a30', '#9a4034', '#c8663e', '#f0a060']), FOAM: rgb('#ffd080') },
+    brume: { GRASS: R(['#3a3458', '#4a4670', '#5e5c88', '#7a789e', '#9a98b8', '#bcbad2', '#e0def0']), SAND: R(['#8a809a', '#a49ab4', '#bcb4cc', '#d6d0e2', '#eeeaf6']),
+      CLIFF: R(['#241e3c', '#342c50', '#463c64', '#5a4e78', '#72648e', '#8e80a6']), MOSS: R(['#3a3a66', '#4e5080', '#666a98', '#8288b0']),
+      WATER: R(['#1a1838', '#24224a', '#302e5e', '#424276', '#5e5e92', '#8a88b4', '#c4c2dc']), FOAM: rgb('#e8e4ff') }
+  };
+  let THEME = 'bourg';
   /* ---------- terrain ---------- */
   function buildTerrain(W) {
+    THEME = W.theme || 'bourg'; const PAL = ISLE_PAL[THEME] || BASE_PAL;
+    GRASS = PAL.GRASS; SAND = PAL.SAND; CLIFF = PAL.CLIFF; MOSS = PAL.MOSS; WATER = PAL.WATER; FOAM = PAL.FOAM;
     const { MW, MH, TY, HT, idx, inb } = W;
     const N = MW * MH, DIST = new Float32Array(N).fill(99), q = [];
     for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) if (TY[idx(i, j)] !== 0) { DIST[idx(i, j)] = 0; q.push([i, j]); }
@@ -118,7 +134,7 @@
         if (hR >= 0 && hR < h && dv < 0.05) v += 0.15;
         let col = c || ramp(top, v, gx, gy);
         if ((hBR < h && 1 - du < 0.06) || (hBL < h && 1 - dv < 0.06)) col = top[top.length - 1];
-        if (t === 2) { const zw = zoneW(i, j); if (zw[1]) col = mix(col, ZT1, 0.12 * zw[1]); if (zw[2]) col = mix(col, ZT2, 0.30 * zw[2]); if (zw[3]) col = mix(col, ZT3, 0.30 * zw[3]); col = col.map(Math.round); }
+        if (t === 2 && THEME === 'bourg') { const zw = zoneW(i, j); if (zw[1]) col = mix(col, ZT1, 0.12 * zw[1]); if (zw[2]) col = mix(col, ZT2, 0.30 * zw[2]); if (zw[3]) col = mix(col, ZT3, 0.30 * zw[3]); col = col.map(Math.round); }
         P.set(x, y, col);
       }
       const left = x < 16, gx = gx0 + x;
@@ -228,7 +244,8 @@
   const SLIMES = {
     slime: R(['#1a5226', '#2a8236', '#44ac46', '#72d064', '#ace892', '#e6ffd4']),
     ember: R(['#5e1610', '#9a2c1a', '#d05028', '#ee8636', '#ffbc6a', '#fff0c4']),
-    boss: R(['#341656', '#542886', '#7a42b6', '#a068d6', '#caa0ee', '#f2e4ff'])
+    boss: R(['#341656', '#542886', '#7a42b6', '#a068d6', '#caa0ee', '#f2e4ff']),
+    frost: R(['#1c3a6a', '#2c5c96', '#4a88c4', '#7ab4e4', '#b4dcf6', '#f0faff'])
   };
   function paintSlime(rp) {
     const P = new Pix(16, 14);
@@ -268,6 +285,7 @@
   const LEAF_TERRES = R(['#3a1c2c', '#5e2a32', '#8a3c34', '#b45a3a', '#d8824a', '#f0b070']);
   const PINE_BOIS = R(['#161a40', '#1e2a52', '#263e62', '#30546e', '#44707a']);
   const PINE_TERRES = R(['#2a1a2a', '#422430', '#5e3236', '#7c4a3e', '#9a6650']);
+  const LEAF_GIVRE = R(['#2a3c62', '#3e5a82', '#6a88aa', '#9ab4cc', '#cadcec', '#f4faff']), PINE_GIVRE = R(['#1e2c4c', '#2a4262', '#4a6a88', '#8aa8c4', '#e0ecf8']);
   const PINE = R(['#1c2e4a', '#223f52', '#2c5458', '#3a6a5e', '#548466']);
   const BLOSSOM = R(['#8a4a78', '#b0658e', '#d088a6', '#e8aabe', '#f6cbd6', '#fff0f2']);
   const BARK = R(['#2e2238', '#463246', '#5e4450', '#7a5a5c', '#987468']);
@@ -540,6 +558,47 @@
     chat: icon(['.wwwwwww.', 'wwwwwwwww', 'w.w.w.w.w', 'wwwwwwwww', '.wwwwwww.', '..ww.....', '.w.......'], { w: '#f4ead8' })
   };
 
+  /* ---------- ponts du voyage ---------- */
+  const WOOD = R(['#3a2014', '#5e3820', '#8a5630', '#b07a44', '#d8a868']);
+  // planches d'une tuile de tablier, posées 3 px au-dessus de l'eau ; axe « x » (vers le bas-droite) ou « y » (vers le bas-gauche)
+  function paintDeck(axis) {
+    const P = new Pix(32, 21), Wd = 0.42;
+    for (let y = 0; y < 21; y++) for (let x = 0; x < 32; x++) {
+      const sx = x - 16 + 0.5, sy = y + 0.5, du = (sx / 16 + sy / 8) / 2, dv = (sy / 8 - sx / 16) / 2;
+      const a = axis === 'x' ? du : dv, b = (axis === 'x' ? dv : du) - 0.5;
+      if (a >= 0 && a <= 1 && Math.abs(b) <= Wd) {
+        const seam = (a * 5) % 1 < 0.17, pl = Math.floor(a * 5) % 2;
+        let t = seam ? 1 : b < -0.12 ? 3 + pl : 2 + pl; if (Math.abs(b) > Wd - 0.08) t = 1;
+        P.set(x, y, WOOD[Math.min(4, t)]);
+      }
+    }
+    // épaisseur visible du tablier (bord avant)
+    for (let x = 0; x < 32; x++) for (let y = 20; y >= 1; y--) if (P.a(x, y - 1) && !P.a(x, y)) { P.set(x, y, WOOD[0]); if (y + 1 < 21) P.set(x, y + 1, rgb('#2a1610')); break; }
+    return P.done();
+  }
+  // arche au bout du pont : brume d'éther violette (pont aléatoire) ou lumière dorée (retour au bourg), 4 images
+  function paintArch(kind) {
+    const fr = [], glow = rgb(kind === 'ether' ? '#c89cff' : '#ffd878'), glow2 = rgb(kind === 'ether' ? '#7a4ad8' : '#e89a30'), deep = rgb(kind === 'ether' ? '#3a2470' : '#a05a18');
+    for (let f = 0; f < 4; f++) {
+      const P = new Pix(22, 32);
+      for (let y = 0; y < 32; y++) for (let x = 0; x < 22; x++) {
+        const nx = (x + 0.5 - 11) / 8.2, ny = (y + 0.5 - 15) / 14.5, d = nx * nx + ny * ny;
+        if (d <= 1 && d > 0.74) P.set(x, y, nx < -0.2 ? STONE[3] : nx < 0.3 ? STONE[2] : STONE[1]);
+        else if (d <= 0.74) { const sw = Math.sin(Math.atan2(ny, nx) * 3 + d * 9 - f * Math.PI / 2); P.set(x, y, sw > 0.3 ? glow : sw > -0.4 ? glow2 : deep, d < 0.6 ? 235 : 160); }
+      }
+      for (let x = 6; x < 16; x++) { P.set(x, 30, STONE[1]); P.set(x, 31, STONE[0]); }
+      fr.push(P.done());
+    }
+    return fr;
+  }
+  function paintChest(open) {
+    const P = new Pix(16, 14), wood = WOOD, gold = R(['#a87818', '#f2c94c', '#fff0a0']);
+    for (let y = open ? 6 : 3; y < 13; y++) for (let x = 1; x < 15; x++) P.set(x, y, y === (open ? 6 : 3) ? wood[4] : x < 4 ? wood[3] : x > 12 ? wood[1] : wood[2]);
+    for (let x = 1; x < 15; x++) { P.set(x, open ? 8 : 7, gold[1]); P.set(x, 12, wood[0]); }
+    if (open) { for (let x = 2; x < 14; x++) { P.set(x, 1, wood[3]); P.set(x, 2, wood[2]); } for (let x = 3; x < 13; x++) P.set(x, 7, rgb('#fff6c0')); }
+    else { P.set(7, 6, gold[2]); P.set(8, 6, gold[1]); P.set(7, 8, gold[0]); P.set(8, 8, gold[0]); }
+    P.outline(0.4); return P.done();
+  }
   function buildAll(W) {
     const t0 = performance.now();
     const terrain = buildTerrain(W);
@@ -550,17 +609,19 @@
       oak_2: [11, 12, 13].map(s => paintRoundTree(s, LEAF_BOIS)), pine_2: [31, 32, 33].map(s => paintPine(s, PINE_BOIS)), bush_2: [41, 42, 43].map((s, i) => paintBush(s, i === 1, LEAF_BOIS)),
       oak_3: [11, 12, 13].map(s => paintRoundTree(s, LEAF_TERRES)), pine_3: [31, 32, 33].map(s => paintPine(s, PINE_TERRES)), bush_3: [41, 42, 43].map((s, i) => paintBush(s, i === 1, LEAF_TERRES)),
       bush: [41, 42, 43].map((s, i) => paintBush(s, i === 1)),
-      rock: [51, 52, 53].map(s => paintRock(s))
+      rock: [51, 52, 53].map(s => paintRock(s)),
+      oak_g: [11, 12, 13].map(s => paintRoundTree(s, LEAF_GIVRE)), pine_g: [31, 32, 33].map(s => paintPine(s, PINE_GIVRE)), bush_g: [41, 42, 43].map((s, i) => paintBush(s, false, LEAF_GIVRE))
     };
     const art = {
       terrain, trees, cloud: cloudTexture(),
-      slime: paintSlime(SLIMES.slime), ember: paintSlime(SLIMES.ember), boss: paintSlime(SLIMES.boss),
+      slime: paintSlime(SLIMES.slime), ember: paintSlime(SLIMES.ember), boss: paintSlime(SLIMES.boss), frost: paintSlime(SLIMES.frost),
+      deck: { x: paintDeck('x'), y: paintDeck('y') }, arch: { ether: paintArch('ether'), home: paintArch('home') }, chest: [paintChest(false), paintChest(true)],
       champi: [paintChampi(0), paintChampi(1)], crown: CROWN,
       houses: [0, 1, 2, 3].map(paintHouse), lamp: paintLamp(), barrel: paintBarrel(), crate: paintCrate(),
       fountain: [0, 1, 2].map(paintFountain),
       tuft: [paintTuft(0), paintTuft(1)], flowers: [1, 2, 3, 4, 5, 6].map(paintFlowers), mini: paintMiniShroom(), pebble: [paintPebble(1), paintPebble(2)],
       icons: ICONS, charSet, nodes: { herb: paintHerbNode(), wood: paintWoodNode(), quartz: paintQuartzNode() },
-      slimeLight: { slime: SLIMES.slime[4], ember: SLIMES.ember[4], boss: SLIMES.boss[4], champi: CAP[4] }
+      slimeLight: { slime: SLIMES.slime[4], ember: SLIMES.ember[4], boss: SLIMES.boss[4], champi: CAP[4], frost: SLIMES.frost[4] }
     };
     art.buildMs = Math.round(performance.now() - t0);
     return art;
