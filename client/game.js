@@ -53,7 +53,7 @@
   function resize() {
     dpr = window.devicePixelRatio || 1;
     const pw = Math.round(innerWidth * dpr), ph = Math.round(innerHeight * dpr), pm = Math.min(pw, ph);
-    const S0 = Math.max(1, Math.round(pm / 240)); S = Math.max(Math.min(2, S0), S0 - ZOOM); SU = Math.max(2, Math.round(pm / 195), S); // ~240 px de monde sur la largeur au plus proche, +25 % / +65 % en reculant
+    const S0 = Math.max(1, Math.round(pm / 240)); S = Math.max(Math.min(2, S0), S0 - ZOOM); SU = Math.max(2, Math.round(pm / 279)); // ~240 px de monde sur la largeur au plus proche, +25 % / +65 % en reculant ; interface ~30 % plus petite qu'à l'origine (pm / 195)
     VW = Math.ceil(pw / S); VH = Math.ceil(ph / S); UW = Math.ceil(pw / SU); UH = Math.ceil(ph / SU); K = S / SU;
     const sp = document.getElementById('safe'); if (sp) { const cs = getComputedStyle(sp); ST = Math.round(parseFloat(cs.paddingTop || 0) * dpr / SU); SB = Math.round(parseFloat(cs.paddingBottom || 0) * dpr / SU); }
     RQ = Math.min(RQ || S, S); cvW.width = VW * RQ; cvW.height = VH * RQ; cvW.style.width = VW * S / dpr + 'px'; cvW.style.height = VH * S / dpr + 'px'; // RQ sous-pixels par pixel de jeu : la caméra glisse finement
