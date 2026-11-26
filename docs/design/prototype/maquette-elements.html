@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Maquette des éléments</title>
+<style>body{margin:0;background:#120e22;color:#f4ead8;font:15px/1.35 Georgia,serif}canvas{display:block;image-rendering:pixelated}</style></head><body>
+<canvas id="c"></canvas>
+<script src="../../../client/content.js"></script>
+<script src="../../../client/core.js"></script>
+<script src="../../../client/sprites.js"></script>
+<script src="../../../client/assets.js"></script>
+<script>
+(() => {
+  const C = window.EtheriaCore, A = window.EtheriaArt, WW = 1260, cv = document.getElementById('c'), g = cv.getContext('2d');
+  cv.width = WW; cv.height = 3000; g.imageSmoothingEnabled = false;
+  const ART = A.buildAll(C.buildWorld(C.SEED));
+  const label = (x, y, t, col, size, align, bold) => { g.font = `${bold ? 'bold ' : ''}${size || 15}px Georgia, serif`; g.textAlign = align || 'center'; g.fillStyle = col || '#f4ead8'; g.fillText(t, x, y); g.textAlign = 'left'; };
+  const title = (y, t, s) => { label(40, y, t, '#f2c94c', 28, 'left', true); if (s) label(40, y + 28, s, '#c8bcdc', 17, 'left'); };
+  const panel = (x, y, w, h, col) => { g.fillStyle = '#1c1636'; g.fillRect(x, y, w, h); g.strokeStyle = col || 'rgba(244,234,216,.45)'; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, w - 2, h - 2); };
+  // icônes d'éléments, 9×9, dessinées pixel par pixel
+  const ICON = {
+    fire: ['....a....', '...aa....', '...aba...', '..abba.a.', '..abcba..', '.abccba..', '.abccba..', '..abba...', '...aa....'],
+    ice: ['....a....', '...aba...', '...aba...', '..abbba..', '..abcba..', '.abcccba.', '.abcccba.', '..abbba..', '...aaa...'],
+    wood: ['......aa.', '....aabb.', '...abbbb.', '..abbcbb.', '..abcbba.', '.abcbba..', '.acbba...', 'ac.aa....', 'a........'],
+    light: ['....a....', '.a..a..a.', '..abbba..', '..bcccb..', 'aabcccbaa', '..bcccb..', '..abbba..', '.a..a..a.', '....a....'],
+    dark: ['...aaa...', '..aab....', '.aab.....', '.abb.....', '.abb.....', '.abbb....', '..abbbaa.', '...aaaa..', '.........']
+  };
+  const ICOL = { fire: ['#c0361c', '#ff8a3a', '#ffe070'], ice: ['#2a6cc0', '#6ab4ff', '#e0f4ff'], wood: ['#2e7a34', '#6ad060', '#d0f4a0'], light: ['#c8a020', '#ffe070', '#fffbe0'], dark: ['#4a2a7a', '#9a6ae0', '#e0c8ff'] };
+  const NAME = { fire: 'Feu', ice: 'Eau', wood: 'Bois', light: 'Lumière', dark: 'Ténèbres' };
+  function icon(k, x, y, s) { const rows = ICON[k], col = ICOL[k]; g.fillStyle = '#1a0f1c'; for (let j = 0; j < 9; j++) for (let i = 0; i < 9; i++) if (rows[j][i] !== '.') for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) g.fillRect(x + (i + a) * s, y + (j + b) * s, s, s);
+    for (let j = 0; j < 9; j++) for (let i = 0; i < 9; i++) { const ch = rows[j][i]; if (ch === '.') continue; g.fillStyle = col['abc'.indexOf(ch)]; g.fillRect(x + i * s, y + j * s, s, s); } }
+  const arrow = (x0, y0, x1, y1, col, w) => { const a = Math.atan2(y1 - y0, x1 - x0); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = w || 4; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1 - Math.cos(a) * 14, y1 - Math.sin(a) * 14); g.stroke(); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x1 - Math.cos(a - 0.45) * 22, y1 - Math.sin(a - 0.45) * 22); g.lineTo(x1 - Math.cos(a + 0.45) * 22, y1 - Math.sin(a + 0.45) * 22); g.fill(); };
+  const hero = A.charSet([1, 6, 2, 1, 0], C.gearStr({ head: [33, 4], chest: [34, 4], legs: [35, 4], feet: [36, 4], weapon: [39, 4] }));
+  const heroF = A.charSet([0, 1, 1, 0, 0], C.gearStr({ head: [8, 2], chest: [11, 3], legs: [62, 2], feet: [49, 2], weapon: [3, 3] }));
+  g.fillStyle = '#120e22'; g.fillRect(0, 0, WW, cv.height);
+  label(40, 60, 'Pixels Worlds — Les éléments', '#f4ead8', 40, 'left', true);
+  label(40, 92, 'Maquette v12 · faiblesses entre éléments et bonus d\'ensemble (validés dans le formulaire, série 1) · détails à choisir', '#c8bcdc', 18, 'left');
+  let Y = 130;
+  /* 1. le cycle */
+  title(Y + 30, '1. Qui bat qui', 'Feu bat Bois, Bois bat Eau, Eau bat Feu. Lumière et Ténèbres se battent l\'une l\'autre.'); Y += 70;
+  panel(20, Y, WW - 40, 530);
+  const P = { fire: [250, Y + 110], wood: [430, Y + 380], ice: [70, Y + 380], light: [800, Y + 150], dark: [1060, Y + 150] };
+  arrow(P.fire[0] + 40, P.fire[1] + 50, P.wood[0] - 20, P.wood[1] - 40, '#ff8a3a'); arrow(P.wood[0] - 60, P.wood[1] + 30, P.ice[0] + 80, P.ice[1] + 30, '#6ad060'); arrow(P.ice[0] + 20, P.ice[1] - 40, P.fire[0] - 40, P.fire[1] + 50, '#6ab4ff');
+  arrow(P.light[0] + 90, P.light[1] - 15, P.dark[0] - 30, P.dark[1] - 15, '#ffe070'); arrow(P.dark[0] - 30, P.dark[1] + 45, P.light[0] + 90, P.light[1] + 45, '#9a6ae0');
+  for (const k in P) { const [x, y] = P[k]; g.fillStyle = '#2b2450'; g.beginPath(); g.arc(x + 27, y + 27, 52, 0, 7); g.fill(); g.strokeStyle = ICOL[k][1]; g.lineWidth = 3; g.stroke(); icon(k, x, y, 6); label(x + 27, y + 105, NAME[k], ICOL[k][1], 22, 'center', true); }
+  label(640, Y + 330, 'Contre un élément faible :', '#f4ead8', 19, 'left'); label(900, Y + 330, '+30 % de dégâts', '#ffd23f', 22, 'left', true);
+  label(640, Y + 370, 'Contre un élément fort :', '#f4ead8', 19, 'left'); label(900, Y + 370, '−20 %', '#a8a8c0', 22, 'left', true);
+  label(640, Y + 410, 'Sinon, ou sans élément :', '#f4ead8', 19, 'left'); label(900, Y + 410, 'normal', '#f4ead8', 22, 'left', true);
+  label(640, Y + 445 + 0, 'Les monstres ont déjà un élément (bestiaire) : il sert enfin aux deux sens.', '#c8bcdc', 15, 'left');
+  Y += 560;
+  /* 2. armes et techniques */
+  title(Y + 30, '2. L\'élément de ton arme', 'Chaque arme a un élément (ou aucun), affiché sur l\'objet. Les techniques du bâton ont le leur.'); Y += 70;
+  panel(20, Y, WW - 40, 300);
+  const GRIM = C.ITEMS.findIndex(i => i.n === 'Grimoire des ombres'), LANCE = C.ITEMS.findIndex(i => i.n === 'Lance de glace');
+  const W2 = [[3, 'fire'], [2, 'wood'], [LANCE, 'ice'], [4, 'light'], [GRIM, 'dark'], [0, null]];
+  W2.forEach(([id, el], i) => { const it = C.ITEMS[id], x = 60 + i * 200, y = Y + 40, ic = A.itemIcon(it.icon, it.c); g.fillStyle = '#2b2450'; g.fillRect(x, y, 160, 160); g.drawImage(ic, x + 80 - ic.width * 4, y + 80 - ic.height * 4, ic.width * 8, ic.height * 8); if (el) icon(el, x + 118, y + 6, 4); label(x + 80, y + 190, it.n, '#f4ead8', 16, 'center', true); label(x + 80, y + 214, el ? NAME[el] : 'Sans élément', el ? ICOL[el][1] : '#a8a8c0', 15, 'center', true); });
+  label(60, Y + 285, 'Bâton : Boule de feu = Feu · Nova de givre = Eau · Soin lumineux = Lumière ; le Trait d\'Éther prend l\'élément du bâton.', '#c8bcdc', 15, 'left');
+  Y += 330;
+  /* 3. en combat */
+  title(Y + 30, '3. En combat', 'Chiffres colorés et un mot au-dessus du monstre : on comprend tout de suite si l\'arme est la bonne.'); Y += 70;
+  panel(20, Y, WW - 40, 330);
+  const scene = (x0, mob, el, txt, num, col, small) => {
+    g.fillStyle = '#2f5a3c'; g.fillRect(x0, Y + 20, 580, 290); for (let k = 0; k < 40; k++) { g.fillStyle = k % 2 ? '#3a6a44' : '#467a4c'; g.fillRect(x0 + (k * 97) % 560, Y + 30 + (k * 53) % 270, 12, 4); }
+    const h = hero.side[0]; g.drawImage(h, x0 + 70, Y + 280 - hero.foot * 3, h.width * 3, h.height * 3);
+    const m = mob, s = 6; g.drawImage(m, x0 + 380, Y + 270 - m.height * s, m.width * s, m.height * s);
+    g.font = 'bold ' + (small ? 26 : 38) + 'px Georgia'; g.textAlign = 'center'; g.lineWidth = 6; g.strokeStyle = '#1a0f1c'; g.strokeText(num, x0 + 430, Y + 110); g.fillStyle = col; g.fillText(num, x0 + 430, Y + 110);
+    g.font = 'bold 22px Georgia'; g.strokeText(txt, x0 + 430, Y + 72); g.fillText(txt, x0 + 430, Y + 72); g.textAlign = 'left';
+    icon(el, x0 + 20, Y + 34, 4); label(x0 + 66, Y + 60, 'arme : ' + NAME[el], ICOL[el][1], 16, 'left', true);
+  };
+  scene(40, ART.slime, 'fire', 'Efficace !', '-148', '#ffb43a');
+  scene(640, ART.ember, 'wood', 'Résiste…', '-91', '#a8a8c0', true);
+  Y += 360;
+  /* 4. armure et bonus d'ensemble */
+  title(Y + 30, '4. Armure et bonus d\'ensemble', 'Chaque pièce d\'armure peut avoir un élément : elle protège de cet élément, et les pièces assorties donnent un bonus.'); Y += 70;
+  panel(20, Y, WW - 40, 400);
+  const stage = (x0, n, aura) => {
+    g.fillStyle = '#241e44'; g.fillRect(x0, Y + 20, 380, 360);
+    if (aura) for (let k = 0; k < 70; k++) { const a = (k / 70) * Math.PI * 2, r = 95 + (k % 3) * 8; g.fillStyle = ['#ff6a1a', '#ffb040', '#fff0a0'][k % 3]; g.globalAlpha = 0.7; g.fillRect(x0 + 190 + Math.cos(a) * r * 0.8, Y + 230 + Math.sin(a) * r * 0.45 - (k % 5) * 6, 6, 6); }
+    g.globalAlpha = 1;
+    const h = heroF.front[0]; g.drawImage(h, x0 + 190 - heroF.cx * 4, Y + 300 - heroF.foot * 4, h.width * 4, h.height * 4);
+    for (let k = 0; k < 5; k++) { g.fillStyle = k < n ? '#ff8a3a' : '#3a3258'; g.fillRect(x0 + 110 + k * 34, Y + 330, 26, 12); }
+    label(x0 + 190, Y + 366, n + (n > 1 ? ' pièces' : ' pièce') + ' Feu', '#f4ead8', 17, 'center', true);
+  };
+  stage(40, 1); label(230, Y + 60, '1 pièce : −5 % de dégâts de Feu subis', '#c8bcdc', 15);
+  stage(440, 3); label(630, Y + 60, '3 pièces : +10 % de dégâts de Feu', '#ffd23f', 15, 'center', true);
+  stage(840, 5, 1); label(1030, Y + 60, '5 pièces : +10 % et une aura de flammes', '#ffd23f', 15, 'center', true);
+  Y += 430;
+  /* 5. fiche d'objet */
+  title(Y + 30, '5. Sur la fiche d\'objet'); Y += 50;
+  panel(20, Y, WW - 40, 250);
+  { const x = 60, y = Y + 30; g.fillStyle = '#16122a'; g.fillRect(x, y, 520, 190); g.strokeStyle = '#5aa8ff'; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, 518, 188);
+    const it = C.ITEMS[3], ic = A.itemIcon(it.icon, it.c); g.drawImage(ic, x + 20, y + 20, ic.width * 5, ic.height * 5);
+    label(x + 110, y + 42, 'Hache de braise', '#5aa8ff', 22, 'left', true); label(x + 110, y + 68, 'Rare · Arme à deux mains · niveau 6', '#c8bcdc', 15, 'left');
+    icon('fire', x + 110, y + 86, 3); label(x + 145, y + 107, 'Feu : +30 % contre Bois, −20 % contre Eau', '#ff8a3a', 16, 'left', true);
+    label(x + 110, y + 140, 'Force +10 · Endurance +3', '#f4ead8', 16, 'left'); label(x + 110, y + 166, 'Ensemble Feu : 1 / 3 (tu portes aussi le Plastron de braise)', '#8a80a8', 14, 'left'); }
+  { const x = 640, y = Y + 30; label(x, y + 30, 'Ce qui change pour toi', '#f2c94c', 20, 'left', true);
+    ['Choisir son arme selon le monstre ou l\'île : Bois sur l\'Île Givrée, Eau aux Braises…', 'Les armures assorties deviennent un objectif de butin.', 'Les objets actuels reçoivent un élément d\'après leur nom', '(braise = Feu, givre = Eau, saule = Bois…) ; les autres restent neutres.', 'Aucune sauvegarde touchée : l\'élément vient du catalogue, pas du sac.'].forEach((t, i) => label(x, y + 66 + i * 28, '· ' + t, '#f4ead8', 15, 'left')); }
+  Y += 280;
+  window.__H = Y;
+})();
+</script></body></html>
