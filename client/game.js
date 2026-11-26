@@ -839,7 +839,14 @@
         }
       }, 380);
     if (e === me && A.name) {
-      floatAt(me, A.name, '#ffe9b0');
+      floatAt(me, A.name, ev.rk >= C.SK_MAX ? '#ffd23f' : '#ffe9b0');
+    }
+    // rang 10 : la technique est plus grande et dorée
+    if (ev.rk >= C.SK_MAX) {
+      A.r *= 1.25;
+      ring(e, A.r + 0.6, '#ffd23f', 0.6);
+      burst(e, '#ffd23f', 22, 40);
+      burst(e, '#fff6c0', 10, 60);
     }
     switch (A.fx) {
       case 'slashx':
@@ -3920,6 +3927,32 @@
       text(u, fpsShown + ' i/s Q' + RQ, UW - 27, 61, fpsShown >= 50 ? '#9cf07a' : fpsShown >= 30 ? '#ffd23f' : '#ff7a6a', 'center');
     text(u, netMode === 'online' ? online + ' en ligne' : 'Solo', UW - 27, 53, netMode === 'online' ? '#9cf07a' : '#c8c0d8', 'center');
     u.restore();
+    // flèche vers le Pont du Bourg quand il est hors de l'écran (îles du voyage)
+    {
+      const hb = !DGN && mode === 'play' && (W.bridges || []).find(b => b.kind === 'home');
+      if (hb && !me.dead && !travel) {
+        const bx = (lastOX + SUBX / RQ + (hb.hx - hb.hy) * 16) * K, by = (lastOY + SUBY / RQ + (hb.hx + hb.hy) * 8) * K;
+        const m = 18;
+        if (bx < m || bx > UW - m || by < m + ST || by > UH - m - SB) {
+          const cx = UW / 2, cy = UH / 2, dx = bx - cx, dy = by - cy, k = Math.min((UW / 2 - 30) / Math.abs(dx || 1e-6), (UH / 2 - 60) / Math.abs(dy || 1e-6));
+          const ax = Math.round(cx + dx * k), ay = Math.round(cy + dy * k), a = Math.atan2(dy, dx), ca = Math.cos(a), sa = Math.sin(a), pul = 0.75 + 0.25 * Math.sin(time * 4);
+          const tri = (s, col) => {
+            u.fillStyle = col;
+            u.beginPath();
+            u.moveTo(ax + ca * 7 * s, ay + sa * 7 * s);
+            u.lineTo(ax - ca * 4 * s - sa * 5 * s, ay - sa * 4 * s + ca * 5 * s);
+            u.lineTo(ax - ca * 4 * s + sa * 5 * s, ay - sa * 4 * s - ca * 5 * s);
+            u.closePath();
+            u.fill();
+          };
+          u.globalAlpha = pul;
+          tri(1.35, '#1a0f1c');
+          tri(1, '#ffd23f');
+          u.globalAlpha = 1;
+          text(u, 'Pont', ax - Math.round(ca * 12), ay - Math.round(sa * 12) - 3, '#ffe9b0', 'center');
+        }
+      }
+    }
     // bannière de zone
     if (zoneT > 0 && zone) {
       const a = zoneT > 2.4 ? (2.8 - zoneT) / 0.4 : zoneT < 0.6 ? zoneT / 0.6 : 1;

@@ -27,10 +27,10 @@ Les boss y sont de grandes versions couronnées des monstres du bestiaire ; en j
 
 | Rareté | Chance | Labyrinthe | Monstres | Élites | Pièges | Ambiance | Durée |
 |---|---|---|---|---|---|---|---|
-| Commun (blanc) | 45 % | 5×5 salles | niveau du héros | 0 | non | Caveau, pierre grise | ~3 min |
-| Inhabituel (vert) | 28 % | 7×7 | +1 | 1 | non | Racines, mousse | ~5 min |
-| Rare (bleu) | 17 % | 9×9 | +2 | 2 | oui | Grotte de cristal | ~8 min |
-| Épique (violet) | 8 % | 11×11 | +3 | 4 | oui | Catacombes d'Éther | ~12 min |
+| Commun (blanc) | 55 % | 5×5 salles | niveau du héros | 0 | non | Caveau, pierre grise | ~3 min |
+| Inhabituel (vert) | 25 % | 7×7 | +1 | 1 | non | Racines, mousse | ~5 min |
+| Rare (bleu) | 12 % | 9×9 | +2 | 2 | oui | Grotte de cristal | ~8 min |
+| Épique (violet) | 6 % | 11×11 | +3 | 4 | oui | Catacombes d'Éther | ~12 min |
 | Légendaire (or) | 2 % | 13×13 | +5 | 6 | oui, plus nombreux | Salle dorée | ~18 min |
 
 - **Plus rare = plus difficile** : un labyrinthe plus grand, avec moins de raccourcis et plus d'impasses ; des monstres de plus haut niveau ; plus d'élites ; des pièges ; et **plus sombre** (le rayon de lumière du héros rétrécit).
@@ -105,9 +105,9 @@ ceux qui se portent sont visibles sur le personnage.
   murs translucides devant le héros, faisceau de l'entrée, mini-carte révélée, barre du boss, titres.
 - Serveur : une simulation par donjon (`donjon:<graine>`), libérée 5 min après le départ du dernier joueur ; `dgdone` éteint l'entrée de l'île.
 
-## Choix retenus (par défaut, à ajuster si besoin)
+## Choix retenus (validés par Archibald dans le formulaire de décisions)
 
-1. Chances 45 / 28 / 17 / 8 / 2 % et labyrinthes de 5×5 à 13×13 salles.
+1. Chances 55 / 25 / 12 / 6 / 2 % (choix d'Archibald : les rares restent vraiment rares) et labyrinthes de 5×5 à 13×13 salles.
 2. Boss de la maquette, le Dévoreur d'Éther seul boss mythique.
 3. Ressortir avant le boss : le donjon est perdu pour cette arrivée.
 4. Titres : boss Légendaires et Mythique seulement.

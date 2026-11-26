@@ -235,3 +235,15 @@ test("format des messages : l'état public est du JSON simple et ne masque pas l
 test('le serveur et le client parlent la même version', () => {
   assert.ok(Number.isInteger(C.VERSION) && C.VERSION > 0);
 });
+
+test("traverser ensemble : deux héros partis à moins de 10 s d'écart arrivent sur la même île", () => {
+  for (let k = 0; k < 20; k++) {
+    const W = C.buildWorld(C.SEED), sim = new C.Sim(W), eb = W.bridges.find(b => b.kind === 'ether'), to = [];
+    for (const id of ['a', 'b']) { const p = sim.addPlayer(id, id, [0, 0, 0, 0, 0], { lvl: 5, ether: 10 }); p.x = eb.ex; p.y = eb.ey; }
+    sim.handle('a', { t: 'cross', b: 0 });
+    for (let i = 0; i < 50; i++) sim.step(0.1); // 5 s plus tard
+    sim.handle('b', { t: 'cross', b: 0 });
+    for (const e of sim.events) if (e.e === 'travel') to.push(JSON.stringify(e.to));
+    assert.equal(to.length, 2); assert.equal(to[0], to[1]);
+  }
+});

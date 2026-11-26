@@ -1667,7 +1667,8 @@
             n: A.name,
             r: A.r || 0,
             ar: M.arrows || 0,
-            tw: M.twice ? 1 : 0
+            tw: M.twice ? 1 : 0,
+            rk: A.rank || 1
           });
           break;
         }
@@ -1809,7 +1810,9 @@
               return;
             }
             p.ether -= ETHER_BRIDGE;
-            to = rollIsle(this.W.isle);
+            // traverser ensemble : moins de 10 s après un autre héros parti de cette île, on arrive sur la même île que lui
+            if (this.lastCross && this.t - this.lastCross.t < 10) to = this.lastCross.to;
+            else this.lastCross = { t: this.t, to: (to = rollIsle(this.W.isle)) };
           } else to = { k: 'bourg' };
           const fresh = !(p.isles & ISLE_BIT[to.k]);
           p.isles |= ISLE_BIT[to.k];

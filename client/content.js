@@ -1131,7 +1131,7 @@
     {
       n: 'Commun',
       c: '#ece8f4',
-      w: 45,
+      w: 55,
       size: 5,
       lvl: 0,
       elite: 0,
@@ -1144,7 +1144,7 @@
     {
       n: 'Inhabituel',
       c: '#5ee870',
-      w: 28,
+      w: 25,
       size: 7,
       lvl: 1,
       elite: 1,
@@ -1157,7 +1157,7 @@
     {
       n: 'Rare',
       c: '#5aa8ff',
-      w: 17,
+      w: 12,
       size: 9,
       lvl: 2,
       elite: 2,
@@ -1170,7 +1170,7 @@
     {
       n: 'Épique',
       c: '#c47cff',
-      w: 8,
+      w: 6,
       size: 11,
       lvl: 3,
       elite: 4,
