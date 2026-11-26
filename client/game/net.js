@@ -286,6 +286,7 @@ function handleEvent(ev) {
       if (mine && ev.ef && !(mb.efT > time)) {
         mb.efT = time + 1.4;
         floatAt(mb, ev.ef > 0 ? 'Efficace !' : 'Résiste…', ev.ef > 0 ? '#ffd23f' : '#c8c0d8', ev.ef > 0);
+        floats.at(-1).y -= 14; // au-dessus des chiffres de dégâts
       }
       burst(mb, ART.slimeLight[mb.type], ev.c ? 9 : 4);
       break;

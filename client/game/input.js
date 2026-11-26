@@ -283,7 +283,7 @@ function openCraft(id) {
 }
 function renderCraft() {
   if (!craftNpc) return;
-  const sig = JSON.stringify([me.inv, me.bag && me.bag.length, me.scarves, me.scarf, me.glvl]);
+  const sig = JSON.stringify([me.inv, me.bag && me.bag.length, me.scarves, me.scarf, me.glvl, me.equip && me.equip.weapon]);
   if (sig === craftSig) return;
   craftSig = sig;
   $('ctitle').textContent = craftNpc === 'bran' ? 'Forge de Bran' : 'Atelier de Mira';
@@ -306,6 +306,8 @@ function renderCraft() {
           ? '<button type="button" disabled>Portée</button>'
           : `<button type="button" data-scarf="${r.scarf}">Porter</button>`;
     else if (owned) btn = '<button type="button" disabled>Équipé</button>';
+    else if (r.enchant && !(me.equip && me.equip.weapon)) btn = '<button type="button" disabled>Sans arme</button>';
+    else if (r.enchant && me.el === r.enchant) btn = '<button type="button" disabled>Déjà</button>';
     else btn = `<button type="button" data-r="${i}" ${can ? '' : 'disabled'}>${locked ? 'Nv' + r.req : 'Fabriquer'}</button>`;
     const ic = r.item ? `<img class="ic r${r.item[1]}" src="${iconURL(r.item[0])}" alt="">` : '';
     return `<li>${ic}<div><b${r.item ? ' style="color:' + C.RARITY[r.item[1]][1] + '"' : ''}>${r.name}</b><small>${r.item ? statLine(r.item) : r.desc}</small><small>${locked ? 'Cueillette nv' + r.req + ' requise · ' : ''}${cost}</small></div>${btn}</li>`;
