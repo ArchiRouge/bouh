@@ -6,6 +6,9 @@ is the native wrapper, the step counter plugin, and getting it running on the iO
 Talk to him in French, keep explanations short, and ask before anything that costs money or changes his Apple account.
 
 ## Project map
+Full code map, message protocol, save format and how-tos: `docs/architecture.md`. Run `npm test` (engine tests, no dependencies)
+after any change to `client/content.js` or `client/core.js`. Code style: Prettier, `.prettierrc.json` (width 140).
+
 - `client/` — the game (web). This folder is the Capacitor `webDir`. Do not restructure it.
   - `content.js` — game content as plain data (monsters, items, loot, weapons and techniques, crafting, NPCs and quests, islands,
     dungeons). `core.js` is the engine (world generation + authoritative simulation); it reads `content.js` and re-exports it (`C.ITEMS`…).

@@ -18,10 +18,15 @@ client/          le jeu (c'est aussi le dossier embarqué dans l'app iOS)
   index.html     écran de création du héros et canevas
   config.js      ← adresse du serveur à renseigner
   persist.js     sauvegarde durable dans l'app iOS (charge game.js)
-  core.js        monde et simulation, partagés avec le serveur
-  assets.js      direction artistique, entièrement procédurale
+  content.js     contenu du jeu en données : monstres, objets, armes, quêtes, îles, donjons
+  core.js        moteur : mondes et simulation, partagés avec le serveur
+  sprites.js     héros et équipement porté, pixel art posé à la main
+  assets.js      tout le reste de l'art, procédural
   game.js        rendu, interface, contrôles tactiles, réseau
+  steps.js       vrais pas du téléphone (app iOS)
 server/          serveur multijoueur (Node + ws)
+tests/           tests du moteur (npm test)
+docs/            architecture du code (docs/architecture.md) et conception du jeu (docs/design/)
 assets/          icône 1024 px et écran de lancement de l'app
 ios/             projet Xcode (généré par Capacitor, déjà configuré)
 .github/workflows/ios.yml   compilation iOS et envoi sur TestFlight sans Mac
@@ -113,6 +118,8 @@ Apple exige, pour une app avec du contenu généré par les joueurs (tchat) :
 
 - Création du héros : nom, coiffure, couleur des cheveux, tenue, peau, chapeau.
 - Un monde partagé : l'île, son bourg, 4 zones de difficulté croissante, 52 monstres et le Roi Gelée.
+- Voyage par les Ponts d'Éther vers des îles dangereuses (PvP, sac perdu à la mort), avec un **donjon** au centre de chacune :
+  rareté tirée à chaque arrivée, labyrinthe, élites, pièges, boss de rareté variable (parfois mythique), titres.
 - Coopération : chaque joueur qui frappe un monstre reçoit toute l'XP, avec **+25 % en groupe**.
 - Tchat global, liste des joueurs en ligne, mini-carte.
 - Sauvegarde côté serveur (niveau, XP, or, potions), liée à l'appareil.
@@ -120,7 +127,8 @@ Apple exige, pour une app avec du contenu généré par les joueurs (tchat) :
 
 ## Systèmes de jeu
 
-- **Équipement façon WoW** : 6 emplacements (tête, torse, jambes, pieds, arme, bijou), 20 objets, 4 raretés (commun, inhabituel, rare, épique), caractéristiques Force / Endurance / Intelligence / Agilité / Armure, butin personnel sur les monstres, comparaison avec l'objet équipé. Touche **I** ou le bouton sac.
+- **Armes plutôt que classes** : l'arme en main donne l'attaque et les techniques (épée, deux mains, dagues, arc, bâton, lance), débloquées par la maîtrise ; les techniques montent de rang à l'usage (paliers au choix). Niveau maximum 50.
+- **Équipement façon WoW** : 7 emplacements (tête, torse, jambes, pieds, arme, main gauche, bijou), plus de 70 objets, 5 raretés (commun, inhabituel, rare, épique, unique), caractéristiques Force / Endurance / Intelligence / Agilité / Armure, butin personnel sur les monstres, comparaison avec l'objet équipé. Touche **I** ou le bouton sac.
 - **Page personnage** (bouton sac, portrait en haut à gauche, ou touche I) : équipement sur 6 emplacements, aperçu du héros qui tourne, **essayage** d'un objet du sac avec gains/pertes de stats en vert/rouge, onglets Stats / Sac (filtres armes, armures, bijoux) / Compétences, confirmation avant de vendre un objet rare ou mieux.
 - **Équipement visible** : casque, capuche ou couronne, torse (tunique ou plastron avec épaulières), jambes, bottes et arme en main sont dessinés sur le héros, dans les 4 directions et pour les autres joueurs. Les objets rares et plus ont des finitions dorées, les armes épiques et uniques scintillent.
 - **Direction artistique « aquarelle 16 bits »** : la lisibilité d'un Zelda de cartouche, la palette pastel et l'atmosphère d'un livre d'aquarelles, une couleur propre à chaque zone (aube chaude au bourg, or et jade dans les prairies, forêt de rêve bleu-violet avec rais de lumière et lucioles, braises d'automne dans les terres sauvages), interface encre et crème.
@@ -128,4 +136,6 @@ Apple exige, pour une app avec du contenu généré par les joueurs (tchat) :
 
 ## Pistes pour la suite
 
-Comptes (Sign in with Apple), inventaire et équipement, classes, quêtes du bourg, donjon instancié pour groupes, emotes, sons et musique.
+Comptes (Sign in with Apple), dessins propres aux boss de donjon, nouvelles îles, quêtes du bourg, emotes, sons et musique.
+
+Pour contribuer au code : lire [docs/architecture.md](docs/architecture.md), puis `npm test`.
