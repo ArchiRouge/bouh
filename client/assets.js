@@ -51,12 +51,12 @@
   /* ---------- palettes ---------- */
   let GRASS = R(['#2e5260', '#357468', '#47967a', '#66b088', '#90c896', '#bce0a4', '#e8f2c4']);
   let SAND = R(['#b98f86', '#d2a894', '#e6c3a4', '#f3dcbc', '#fbefd8']);
-  const STONE = R(['#5f5c7e', '#7a7798', '#9693b2', '#b5b1cc', '#d8d3e6']);
+  let STONE = R(['#5f5c7e', '#7a7798', '#9693b2', '#b5b1cc', '#d8d3e6']);
   const PATHC = R(['#8c6a6e', '#a8807a', '#c39c8c', '#dab9a2', '#eed6bd']);
   let CLIFF = R(['#3a2c4c', '#523b5e', '#6e4e6c', '#8c6478', '#ab8088', '#c9a09c']);
   let MOSS = R(['#2c4a5a', '#356460', '#4a8068', '#6a9e74']);
   const SANDC = R(['#6e4e62', '#8a6670', '#a8807e', '#c49c8e']);
-  const STONEC = R(['#3c3a5c', '#504e70', '#666486', '#7e7c9c']);
+  let STONEC = R(['#3c3a5c', '#504e70', '#666486', '#7e7c9c']);
   let WATER = R(['#1e3f66', '#26567a', '#2f6f8a', '#3f8a98', '#62a8aa', '#96c8bc', '#d0e8d8']);
   let FOAM = rgb('#f4f0e0');
   C.ART_WATER_BG = '#26567a';
@@ -78,10 +78,16 @@
       CLIFF: R(['#241e3c', '#342c50', '#463c64', '#5a4e78', '#72648e', '#8e80a6']), MOSS: R(['#3a3a66', '#4e5080', '#666a98', '#8288b0']),
       WATER: R(['#1a1838', '#24224a', '#302e5e', '#424276', '#5e5e92', '#8a88b4', '#c4c2dc']), FOAM: rgb('#e8e4ff') }
   };
-  let THEME = 'bourg';
+  // donjons : une pierre par rareté (Caveau, Racines, Grotte de cristal, Catacombes d'Éther, Salle dorée)
+  const DG_STONE = [
+    ['#2e293e', '#4a4360', '#6a6282', '#8c84a4', '#b4acc8', '#d8d0e4'], ['#24302a', '#3a4c3c', '#566e52', '#76906a', '#9cb088', '#c4d0a8'],
+    ['#1e2844', '#2e4262', '#46628a', '#6488aa', '#8eb0c8', '#c4dcec'], ['#271a44', '#3c2a62', '#584288', '#7a62a8', '#a08cc8', '#cec0e8'],
+    ['#36261e', '#56402c', '#7c5e3a', '#a6824c', '#ccaa64', '#ecd49a']].map(R);
+  let THEME = 'bourg', DGT = 0;
   /* ---------- terrain ---------- */
   function buildTerrain(W) {
     THEME = W.theme || 'bourg'; const PAL = ISLE_PAL[THEME] || BASE_PAL;
+    if (THEME === 'donjon') { DGT = W.tier | 0; const D = DG_STONE[DGT]; STONE = D.slice(1); STONEC = D.slice(0, 4); }
     GRASS = PAL.GRASS; SAND = PAL.SAND; CLIFF = PAL.CLIFF; MOSS = PAL.MOSS; WATER = PAL.WATER; FOAM = PAL.FOAM;
     const { MW, MH, TY, HT, idx, inb } = W;
     const N = MW * MH, DIST = new Float32Array(N).fill(99), q = [];
@@ -122,12 +128,18 @@
         } else if (t === 4) {
           v = 0.5 + 0.35 * (fbm(gx / 9, gy / 5, 23) - 0.5);
           const r = hash(gx, gy, 43); if (r < 0.03) v += 0.35; else if (r < 0.06) v -= 0.3;
+        } else if (t === 3 && THEME === 'donjon' && h === 0) {
+          // sol de donjon : grandes dalles claires (2×2 par case), joints sombres, fissures
+          const su = (du * 2) % 1, sv = (dv * 2) % 1, fl = Math.floor(du * 2) + Math.floor(dv * 2) * 2;
+          v = su < 0.07 || sv < 0.07 ? 0.3 : 0.62 + [0, -0.07, 0.05, -0.03][fl & 3] + (hash(i * 4 + fl, j, 61) - 0.5) * 0.12 + (su > 0.9 || sv > 0.9 ? -0.1 : su < 0.2 || sv < 0.2 ? 0.08 : 0);
+          if (hash(gx, gy, 62) < 0.012) v -= 0.25;
         } else if (t === 3) {
           const row = Math.floor(gy / 4), off = (row & 1) * 4, col = Math.floor((gx + off) / 8);
           const lx = ((gx + off) % 8 + 8) % 8, ly = ((gy % 4) + 4) % 4;
           if (lx === 0 || ly === 0) v = 0.08;
           else v = 0.48 + 0.34 * (hash(col, row, 9) - 0.5) + (ly === 1 ? 0.14 : 0) - (lx === 7 ? 0.1 : 0) + (hash(gx, gy, 3) - 0.5) * 0.1;
         }
+        if (THEME === 'donjon' && h > 0) v = 0.04 + v * 0.22; // dessus des murs : sombre, le sol reste clair
         if (hL > h) v -= 0.32 * Math.max(0, 1 - du / 0.32);
         if (hR > h) v -= 0.32 * Math.max(0, 1 - dv / 0.32);
         if (hL >= 0 && hL < h && du < 0.05) v += 0.15;
@@ -602,6 +614,57 @@
     P.outline(0.4); return P.done();
   }
 
+  /* ---------- donjons : torche, cristal, pointes, entrée au centre des îles ---------- */
+  const tierRamp = h => SPR.ramp5(h);
+  function paintTorch(f) {
+    const P = new Pix(7, 13), fl = R(['#a0301a', '#ff7a2a', '#ffc048', '#fff4c0']);
+    for (let y = 8; y < 13; y++) P.set(3, y, rgb('#4a2c1c')); P.set(2, 8, rgb('#6a4028')); P.set(4, 8, rgb('#6a4028'));
+    const h = f ? [[3, 1], [2, 2], [3, 2], [4, 3], [2, 3], [3, 3], [2, 4], [3, 4], [4, 4], [2, 5], [3, 5], [4, 5], [3, 6], [3, 7]] : [[3, 0], [3, 1], [4, 2], [3, 2], [2, 3], [3, 3], [4, 3], [2, 4], [3, 4], [4, 4], [2, 5], [3, 5], [4, 5], [3, 6], [3, 7]];
+    for (const [x, y] of h) P.set(x, y, fl[y < 2 ? 1 : y > 5 ? 0 : 2]); P.set(3, 4, fl[3]); P.set(3, 5, fl[3]);
+    return P.done();
+  }
+  function paintCrystal(col) {
+    const P = new Pix(9, 16), r = tierRamp(col);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 9; x++) { const w = y < 8 ? y * 0.55 : (16 - y) * 0.3; if (Math.abs(x - 4) <= w) P.set(x, y, x < 4 ? r[3] : x === 4 ? r[4] : r[1]); }
+    P.set(3, 4, WHITE); P.outline(0.4); return P.done();
+  }
+  const inDia = (x, y) => Math.abs(x + 0.5 - 16) / 16 + Math.abs(y + 0.5 - 8) / 8 <= 1;
+  function paintSpikes(up) {
+    const P = new Pix(32, 22), pit = R(['#120c1c', '#241a30']);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 32; x++) if (inDia(x, y) && Math.abs(x + 0.5 - 16) / 16 + Math.abs(y + 0.5 - 8) / 8 < 0.62) P.set(x, y + 6, (x + y) % 4 === 0 ? pit[0] : pit[1]);
+    for (const [cx, cy] of [[11, 14], [16, 11], [21, 14], [16, 17], [13, 14], [19, 14]]) for (let k = 0; k < (up ? 6 : 1); k++) { P.set(cx, cy - k, rgb(k > 3 ? '#e8ecf4' : '#9aa0b8')); if (k < 2) P.set(cx + 1, cy - k, rgb('#5a6078')); }
+    return P.done();
+  }
+  // entrée de donjon : portique sur une plateforme, escalier vers un tourbillon de la couleur de la rareté (4 images), ou éteinte
+  function paintGate(col, f, off) {
+    const tr = off ? R(['#2a2436', '#3a3248', '#4a4258', '#5a526a', '#6a6278']) : tierRamp(col), W0 = 72, H0 = 84, P = new Pix(W0, H0), cx = 36, base = 62, gold = tierRamp('#ffd04a'), legend = col === '#ffb43a';
+    const ST = R(['#3c3a5c', '#504e70', '#666486', '#7e7c9c', '#9a98b6', '#c0bdd6']);
+    if (!off) for (let y = base - 14; y < base + 22; y++) for (let x = 0; x < W0; x++) { const e = Math.abs(x + 0.5 - cx) / 35 + Math.abs(y + 0.5 - base - 4) / 17.5; if (e > 0.86 && e <= 1 && (x + y + f) % 3 !== 0) P.set(x, y, tr[e > 0.93 ? 1 : 2], 200); }
+    for (let y = 0; y < H0; y++) for (let x = 0; x < W0; x++) {
+      const sx = x + 0.5 - cx, syT = y + 0.5 - (base - 4), eT = Math.abs(sx) / 28 + Math.abs(syT) / 14;
+      if (eT <= 1) { P.set(x, y, ramp(ST, 0.55 + ((Math.floor((sx / 28 + syT / 14) * 3) + Math.floor((syT / 14 - sx / 28) * 3)) & 1) * 0.15 - (eT > 0.9 ? 0.2 : 0), x, y)); continue; }
+      const syB = y + 0.5 - base, eB = Math.abs(sx) / 28 + Math.abs(syB) / 14;
+      if (eB <= 1 && syB > -2 && y > base - 4 + (14 * (1 - Math.abs(sx) / 28)) - 0.5) P.set(x, y, sx < 0 ? ST[2] : ST[1]);
+    }
+    for (let k = 0; k < 5; k++) for (let x = cx - 11 + k; x <= cx + 11 - k; x++) { const y = base - 6 - k * 2; P.set(x, y, k < 2 ? ST[3 - k] : [24 - k * 3, 16 - k * 2, 40 - k * 4]); P.set(x, y + 1, k < 2 ? ST[1] : [14, 8, 26]); }
+    for (let y = base - 34; y < base - 14; y++) for (let x = cx - 11; x <= cx + 11; x++) {
+      const nx = (x + 0.5 - cx) / 11, ny = (y + 0.5 - (base - 22)) / 12; if (nx * nx + ny * ny > 1 && y < base - 22) continue;
+      const a = Math.atan2(ny, nx), d = Math.hypot(nx, ny), sw = off ? -1 : Math.sin(a * 3 + d * 8 - f * Math.PI / 2);
+      P.set(x, y, sw > 0.35 ? tr[3] : sw > -0.3 ? tr[1] : [18, 10, 34]);
+    }
+    const pil = px => { for (let y = base - 40; y < base - 6; y++) for (let x = px - 3; x <= px + 3; x++) { P.set(x, y, x === px - 3 || x === px + 3 ? ST[0] : x < px ? ST[4] : x === px ? ST[3] : ST[2]); if ((y - base) % 7 === 0) P.set(x, y, ST[1]); } for (let x = px - 4; x <= px + 4; x++) { P.set(x, base - 41, ST[4]); P.set(x, base - 40, ST[2]); P.set(x, base - 7, ST[2]); } };
+    pil(cx - 15); pil(cx + 15);
+    for (let x = cx - 18; x <= cx + 18; x++) { P.set(x, base - 44, ST[5]); P.set(x, base - 43, ST[4]); P.set(x, base - 42, ST[3]); P.set(x, base - 41, ST[2]); }
+    for (const px of [cx - 15, cx + 15]) for (let k = 0; k < 4; k++) P.set(px, base - 34 + k * 7, tr[4 - (k + f) % 2]);
+    if (legend && !off) { for (let x = cx - 18; x <= cx + 18; x += 2) P.set(x, base - 44, gold[3]); for (const px of [cx - 15, cx + 15]) for (let y = base - 40; y < base - 6; y += 3) { P.set(px - 3, y, gold[2]); P.set(px + 3, y, gold[1]); } }
+    for (const [x, y, k] of [[cx, base - 49, 4], [cx - 1, base - 48, 3], [cx, base - 48, 4], [cx + 1, base - 48, 2], [cx - 2, base - 47, 3], [cx - 1, base - 47, 3], [cx, base - 47, 2], [cx + 1, base - 47, 1], [cx + 2, base - 47, 1], [cx - 1, base - 46, 2], [cx, base - 46, 1], [cx + 1, base - 46, 1], [cx, base - 45, 0]]) P.set(x, y, tr[k]);
+    P.outline(0.45); return P.done();
+  }
+  function dungeonArt(tierCols) {
+    return { torch: [paintTorch(0), paintTorch(1)], spikes: [paintSpikes(false), paintSpikes(true)], crystal: tierCols.map(paintCrystal),
+      gate: tierCols.map(col => [0, 1, 2, 3].map(f => paintGate(col, f, false))), gateOff: paintGate('#808080', 0, true) };
+  }
+
   /* ---------- bestiaire : six silhouettes déclinées par élément (2 images chacune, regard vers la droite) ---------- */
   const MP = {
     lapin: { body: R(['#7a5a4a', '#a8806a', '#d0aa8a', '#ecd2b4', '#fff2e0']), acc: rgb('#ffb0c0') },
@@ -721,6 +784,7 @@
       houses: [0, 1, 2, 3].map(paintHouse), lamp: paintLamp(), barrel: paintBarrel(), crate: paintCrate(),
       fountain: [0, 1, 2].map(paintFountain),
       tuft: [paintTuft(0), paintTuft(1)], flowers: [1, 2, 3, 4, 5, 6].map(paintFlowers), mini: paintMiniShroom(), pebble: [paintPebble(1), paintPebble(2)],
+      dgn: dungeonArt(C.DG.map(o => o.c)),
       icons: ICONS, charSet, nodes: { herb: paintHerbNode(), wood: paintWoodNode(), quartz: paintQuartzNode() },
       slimeLight: Object.assign({ slime: SLIMES.slime[4], ember: SLIMES.ember[4], boss: SLIMES.boss[4], champi: CAP[4], frost: SLIMES.frost[4] }, Object.fromEntries(Object.keys(MP).map(k => [k, MP[k].body[3]])))
     };

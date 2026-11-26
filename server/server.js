@@ -19,7 +19,7 @@ const FOUNDERS = String(process.env.FOUNDER_NAMES || '').split(',').map(s => s.t
 
 /* ---------- îles : une simulation par île (les îles éphémères sont créées à la demande et libérées vides) ---------- */
 const isles = new Map(); // clé -> { key, isle, sim, emptyT }
-const isleKey = i => i.k === 'brume' ? 'brume:' + i.s : i.k;
+const isleKey = i => i.k === 'brume' || i.k === 'donjon' ? i.k + ':' + i.s : i.k;
 function getIsle(i, lvl) {
   i = Core.cleanIsle(i); const key = isleKey(i); let I = isles.get(key);
   if (!I) { I = { key, isle: i, sim: new Core.Sim(Core.buildWorld(Core.SEED, i), { lvl: lvl || 1 }), emptyT: 0 }; isles.set(key, I); console.log(`[île] ${key} ouverte`); }
@@ -116,6 +116,8 @@ setInterval(() => {
       if (e.e === 'ch' && e.id) shared.push(e);
       // traversée d'un pont : la nouvelle île est enregistrée tout de suite ; le client recharge et se reconnecte sur cette île
       if (e.e === 'travel') { const c = clients.get(e.id); if (c) { saveOf(sim, e.id, c); dirty = true; } }
+      // boss d'un donjon vaincu : l'entrée de son île s'éteint (un nouveau donjon sera tiré quand l'île se rouvrira)
+      if (e.e === 'dgdone') for (const J of isles.values()) if (J.sim.dg && J.sim.dg.s === e.s) J.sim.dg.done = 1;
     }
   }
   for (const [I, ev] of evs) {

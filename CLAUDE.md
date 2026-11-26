@@ -102,6 +102,13 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   on a corpse lootable by anyone for 3 min (`die`, `corpses`, `loot`). Online, the server runs one `Sim` per island (`isles` map,
   ephemeral ones freed when empty); `welcome` carries the island and the client reloads onto it if needed (`etheria_isle_force`).
 
+## Dungeons
+- `docs/design/donjons.md`. Entrance `W.gate` at the centre of each Ether-bridge island (`buildIsle`); its rarity (`DG`, item colours) is rolled per arrival
+  (`Sim.dg`, from the save in solo: `opts.dg`). Entering = travel to isle `{ k: 'donjon', s, r, b, f }` (`buildDungeon`: maze of n×n rooms, 2-tile corridors,
+  boss in the farthest 2×2 room, elites in far dead ends, spike traps, torches, crystals). Exit portal at the start, victory portal after the boss.
+- Save fields `dg`, `ttl`, `tt`; `arr: 2` respawns in front of the gate. Dungeon mobs never respawn; death respawns at the dungeon start.
+- Rendering: walls are terrain height 3 (`DG_STONE` per rarity), walls in front of the hero are drawn translucent, darkness is a cached dithered radial canvas.
+
 ## Rendering & smoothness
 - The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving
   characters glide at screen-pixel precision; static art stays on the game-pixel grid. `adaptQuality()` halves `RQ` if the

@@ -1,6 +1,6 @@
 # Pixels Worlds — donjons au centre des îles
 
-Statut : **maquette, à valider** (rien n'est codé).
+Statut : **codé** (v1 : les boss utilisent les dessins du bestiaire, agrandis et couronnés ; leurs propres dessins viendront ensuite).
 
 Choix d'Archibald :
 - un donjon au centre des îles du Pont d'Éther : Givrée, Braises et îles éphémères, mais pas l'île de départ ;
@@ -79,14 +79,14 @@ ceux qui se portent sont visibles sur le personnage.
   - Rare : or, Éther et 2 objets Rare ou mieux ;
   - Épique : or, Éther et 2 objets Épique ou mieux ;
   - Légendaire : or, Éther et 3 objets Épique ou mieux, avec 1 % de chances d'un objet Unique.
-- **Titres**, affichés sous le nom et visibles par les autres joueurs :
+- **Titres**, affichés au-dessus du nom et visibles par les autres joueurs (choix dans la page personnage) :
   - vaincre un boss Légendaire donne « Fléau de <boss> » ;
   - le boss mythique donne le titre doré « Dévoreur d'Éther ».
 
 ## Règles
 
 - **Danger** : comme sur les îles, PvP possible et sac perdu à la mort (corps pillable 3 min, objets uniques protégés).
-  Après la mort, on réapparaît au centre de l'île, devant l'entrée ; on peut retenter le même donjon tant que le boss n'est pas vaincu.
+  Après la mort, on réapparaît à l'entrée du donjon (le corps reste pillable là où l'on est tombé) ; les monstres vaincus ne reviennent pas.
 - **Une fois par arrivée** : boss vaincu, l'entrée s'éteint jusqu'à la prochaine traversée du Pont d'Éther (nouveau tirage).
 - **En ligne** : le serveur fait tourner une simulation par donjon (comme les îles éphémères). Les joueurs qui entrent dans le donjon d'une même île se retrouvent ensemble (coopération ou PvP). Le donjon est retiré quand son boss est vaincu et que tout le monde en est sorti.
 - **Sauvegarde** (champs nouveaux, sans toucher aux anciens) :
@@ -95,9 +95,19 @@ ceux qui se portent sont visibles sur le personnage.
   - `tt` : titre affiché.
   Le voyage vers le donjon reprend le mécanisme des îles (sauvegarde, brume, rechargement).
 
-## À valider
+## Code
 
-1. Les raretés et leurs chances (45 / 28 / 17 / 8 / 2 %) et la taille des labyrinthes.
-2. La liste des boss, et le Dévoreur d'Éther comme unique boss mythique.
-3. Sortir avant le boss : le donjon est perdu pour cette arrivée, ou bien on peut revenir.
-4. Les titres : seulement Légendaire et Mythique, ou aussi un titre pour 10 donjons terminés, etc.
+- `core.js` : `DG` (raretés), `DG_BOSSES`, `TITLES`, `rollDungeon`, `buildDungeon` (labyrinthe, élites, pièges, torches, cristaux),
+  entrée `W.gate` posée au centre des îles par `buildIsle`, messages `dgIn` / `dgOut` / `tt`, événements `travel` (via `dg` / `dgout`), `ttl`, `dgdone`.
+- Sauvegarde : `dg` (donjon de l'arrivée en cours, `done` quand il est fini ou abandonné), `ttl` (titres, bits), `tt` (titre affiché, -1 aucun) ;
+  `arr: 2` = réapparaître devant l'entrée en sortant du donjon.
+- `assets.js` : pierre par rareté (`DG_STONE`), torche, cristal, pointes, entrée (`dungeonArt`). `game.js` : obscurité en bandes tramées (`darkness`),
+  murs translucides devant le héros, faisceau de l'entrée, mini-carte révélée, barre du boss, titres.
+- Serveur : une simulation par donjon (`donjon:<graine>`), libérée 5 min après le départ du dernier joueur ; `dgdone` éteint l'entrée de l'île.
+
+## Choix retenus (par défaut, à ajuster si besoin)
+
+1. Chances 45 / 28 / 17 / 8 / 2 % et labyrinthes de 5×5 à 13×13 salles.
+2. Boss de la maquette, le Dévoreur d'Éther seul boss mythique.
+3. Ressortir avant le boss : le donjon est perdu pour cette arrivée.
+4. Titres : boss Légendaires et Mythique seulement.

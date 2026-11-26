@@ -6,7 +6,7 @@
   else root.EtheriaCore = factory();
 })(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
-  const VERSION = 6;
+  const VERSION = 7;
   const SEED = 20261121;
 
   function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
@@ -128,7 +128,18 @@
     { n: 'Plastron de magma', slot: 'chest', lvl: 8, icon: 'plate', c: '#a83a1a', st: { sta: 8, str: 3, armor: 18 } },
     { n: 'Hache de magma', slot: 'weapon', lvl: 8, icon: 'axe', c: '#e0502a', st: { str: 11, sta: 2 } },
     { n: 'Ailes de cendre', slot: 'trinket', lvl: 6, icon: 'amulet', c: '#6a4a4a', st: { agi: 4, str: 2 } },
-    { n: 'Jambières de cendre', slot: 'legs', lvl: 6, icon: 'pants', c: '#5a3a3a', st: { agi: 3, armor: 7 } }
+    { n: 'Jambières de cendre', slot: 'legs', lvl: 6, icon: 'pants', c: '#5a3a3a', st: { agi: 3, armor: 7 } },
+    // butin propre aux boss de donjon (63 à 72)
+    { n: 'Couronne gluante', slot: 'head', lvl: 5, icon: 'crown', c: '#9ad07a', st: { sta: 3, int: 2, armor: 4 } },
+    { n: 'Bâton noueux', slot: 'weapon', lvl: 5, icon: 'staff', c: '#8a6a3a', st: { int: 7, sta: 3 } },
+    { n: 'Cape de brume', slot: 'chest', lvl: 10, icon: 'tunic', c: '#8a88aa', st: { agi: 5, sta: 4, armor: 11 } },
+    { n: "Dard d'or", slot: 'weapon', lvl: 10, icon: 'dagger', c: '#ffd04a', st: { agi: 10, str: 3 } },
+    { n: 'Masse de quartz', slot: 'weapon', lvl: 15, icon: 'great', c: '#f0a0c8', st: { str: 15, sta: 4 } },
+    { n: 'Écailles de braise', slot: 'chest', lvl: 20, icon: 'plate', c: '#e0602a', st: { sta: 10, str: 5, armor: 24 } },
+    { n: "Linceul d'ombre", slot: 'chest', lvl: 20, icon: 'tunic', c: '#3a2e5a', st: { int: 9, agi: 5, armor: 14 } },
+    { n: 'Cœur de lave', slot: 'trinket', lvl: 25, icon: 'amulet', c: '#ff6a1a', st: { str: 8, sta: 8 } },
+    { n: 'Sceptre glacial', slot: 'weapon', lvl: 25, icon: 'staff', c: '#8ad8ff', st: { int: 17, sta: 5 } },
+    { n: 'Couronne du Dévoreur', slot: 'head', lvl: 1, icon: 'crown', c: '#ff4a7a', st: { str: 8, int: 8, sta: 8, armor: 12 }, unique: 1, lore: "Arrachée au Dévoreur d'Éther. Elle bat comme un cœur." }
   ];
   const GM_EQUIP = [33, 34, 35, 36, 39], GM_BAG = [37, 38]; // le maître du jeu est mage : sceptre en main, lame et égide au sac
   // butin : un objet tombe rarement (≈ 3 %), dans la liste propre au monstre ; le Roi Gelée donne toujours quelque chose
@@ -370,11 +381,100 @@
     bourg: { name: "Bourg d'Argel", theme: 'bourg' },
     givre: { name: 'Île Givrée', theme: 'givre', seed: 7101, fx: 'slow', mobs: ['frost', 'frost', 'pingouin', 'loupneige', 'esprit', 'champi', 'slime'], res: ['quartz', 'wood'], trees: ['pine', 'pine', 'pine', 'oak', 'rock'], desc: 'Le froid mord : tes coups ralentissent les ennemis (sauf les créatures de givre).' },
     braise: { name: 'Île des Braises', theme: 'braise', seed: 7202, fx: 'burn', mobs: ['ember', 'salamandre', 'magma', 'cendre', 'ember', 'champi', 'slime'], res: ['quartz', 'herb'], trees: ['rock', 'rock', 'pine', 'bush', 'oak'], desc: 'La terre brûle : tes coups enflamment les ennemis (sauf les créatures de feu).' },
+    donjon: { name: 'Donjon', theme: 'donjon' },
     brume: { name: 'Île de Brume', theme: 'brume', eph: 1, mobs: ['follet', 'spectre', 'loup', 'chauvesouris', 'souche', 'slime', 'champi', 'frost'], res: ['herb', 'wood', 'quartz'], trees: ['oak', 'pine', 'blossom', 'bush'], desc: "Île éphémère : un coffre rare t'attend. Elle disparaîtra quand tu partiras." }
   };
   const FIXED_ISLES = ['givre', 'braise'], ETHER_BRIDGE = 3, BRIDGE_LEN = 4;
-  const ISLE_BIT = { bourg: 1, givre: 2, braise: 4, brume: 8 };
-  function cleanIsle(o) { if (!o || !ISLES[o.k]) return { k: 'bourg' }; return ISLES[o.k].eph ? { k: o.k, s: (o.s >>> 0) || 1 } : { k: o.k }; }
+  const ISLE_BIT = { bourg: 1, givre: 2, braise: 4, brume: 8, donjon: 16 };
+  // île propre : { k } ; île éphémère : { k, s } ; donjon : { k, s (graine), r (rareté), b (boss), f (île d'où l'on vient) }
+  function cleanIsle(o) {
+    if (!o || !ISLES[o.k]) return { k: 'bourg' };
+    if (o.k === 'donjon') { const f = cleanIsle(o.f); return { k: 'donjon', s: (o.s >>> 0) || 1, r: clampInt(o.r, 0, DG.length - 1), b: clampInt(o.b, 0, DG_BOSSES.length - 1), f: f.k === 'donjon' || f.k === 'bourg' ? { k: 'givre' } : f }; }
+    return ISLES[o.k].eph ? { k: o.k, s: (o.s >>> 0) || 1 } : { k: o.k };
+  }
+  const isleName = i => i && i.k === 'donjon' ? DG[i.r].name : (ISLES[i && i.k] || ISLES.bourg).name;
+
+  /* ---------------- donjons (docs/design/donjons.md) ----------------
+     Une entrée au centre de chaque île du Pont d'Éther ; rareté tirée à chaque arrivée (couleurs des objets).
+     Labyrinthe de n×n salles, couloirs de 2 cases ; le boss attend dans la salle la plus éloignée de l'entrée. */
+  const DG = [
+    { n: 'Commun', c: '#ece8f4', w: 45, size: 5, lvl: 0, elite: 0, trap: 0, loops: 0.1, light: 1, name: 'Caveau', mobs: ['slime', 'chauvesouris', 'champi', 'souche'] },
+    { n: 'Inhabituel', c: '#5ee870', w: 28, size: 7, lvl: 1, elite: 1, trap: 0, loops: 0.08, light: 0.9, name: 'Racines', mobs: ['souche', 'champi', 'loup', 'abeille'] },
+    { n: 'Rare', c: '#5aa8ff', w: 17, size: 9, lvl: 2, elite: 2, trap: 6, loops: 0.07, light: 0.8, name: 'Grotte de cristal', mobs: ['golem', 'esprit', 'follet', 'chauvesouris'] },
+    { n: 'Épique', c: '#c47cff', w: 8, size: 11, lvl: 3, elite: 4, trap: 10, loops: 0.06, light: 0.7, name: "Catacombes d'Éther", mobs: ['spectre', 'chauvesouris', 'follet', 'loup'] },
+    { n: 'Légendaire', c: '#ffb43a', w: 2, size: 13, lvl: 5, elite: 6, trap: 16, loops: 0.04, light: 0.62, name: 'Salle dorée', mobs: ['magma', 'salamandre', 'golem', 'spectre'] }
+  ];
+  const DG_MYTH = { n: 'Mythique', c: '#ff4a7a' };
+  // boss : dessin (type de monstre), rareté (5 = mythique), objet propre, titre (bit de « ttl »)
+  const DG_BOSSES = [
+    { type: 'boss', n: 'Roi Gelée', r: 0, item: 63 }, { type: 'souche', n: 'Souche ancestrale', r: 0, item: 64 },
+    { type: 'loup', n: 'Grand Loup des brumes', r: 1, item: 65 }, { type: 'abeille', n: 'Reine des abeilles', r: 1, item: 66 },
+    { type: 'golem', n: 'Golem de cristal ancien', r: 2, item: 67 },
+    { type: 'salamandre', n: 'Salamandre-reine', r: 3, item: 68 }, { type: 'spectre', n: 'Spectre couronné', r: 3, item: 69 },
+    { type: 'magma', n: 'Colosse de magma', r: 4, item: 70, title: 1 }, { type: 'esprit', n: 'Liche de Givre', r: 4, item: 71, title: 2 },
+    { type: 'spectre', n: "Le Dévoreur d'Éther", r: 5, item: 72, title: 4 }
+  ];
+  const TITLES = [[1, 'Fléau du Colosse'], [2, 'Fléau de la Liche'], [4, "Dévoreur d'Éther"]];
+  const DG_ITEM_CH = [0.05, 0.06, 0.07, 0.09, 0.12, 1], DG_MYTH_IN = [1000, 500, 250, 120, 40], DG_BOSS_HP = [8, 9, 10, 12, 14, 20];
+  const dgTier = b => { const r = DG_BOSSES[b].r; return r === 5 ? DG_MYTH : DG[r]; };
+  // tirage à l'arrivée sur une île : rareté du donjon, puis son boss (souvent du même rang, parfois un cran au-dessus, rarement mythique)
+  function rollDungeon() {
+    let x = Math.random() * 100, r = 0; while (r < DG.length - 1 && x >= DG[r].w) { x -= DG[r].w; r++; }
+    let br = r; if (Math.random() < 1 / DG_MYTH_IN[r]) br = 5; else if (r < 4 && Math.random() < 0.12) br = r + 1;
+    const pool = DG_BOSSES.map((o, i) => i).filter(i => DG_BOSSES[i].r === br);
+    return { s: (Math.random() * 4294967295 >>> 0) || 1, r, b: pool[Math.floor(Math.random() * pool.length)], done: 0 };
+  }
+  function cleanDg(o) { if (!o || typeof o !== 'object') return null; return { s: (o.s >>> 0) || 1, r: clampInt(o.r, 0, DG.length - 1), b: clampInt(o.b, 0, DG_BOSSES.length - 1), done: o.done ? 1 : 0 }; }
+  function buildDungeon(I) {
+    const T = DG[I.r], rnd = mulberry32(I.s), n = T.size, N = 3 * n + 1, o0 = Math.floor((MW - N) / 2), MN = MW * MH;
+    const TY = new Uint8Array(MN).fill(3), HT = new Uint8Array(MN).fill(3), SOL = new Uint8Array(MN).fill(1);
+    const idx = (i, j) => j * MW + i, inb = (i, j) => i >= 0 && j >= 0 && i < MW && j < MH;
+    const floor = (i, j) => { SOL[idx(i, j)] = 0; HT[idx(i, j)] = 0; };
+    for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) if (i < o0 || j < o0 || i >= o0 + N || j >= o0 + N) { TY[idx(i, j)] = 0; HT[idx(i, j)] = 0; } // hors du labyrinthe : le vide
+    const T0 = c => o0 + 3 * c + 1; // première case d'une salle
+    const links = new Set(), lk = (a, b) => a < b ? a + ',' + b : b + ',' + a, cid = (x, y) => y * n + x;
+    const open = (cx, cy) => { for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) floor(T0(cx) + x, T0(cy) + y); };
+    const join = (ax, ay, bx, by) => { links.add(lk(cid(ax, ay), cid(bx, by))); for (let k = 0; k < 2; k++) bx !== ax ? floor(o0 + 3 * Math.max(ax, bx), T0(ay) + k) : floor(T0(ax) + k, o0 + 3 * Math.max(ay, by)); };
+    const ADJ = [[1, 0], [-1, 0], [0, 1], [0, -1]], inC = (x, y) => x >= 0 && y >= 0 && x < n && y < n;
+    // labyrinthe parfait (parcours en profondeur), puis quelques murs ouverts pour créer des boucles
+    const start = [n >> 1, n - 1], seen = new Uint8Array(n * n), st = [start]; seen[cid(...start)] = 1; open(...start);
+    while (st.length) {
+      const [cx, cy] = st[st.length - 1], nb = ADJ.map(([a, b]) => [cx + a, cy + b]).filter(([x, y]) => inC(x, y) && !seen[cid(x, y)]);
+      if (!nb.length) { st.pop(); continue; }
+      const [nx, ny] = nb[Math.floor(rnd() * nb.length)]; seen[cid(nx, ny)] = 1; open(nx, ny); join(cx, cy, nx, ny); st.push([nx, ny]);
+    }
+    for (let cy = 0; cy < n; cy++) for (let cx = 0; cx < n; cx++) for (const [a, b] of [[1, 0], [0, 1]]) if (inC(cx + a, cy + b) && rnd() < T.loops) join(cx, cy, cx + a, cy + b);
+    const nbs = (cx, cy) => ADJ.map(([a, b]) => [cx + a, cy + b]).filter(([x, y]) => inC(x, y) && links.has(lk(cid(cx, cy), cid(x, y))));
+    const dist = new Int32Array(n * n).fill(-1), q = [start]; dist[cid(...start)] = 0;
+    for (let h = 0; h < q.length; h++) { const [cx, cy] = q[h]; for (const [x, y] of nbs(cx, cy)) if (dist[cid(x, y)] < 0) { dist[cid(x, y)] = dist[cid(cx, cy)] + 1; q.push([x, y]); } }
+    let far = start; for (let i = 0; i < n * n; i++) if (dist[i] > dist[cid(...far)]) far = [i % n, (i / n) | 0];
+    // salle du boss : 2×2 salles d'un seul tenant
+    const bx = Math.min(far[0], n - 2), by = Math.min(far[1], n - 3);
+    for (let j = T0(by); j <= T0(by) + 4; j++) for (let i = T0(bx); i <= T0(bx) + 4; i++) floor(i, j);
+    const inBoss = (cx, cy) => cx >= bx && cx <= bx + 1 && cy >= by && cy <= by + 1;
+    const spawn = { x: T0(start[0]) + 1, y: T0(start[1]) + 0.4 }, portal = { x: T0(start[0]) + 1, y: T0(start[1]) + 1.7 };
+    const spawns = [], used = new Set();
+    const put = (type, cx, cy, o) => { const i = T0(cx) + Math.floor(rnd() * 2), j = T0(cy) + Math.floor(rnd() * 2); used.add(cid(cx, cy)); spawns.push(Object.assign({ type, lvl: 1, i, j }, o)); };
+    const ends = []; for (let cy = 0; cy < n; cy++) for (let cx = 0; cx < n; cx++) if (nbs(cx, cy).length === 1 && dist[cid(cx, cy)] > 1 && !inBoss(cx, cy)) ends.push([cx, cy]);
+    ends.sort((a, b) => dist[cid(...b)] - dist[cid(...a)]);
+    for (const [cx, cy] of ends.slice(0, T.elite)) put(T.mobs[Math.floor(rnd() * T.mobs.length)], cx, cy, { elite: 1 });
+    for (let cy = 0; cy < n; cy++) for (let cx = 0; cx < n; cx++) { const c0 = cid(cx, cy); if (used.has(c0) || dist[c0] < 2 || inBoss(cx, cy)) continue; if (rnd() < 0.55) put(T.mobs[Math.floor(rnd() * T.mobs.length)], cx, cy); }
+    const B = DG_BOSSES[I.b], bossK = spawns.length; spawns.push({ type: B.type, lvl: 1, i: T0(bx) + 2, j: T0(by) + 2, boss: 1, bi: I.b });
+    const chest = { x: T0(bx) + 4, y: T0(by) + 1 }, exit = { x: T0(bx) + 1, y: T0(by) + 4 };
+    // pièges à pointes dans les passages entre deux salles (Rare et plus)
+    const traps = [], pass = [];
+    for (const key of links) { const [a, b] = key.split(',').map(Number), ax = a % n, ay = (a / n) | 0, bx2 = b % n, by2 = (b / n) | 0; if (dist[a] < 2 || inBoss(ax, ay) || inBoss(bx2, by2)) continue; for (let k = 0; k < 2; k++) pass.push(bx2 !== ax ? [o0 + 3 * Math.max(ax, bx2), T0(ay) + k] : [T0(ax) + k, o0 + 3 * Math.max(ay, by2)]); }
+    for (let k = 0; k < T.trap && pass.length; k++) { const [i, j] = pass.splice(Math.floor(rnd() * pass.length), 1)[0]; traps.push({ i, j, ph: Math.floor(rnd() * 30) / 10 }); }
+    // torches sur les faces visibles des murs, cristaux aux carrefours
+    const torches = [], crystals = [];
+    for (let j = 1; j < MH - 1; j++) for (let i = 1; i < MW - 1; i++) { const k = idx(i, j); if (!SOL[k]) continue; const fx = !SOL[idx(i + 1, j)], fy = !SOL[idx(i, j + 1)]; if ((fx || fy) && hash(i, j, 77) < 0.09 && !torches.some(o => Math.abs(o.i - i) + Math.abs(o.j - j) < 4)) torches.push({ i, j, side: fy ? 'y' : 'x' }); }
+    for (let cy = 0; cy < n; cy++) for (let cx = 0; cx < n; cx++) if (nbs(cx, cy).length >= 3 && !inBoss(cx, cy)) crystals.push({ x: T0(cx) + 1, y: T0(cy) + 1 });
+    for (const [a, b] of [[0, 0], [4, 0], [0, 4], [4, 4]]) crystals.push({ x: T0(bx) + a + 0.5, y: T0(by) + b + 0.5 });
+    const hAt = (x, y) => { const i = Math.floor(x), j = Math.floor(y); return inb(i, j) ? HT[idx(i, j)] : 0; };
+    return { MW, MH, CX, CY, TY, HT, SOL, props: [], spawns, nodes: [], idx, inb, tdist: (i, j) => Math.hypot(i + .5 - CX, j + .5 - CY), walkable: (i, j) => inb(i, j) && !SOL[idx(i, j)], hAt,
+      zoneOf: () => T.name, isle: 'donjon', theme: 'donjon', bridges: [], spawn, chest, seed: I.s, tier: I.r,
+      dg: { portal, exit, bossK, traps, torches, crystals, o0, N, n, boss: B } };
+  }
   function rollIsle(cur) {
     if (Math.random() < 0.1) return { k: 'brume', s: (Math.random() * 4294967295) >>> 0 || 1 };
     const pool = FIXED_ISLES.filter(k => k !== cur); return { k: pool[Math.floor(Math.random() * pool.length)] };
@@ -435,8 +535,16 @@
     if (hb) { hb.kind = 'home'; bridges.push(hb); }
     for (const b of bridges) layDeck(b, SOL, HT, idx);
     const keep = new Uint8Array(N);
-    if (hb && R0 && R0.R[idx(hb.i, hb.j)]) for (let k = idx(hb.i, hb.j); k >= 0; k = R0.par[k]) { const i = k % MW, j = (k / MW) | 0; for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (inb(i + a, j + b)) keep[idx(i + a, j + b)] = 1; }
-    const near = (i, j, r) => bridges.some(b => Math.hypot(i + .5 - b.ix, j + .5 - b.iy) < r || Math.hypot(i + .5 - b.hx, j + .5 - b.hy) < r);
+    const path = (i0, j0) => { if (R0 && R0.R[idx(i0, j0)]) for (let k = idx(i0, j0); k >= 0; k = R0.par[k]) { const i = k % MW, j = (k / MW) | 0; for (const [a, b] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]]) if (inb(i + a, j + b)) keep[idx(i + a, j + b)] = 1; } };
+    if (hb) path(hb.i, hb.j);
+    // entrée du donjon : la case la plus proche du centre avec un parvis plat de 5×5 atteignable à pied
+    let gate = null;
+    if (R0) { let bd = 1e9; for (let j = 3; j < MH - 3; j++) for (let i = 3; i < MW - 3; i++) {
+      const d = Math.hypot(i + .5 - CX, j + .5 - CY); if (d >= bd || !R0.R[idx(i, j)]) continue; let ok = true;
+      for (let b = -2; b <= 2 && ok; b++) for (let a = -2; a <= 2 && ok; a++) { const k = idx(i + a, j + b); if (TY[k] !== 2 || SOL[k] || HT[k] !== HT[idx(i, j)] || bridges.some(o => Math.hypot(i + a + .5 - o.ix, j + b + .5 - o.iy) < 3)) ok = false; }
+      if (ok) { bd = d; gate = { i, j, x: i + .5, y: j + .5 }; } } }
+    if (gate) { path(gate.i + 1, gate.j + 1); for (let b = -2; b <= 2; b++) for (let a = -2; a <= 2; a++) keep[idx(gate.i + a, gate.j + b)] = 1; SOL[idx(gate.i, gate.j)] = 1; }
+    const near = (i, j, r) => bridges.some(b => Math.hypot(i + .5 - b.ix, j + .5 - b.iy) < r || Math.hypot(i + .5 - b.hx, j + .5 - b.hy) < r) || (gate && Math.hypot(i + .5 - gate.x, j + .5 - gate.y) < r + 1);
     const props = [];
     for (let j = 0; j < MH; j++) for (let i = 0; i < MW; i++) {
       const k = idx(i, j); if (TY[k] !== 2 || SOL[k] || near(i, j, 2.6) || keep[k]) continue;
@@ -453,12 +561,13 @@
     for (const [i, j] of cand) { if (nodes.length >= 9) break; if (taken.has(i + ',' + j) || nodes.some(n => Math.hypot(n.x - i - .5, n.y - j - .5) < 4)) continue; nodes.push({ k: nodes.length, res: I.res[nodes.length % I.res.length], x: i + 0.3 + rnd() * 0.4, y: j + 0.3 + rnd() * 0.4 }); taken.add(i + ',' + j); }
     let chest = null; if (I.eph) { let bd = -1; for (const [i, j] of cand) { const d = Math.hypot(i + .5 - spawn.x, j + .5 - spawn.y); if (d > bd && !taken.has(i + ',' + j)) { bd = d; chest = { x: i + .5, y: j + .5 }; } } }
     const hAt = (x, y) => { const i = Math.floor(x), j = Math.floor(y); return inb(i, j) ? HT[idx(i, j)] : 0; };
-    return { MW, MH, CX, CY, TY, HT, SOL, props, spawns, nodes, idx, inb, tdist, walkable, hAt, zoneOf: () => I.name, isle: key, theme: I.theme, bridges, spawn, chest };
+    return { MW, MH, CX, CY, TY, HT, SOL, props, spawns, nodes, idx, inb, tdist, walkable, hAt, zoneOf: () => I.name, isle: key, theme: I.theme, bridges, spawn, chest, gate };
   }
 
   /* ---------------- monde ---------------- */
   // isle : { k, s } (île du voyage) ; sans argument, l'île d'origine (Bourg d'Argel), toujours identique
   function buildWorld(seed, isle) {
+    if (isle && isle.k === 'donjon') return buildDungeon(cleanIsle(isle));
     if (isle && isle.k && isle.k !== 'bourg' && ISLES[isle.k]) return buildIsle(isle.k, ISLES[isle.k].eph ? isle.s : ISLES[isle.k].seed);
     const rnd = mulberry32(seed || SEED);
     const N = MW * MH;
@@ -556,12 +665,16 @@
   }
 
   const clampInt = (v, a, b) => { v = v | 0; return v < a ? a : v > b ? b : v; };
+  const trapUp = (t, ph) => (t + ph) % 3 < 0.9; // pointes sorties 0,9 s toutes les 3 s
   /* ---------------- simulation ---------------- */
   class Sim {
     constructor(W, opts) {
       this.W = W; this.t = 0; this.players = new Map(); this.events = []; this.bossWarn = 0;
       // îles du voyage : les monstres prennent le niveau du héros qui arrive (±1)
-      const L0 = W.isle && W.isle !== 'bourg' ? Math.max(1, (opts && opts.lvl) | 0 || 1) : 0;
+      const DGN = W.isle === 'donjon', L0 = W.isle && W.isle !== 'bourg' ? Math.max(1, (opts && opts.lvl) | 0 || 1) + (DGN ? DG[W.tier].lvl : 0) : 0;
+      // îles : le donjon du centre (tiré à l'arrivée, ou repris de la sauvegarde en solo) ; donjon : pièges
+      this.dg = W.gate ? cleanDg(opts && opts.dg) || rollDungeon() : null;
+      this.traps = DGN ? new Map(W.dg.traps.map(o => [W.idx(o.i, o.j), o.ph])) : null;
       this.fx = (ISLES[W.isle] || {}).fx || null; this.chestOpen = false; this.spawn = W.spawn || SPAWN; this.zones = [];
       // îles du voyage : combat entre joueurs, et à la mort le sac reste sur le corps 3 minutes
       this.pvp = !!(W.isle && W.isle !== 'bourg'); this.corpses = []; this.corpseN = 1;
@@ -569,7 +682,13 @@
         k, type: s.type, lvl: s.lvl, x: s.i + .5, y: s.j + .5, hx: s.i + .5, hy: s.j + .5, alive: true, respawnT: 0,
         target: null, returning: false, atkCd: 0, wt: Math.random() * 3, wdx: 0, wdy: 0, tagged: new Set(), moving: false
       }, mobStats(s.type, lvl), { lvl }); });
-      for (const m of this.mobs) m.hp = m.maxhp;
+      for (const m of this.mobs) {
+        const s = W.spawns[m.k];
+        if (DGN) { m.aggressive = true; m.respawn = 1e9; }
+        if (s.elite) { m.elite = 1; m.maxhp *= 3; m.atk *= 1.3; m.xp *= 3; }
+        if (s.boss) { const B = DG_BOSSES[s.bi]; m.dgBoss = s.bi; if (s.type !== 'boss') { m.maxhp = (18 + m.lvl * 14) * 1.7 * DG_BOSS_HP[B.r]; m.atk *= 1.4 + 0.08 * B.r; m.range += 0.5; } m.xp *= 10; m.aggroR = 5; } // PV selon la rareté du boss, pas selon l'espèce
+        m.maxhp = Math.round(m.maxhp); m.hp = m.maxhp;
+      }
     }
     ev(o) { this.events.push(o); }
     addPlayer(id, name, look, save, cls) {
@@ -600,7 +719,11 @@
       p.sk = {}; if (s.sk && typeof s.sk === 'object') for (const k in s.sk) if (/^[a-z]+:(\d|block)$/.test(k)) p.sk[k] = clampInt(s.sk[k], 0, skTotal(SK_MAX));
       // voyage : île actuelle, îles découvertes ; « arr » = on vient de traverser, on apparaît au bout du Pont d'Éther
       p.isle = cleanIsle(s.isle); p.isles = clampInt(s.isles, 0, 1 << 20) | 1; p.arr = 0;
-      if (s.arr && this.W.bridges) { const b = this.W.bridges.find(o => o.kind === 'ether') || this.W.bridges[0]; if (b) { p.x = b.ix; p.y = b.iy; } }
+      if (s.arr === 2 && this.W.gate) { p.x = this.W.gate.x + 1.5; p.y = this.W.gate.y + 1.5; } // sortie du donjon : devant son entrée
+      else if (s.arr && this.W.bridges && this.W.bridges.length) { const b = this.W.bridges.find(o => o.kind === 'ether') || this.W.bridges[0]; p.x = b.ix; p.y = b.iy; }
+      // donjon de l'île (celui de la simulation) ; dans un donjon, celui d'où l'on vient ; titres gagnés et titre affiché
+      p.dg = this.dg || (this.W.isle === 'donjon' ? cleanDg(s.dg) : null);
+      p.ttl = clampInt(s.ttl, 0, 255); p.tt = s.tt == null ? -1 : clampInt(s.tt, -1, TITLES.length - 1); if (p.tt >= 0 && !(p.ttl & TITLES[p.tt][0])) p.tt = -1;
       for (const a of (s.bag || []).slice(0, BAG_SIZE)) { const it = cleanInst(a); if (it) p.bag.push(it); }
       const gr = s.gear || {}; if (gr.blade) p.bag.push([2, 1]); if (gr.armor) p.bag.push([10, 1]); if (gr.charm) p.bag.push([18, 2]);
       p.ether = clampInt(s.ether == null ? DAILY_GIFT : s.ether, 0, ETHER_MAX); p.glvl = clampInt(s.glvl || 1, 1, 50); p.gxp = clampInt(s.gxp, 0, 99999);
@@ -620,7 +743,7 @@
     }
     /* Format de sauvegarde : ne JAMAIS renommer ni retirer un champ (les héros existants doivent survivre aux mises à jour).
        Ajouter un champ = lui donner une valeur par défaut dans addPlayer. */
-    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr, isle: p.isle, isles: p.isles, arr: p.arr, sk: p.sk, skc: p.skc }; }
+    saveData(p) { return { gifts: p.gifts, cls: p.cls, lvl: p.lvl, xp: p.xp, gold: p.gold, potions: p.potions, q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, ether: p.ether, glvl: p.glvl, gxp: p.gxp, scarves: p.scarves, scarf: p.scarf, day: p.day, stepsToday: p.stepsToday, mast: p.mast, pts: p.pts, bar: p.bar, fr: p.fr, isle: p.isle, isles: p.isles, arr: p.arr, sk: p.sk, skc: p.skc, dg: p.dg, ttl: p.ttl, tt: p.tt }; }
     grantFounder(p) {
       if (p.gifts & 1) return false;
       const wpn = [[5, 3], [23, 3], [4, 3], [29, 3], [31, 3], [3, 3]], k = p.cls < wpn.length ? p.cls : 0;
@@ -831,10 +954,26 @@
             if (p.ether < ETHER_BRIDGE) { this.ev({ e: 'msg', id, t: 'Il faut ' + ETHER_BRIDGE + " Éther pour traverser (l'Éther se gagne en marchant)." }); return; }
             p.ether -= ETHER_BRIDGE; to = rollIsle(this.W.isle);
           } else to = { k: 'bourg' };
-          const fresh = !(p.isles & ISLE_BIT[to.k]); p.isles |= ISLE_BIT[to.k]; p.isle = to; p.trav = 1;
+          const fresh = !(p.isles & ISLE_BIT[to.k]); p.isles |= ISLE_BIT[to.k]; p.isle = to; p.trav = 1; p.dg = null;
           p.arr = to.k === 'bourg' ? 0 : 1; // retour au bourg : on réapparaît à la fontaine
           this.ev({ e: 'travel', id, to, via: b.kind, fresh: fresh ? 1 : 0 }); break;
         }
+        case 'dgIn': {
+          const G = this.W.gate, D = this.dg; if (!G || !D || p.dead || p.trav || Math.hypot(p.x - G.x, p.y - G.y) > 2.2) return;
+          if (D.done) { this.ev({ e: 'msg', id, t: "Ce donjon s'est éteint. Traverse un Pont d'Éther pour en trouver un autre." }); return; }
+          const to = { k: 'donjon', s: D.s, r: D.r, b: D.b, f: cleanIsle(p.isle) }, fresh = !(p.isles & ISLE_BIT.donjon);
+          p.isles |= ISLE_BIT.donjon; p.isle = to; p.dg = D; p.trav = 1; p.arr = 0;
+          this.ev({ e: 'travel', id, to, via: 'dg', fresh: fresh ? 1 : 0 }); break;
+        }
+        case 'dgOut': {
+          if (this.W.isle !== 'donjon' || p.dead || p.trav) return;
+          const Dg = this.W.dg, won = !this.mobs[Dg.bossK].alive, at = o => Math.hypot(p.x - o.x, p.y - o.y) < 1.4;
+          if (!at(Dg.portal) && !(won && at(Dg.exit))) return;
+          if (p.dg && p.dg.s === this.W.seed) p.dg.done = 1; // ressortir avant le boss : le donjon est perdu pour cette arrivée
+          const to = p.isle.f || { k: 'givre' }; p.isle = to; p.trav = 1; p.arr = 2;
+          this.ev({ e: 'travel', id, to, via: 'dgout', fresh: 0 }); break;
+        }
+        case 'tt': { const i = clampInt(m.i, -1, TITLES.length - 1); if (i < 0 || p.ttl & TITLES[i][0]) p.tt = i; break; }
         case 'loot': {
           const cp = this.corpses.find(o => o.id === (m.c | 0)); if (!cp || p.dead || Math.hypot(p.x - cp.x, p.y - cp.y) > 1.6) return;
           let n = 0; while (cp.items.length && p.bag.length < BAG_SIZE) { p.bag.push(cp.items.shift()); n++; }
@@ -845,8 +984,17 @@
         }
         case 'chest': {
           const c = this.W.chest; if (!c || this.chestOpen || p.dead || Math.hypot(p.x - c.x, p.y - c.y) > 1.6) return;
-          this.chestOpen = true; const pool = [...new Set(Object.values(LOOT).flatMap(l => l.items))], g = 20 + p.lvl * 12;
-          p.gold += g; this.giveItem(p, [pool[Math.floor(Math.random() * pool.length)], rollRarity(2)]); this.giveItem(p, [pool[Math.floor(Math.random() * pool.length)], rollRarity(1)]);
+          const pool = [...new Set(Object.values(LOOT).flatMap(l => l.items))], item = r => this.giveItem(p, [pool[Math.floor(Math.random() * pool.length)], rollRarity(r)]);
+          if (this.W.isle === 'donjon') {
+            if (this.mobs[this.W.dg.bossK].alive) { this.ev({ e: 'msg', id, t: 'Le coffre reste scellé tant que le boss est en vie.' }); return; }
+            const r = this.W.tier, g = (20 + p.lvl * 12) * (1 + r), eth = r ? r + 1 : 0; this.chestOpen = true;
+            p.gold += g; p.ether = Math.min(ETHER_MAX, p.ether + eth);
+            for (let k = 0; k < [1, 1, 2, 2, 3][r]; k++) item([0, 1, 2, 3, 3][r]);
+            if (r === 4 && Math.random() < 0.01) this.giveItem(p, [UNIQUE_BOOTS, 4]);
+            this.ev({ e: 'chest', id, g, eth, dg: 1 }); break;
+          }
+          this.chestOpen = true; const g = 20 + p.lvl * 12;
+          p.gold += g; item(2); item(1);
           this.ev({ e: 'chest', id, g }); break;
         }
         case 'pt': { const k = String(m.s); if (!(k in p.pts) || freePts(p.lvl, p.pts) <= 0) return; p.pts[k]++; this.recalc(p); break; }
@@ -929,13 +1077,20 @@
         const xp = Math.round(m.xp * bonus), gold = Math.round(m.lvl * 3 * (0.7 + Math.random() * 0.6));
         const pot = Math.random() < (m.type === 'boss' ? 1 : 0.18) ? 1 : 0;
         if (Math.random() < (UNIQUE_CHANCE[m.type] || 0)) { this.giveItem(p, [UNIQUE_BOOTS, 4], m.k); this.ev({ e: 'ch', s: 1, t: p.name + ' a trouvé les Bottes du Néant (Unique) !' }); }
-        const LT = LOOT[m.type]; if (LT && Math.random() < LT.ch) this.giveItem(p, [LT.items[Math.floor(Math.random() * LT.items.length)], rollRarity(LT.minR)], m.k);
+        const LT = LOOT[m.type]; if (LT && Math.random() < (m.elite ? 1 : LT.ch)) this.giveItem(p, [LT.items[Math.floor(Math.random() * LT.items.length)], rollRarity(m.elite ? 1 : LT.minR)], m.k);
+        if (m.dgBoss != null) {
+          const B = DG_BOSSES[m.dgBoss];
+          if (Math.random() < DG_ITEM_CH[B.r]) { this.giveItem(p, [B.item, rollRarity(Math.min(3, B.r))], m.k); this.ev({ e: 'ch', s: 1, t: p.name + ' a obtenu ' + ITEMS[B.item].n + ' !' }); }
+          if (B.title && !(p.ttl & B.title)) { p.ttl |= B.title; p.tt = TITLES.findIndex(o => o[0] === B.title); this.ev({ e: 'ttl', id: p.id, n: TITLES[p.tt][1] }); }
+          if (p.dg && p.dg.s === this.W.seed) p.dg.done = 1;
+        }
         p.gold += gold; p.potions += pot;
         this.ev({ e: 'lt', id: p.id, m: m.k, xp, g: gold, pot, grp: group.length > 1 ? 1 : 0 });
-        this.gainXP(p, xp); this.addMast(p, m.type === 'boss' ? 30 : 2 + m.lvl);
+        this.gainXP(p, xp); this.addMast(p, m.type === 'boss' || m.dgBoss != null ? 30 : (2 + m.lvl) * (m.elite ? 3 : 1));
         this.questProgress(p, m);
       }
-      if (m.type === 'boss' && group.length) this.ev({ e: 'ch', s: 1, t: 'Le Roi Gelée est tombé ! Bravo ' + group.map(p => p.name).join(', ') + ' !' });
+      if (m.dgBoss != null) { const B = DG_BOSSES[m.dgBoss]; if (group.length) this.ev({ e: 'ch', s: 1, t: B.n + ' (boss ' + dgTier(m.dgBoss).n + ') est vaincu ! Bravo ' + group.map(p => p.name).join(', ') + ' !' }); this.ev({ e: 'dgdone', s: this.W.seed }); }
+      else if (m.type === 'boss' && group.length) this.ev({ e: 'ch', s: 1, t: 'Le Roi Gelée est tombé ! Bravo ' + group.map(p => p.name).join(', ') + ' !' });
       m.tagged.clear();
     }
     questProgress(p, m) {
@@ -1003,6 +1158,7 @@
           if (p.deadT <= 0) { p.dead = false; p.x = this.spawn.x; p.y = this.spawn.y; p.hp = p.maxhp; p.mp = p.maxmp; p.lastMv = this.t; this.ev({ e: 'rs', id: p.id }); this.ev({ e: 'tp', id: p.id, x: p.x, y: p.y }); }
           continue;
         }
+        if (this.traps && !(p.trapT > this.t)) { const ph = this.traps.get(W.idx(Math.floor(p.x), Math.floor(p.y))); if (ph != null && trapUp(this.t, ph)) { p.trapT = this.t + 1; this.hurt(p, p.maxhp * 0.12, null, true); if (p.dead) continue; } }
         if (p.lastHit > 4) p.hp = Math.min(p.maxhp, p.hp + p.maxhp * 0.03 * dt);
         if (p.regenT > this.t) p.hp = Math.min(p.maxhp, p.hp + p.regenPs * dt);
         if (p.pburnT > this.t) { p.pburnAcc = (p.pburnAcc || 0) + p.pburnDps * dt; if (p.pburnAcc >= Math.max(1, p.pburnDps * 0.6)) { const v = Math.round(p.pburnAcc); p.pburnAcc = 0; p.hp -= v; p.lastHit = 0; this.ev({ e: 'hp', id: p.id, v, m: p.pburnBy.k != null ? p.pburnBy.k : -1, burn: 1 }); if (p.hp <= 0) { p.hp = 1; this.hurt(p, 1, p.pburnBy, true); if (p.dead) continue; } } }
@@ -1054,15 +1210,15 @@
     }
     publicState() {
       const p = [], m = [];
-      for (const q of this.players.values()) p.push([q.id, q.name, q.lookStr, +q.x.toFixed(2), +q.y.toFixed(2), q.face, q.flip, q.moving, Math.ceil(q.hp), q.maxhp, q.lvl, q.dead ? 1 : 0, q.scarf, q.cls, q.equip && q.equip.feet && ITEMS[q.equip.feet[0]].fx === 'void' ? 1 : 0, gearStr(q.equip)]);
-      for (const q of this.mobs) m.push([+q.x.toFixed(2), +q.y.toFixed(2), Math.max(0, Math.ceil(q.hp)), q.alive ? 1 : 0, q.target != null ? 1 : 0, q.moving ? 1 : 0, q.stunT > this.t ? 1 : q.burnT > this.t ? 3 : q.bleedT > this.t ? 4 : q.slowT > this.t ? 2 : 0]);
-      return { p, m, c: this.chestOpen ? 1 : 0, cp: this.corpses.map(o => [o.id, +o.x.toFixed(2), +o.y.toFixed(2), o.items.length, o.name, Math.ceil(o.until - this.t)]) };
+      for (const q of this.players.values()) p.push([q.id, q.name, q.lookStr, +q.x.toFixed(2), +q.y.toFixed(2), q.face, q.flip, q.moving, Math.ceil(q.hp), q.maxhp, q.lvl, q.dead ? 1 : 0, q.scarf, q.cls, q.equip && q.equip.feet && ITEMS[q.equip.feet[0]].fx === 'void' ? 1 : 0, gearStr(q.equip), q.tt]);
+      for (const q of this.mobs) m.push([+q.x.toFixed(2), +q.y.toFixed(2), Math.max(0, Math.ceil(q.hp)), q.alive ? 1 : 0, q.target != null ? 1 : 0, q.moving ? 1 : 0, q.stunT > this.t ? 1 : q.burnT > this.t ? 3 : q.bleedT > this.t ? 4 : q.slowT > this.t ? 2 : 0, q.maxhp, q.lvl]);
+      return { p, m, c: this.chestOpen ? 1 : 0, cp: this.corpses.map(o => [o.id, +o.x.toFixed(2), +o.y.toFixed(2), o.items.length, o.name, Math.ceil(o.until - this.t)]), tm: +this.t.toFixed(2), dg: this.dg ? [this.dg.r, this.dg.b, this.dg.done] : 0 };
     }
     meState(id) {
       const p = this.players.get(id); if (!p) return null;
-      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: p.lvl >= MAX_LVL ? 0 : xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed * (p.hasteT > this.t ? 1.3 : 1) * (p.pslowT > this.t ? 0.65 : 1), pburn: p.pburnT > this.t ? 1 : 0, pslow: p.pslowT > this.t ? 1 : 0, cls: p.cls, mast: p.mast, sk: p.sk, skc: p.skc, shield: Math.round(p.shieldHP || 0), stealth: p.stealthT > this.t ? 1 : 0, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk };
+      return { hp: Math.ceil(p.hp), maxhp: p.maxhp, mp: Math.floor(p.mp), maxmp: p.maxmp, lvl: p.lvl, xp: p.xp, need: p.lvl >= MAX_LVL ? 0 : xpNeed(p.lvl), gold: p.gold, potions: p.potions, dead: p.dead ? 1 : 0, deadT: Math.ceil(p.deadT), speed: p.speed * (p.hasteT > this.t ? 1.3 : 1) * (p.pslowT > this.t ? 0.65 : 1), pburn: p.pburnT > this.t ? 1 : 0, pslow: p.pslowT > this.t ? 1 : 0, cls: p.cls, mast: p.mast, sk: p.sk, skc: p.skc, shield: Math.round(p.shieldHP || 0), stealth: p.stealthT > this.t ? 1 : 0, pts: p.pts, free: freePts(p.lvl, p.pts), bar: p.bar, fr: p.fr, rcost: respecCost(p.lvl), abCd: p.abCd.map(t => Math.max(0, +(t - this.t).toFixed(1))), buff: Math.max(0, +(p.buffT - this.t).toFixed(1)), q: p.q, qs: p.qs, qn: p.qn, inv: p.inv, equip: p.equip, bag: p.bag, stats: p.stats, crit: p.crit, red: p.red, ether: p.ether, glvl: p.glvl, gxp: p.gxp, gneed: gNeed(p.glvl), scarves: p.scarves, scarf: p.scarf, stepsToday: p.stepsToday, atk: p.atk, ttl: p.ttl, tt: p.tt };
     }
   }
 
-  return { MAX_LVL, intCdK, techCd, ELEMENTS, SK_MAX, skNeed, skTotal, skCap, skRank, skInfo, skLvlFor, ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
+  return { DG, DG_MYTH, DG_BOSSES, TITLES, dgTier, trapUp, isleName, MAX_LVL, intCdK, techCd, ELEMENTS, SK_MAX, skNeed, skTotal, skCap, skRank, skInfo, skLvlFor, ISLES, FIXED_ISLES, ETHER_BRIDGE, ISLE_BIT, cleanIsle, CLASSES, FAMS, FAM_OF, START, MAST_MAX, mLevel, mTotal, weaponFam, kitOf, freePts, respecCost, SLOTS, SLOT_NAMES, RARITY, STAT_NAMES, ITEMS, BAG_SIZE, itemStats, itemValue, computeStats, RES, RECIPES, SCARVES, STEPS_PER_ETHER, DAILY_STEP_CAP, DAILY_GIFT, NODE_CD, gNeed, NPCS, QUESTS, VERSION, SEED, MW, MH, CX, CY, SPAWN, ZONES, MOBDEF, LOOK_MAX, mobStats, playerStats, xpNeed, buildWorld, canStand, moveBy, Sim, hash, vnoise, fbm, mulberry32, cleanName, cleanLook, GEAR_SLOTS, gearStr, parseGear };
 });
