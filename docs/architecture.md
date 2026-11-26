@@ -93,7 +93,7 @@ Les mêmes messages servent en solo (appel direct de `sim.handle(id, message)`) 
 
 ### Ce que reçoit le client (message `t: 's'`, 10 fois par seconde)
 
-- `p` : joueurs `[id, nom, apparence, x, y, face, miroir, marche, pv, pvMax, niveau, mort, écharpe, cls, néant, équipement, titre]`.
+- `p` : joueurs `[id, nom, apparence, x, y, face, miroir, marche, pv, pvMax, niveau, mort, écharpe, cls, néant, équipement, titre, aura d'élément]`.
 - `m` : monstres, dans l'ordre de `W.spawns`, `[x, y, pv, vivant, en chasse, marche, statut, pvMax, niveau]`.
 - `c` : coffre ouvert ; `cp` : corps pillables ; `tm` : horloge de la simulation (pièges) ; `dg` : donjon de l'île `[rareté, boss, éteint]`.
 - `me` : état complet du héros (`Sim.meState`) ; `n` : joueurs en ligne ; `ev` : événements.
@@ -114,6 +114,7 @@ Combat : `hm`, `km`, `mr`, `hp`, `die`, `rs`, `sw`, `ab`, `heal`, `zone`, `imm`,
   - dans l'app iOS, aussi dans les préférences natives (`persist.js`) ;
   - sur la page de test, aussi dans le compte Claude (`Cloud`, base de l'artefact) ;
   - en ligne, dans `server/data/players.json` (clé : jeton anonyme de l'appareil).
+- Un objet est `[numéro dans ITEMS, rareté]`, ou `[numéro, rareté, élément]` pour une arme enchantée (numéro dans `EL_ORDER`).
 - Restauration : le héros le plus avancé (niveau, puis XP) gagne ; à égalité, la copie la plus récente.
 - Voyage (pont, donjon) : sauvegarde, puis `await EtheriaPersist.flush()`, puis `location.reload()` sur le nouveau monde
   (`etheria_isle_force`, `etheria_autoplay`).

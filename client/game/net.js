@@ -177,7 +177,7 @@ function onMsg(m) {
   lastSnap = time;
   const seen = new Set();
   for (const a of m.p) {
-    const [id, name, lk, x, y, f, fl, mv, hp, mh, lv, dead, sc, cl, vd, gr, tt] = a;
+    const [id, name, lk, x, y, f, fl, mv, hp, mh, lv, dead, sc, cl, vd, gr, tt, au] = a;
     if (id === myId) continue;
     seen.add(id);
     let o = others.get(id);
@@ -207,6 +207,7 @@ function onMsg(m) {
     o.cls = cl | 0;
     o.voidFx = !!vd;
     o.tt = tt == null ? -1 : tt;
+    o.au = au || null; // aura d'élément (5 pièces assorties)
   }
   for (const id of [...others.keys()]) if (!seen.has(id)) others.delete(id);
   m.m.forEach((a, k) => {
@@ -274,7 +275,18 @@ function handleEvent(ev) {
       if (!mb) break;
       mb.hitFlash = 0.15;
       const mine = ev.by === myId;
-      floatAt(mb, ev.v, ev.burn ? '#ff9a3c' : ev.bleed ? '#ff5a6a' : mine ? (ev.c ? '#ffd23f' : '#ffffff') : '#b8c4e0', ev.c && mine);
+      // éléments : chiffres orange quand l'élément de l'arme est fort contre le monstre, gris quand il est faible
+      const efCol = ev.ef > 0 ? '#ffb43a' : ev.ef < 0 ? '#a8a8c0' : null;
+      floatAt(
+        mb,
+        ev.v,
+        ev.burn ? '#ff9a3c' : ev.bleed ? '#ff5a6a' : mine ? efCol || (ev.c ? '#ffd23f' : '#ffffff') : '#b8c4e0',
+        (ev.c || ev.ef > 0) && mine
+      );
+      if (mine && ev.ef && !(mb.efT > time)) {
+        mb.efT = time + 1.4;
+        floatAt(mb, ev.ef > 0 ? 'Efficace !' : 'Résiste…', ev.ef > 0 ? '#ffd23f' : '#c8c0d8', ev.ef > 0);
+      }
       burst(mb, ART.slimeLight[mb.type], ev.c ? 9 : 4);
       break;
     }

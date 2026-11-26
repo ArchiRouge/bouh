@@ -2387,6 +2387,35 @@
     P.outline(0.35, [20, 6, 30]);
     return P.done();
   }
+  // icônes des éléments (9×9, avec contour) : Feu, Eau, Bois, Lumière, Ténèbres
+  const EL_ICON = {
+    fire: ['....a....', '...aa....', '...aba...', '..abba.a.', '..abcba..', '.abccba..', '.abccba..', '..abba...', '...aa....'],
+    ice: ['....a....', '...aba...', '...aba...', '..abbba..', '..abcba..', '.abcccba.', '.abcccba.', '..abbba..', '...aaa...'],
+    wood: ['......aa.', '....aabb.', '...abbbb.', '..abbcbb.', '..abcbba.', '.abcbba..', '.acbba...', 'ac.aa....', 'a........'],
+    light: ['....a....', '.a..a..a.', '..abbba..', '..bcccb..', 'aabcccbaa', '..bcccb..', '..abbba..', '.a..a..a.', '....a....'],
+    dark: ['...aaa...', '..aab....', '.aab.....', '.abb.....', '.abb.....', '.abbb....', '..abbbaa.', '...aaaa..', '.........']
+  };
+  const EL_COL = {
+    fire: ['#c0361c', '#ff8a3a', '#ffe070'],
+    ice: ['#2a6cc0', '#6ab4ff', '#e0f4ff'],
+    wood: ['#2e7a34', '#6ad060', '#d0f4a0'],
+    light: ['#c8a020', '#ffe070', '#fffbe0'],
+    dark: ['#4a2a7a', '#9a6ae0', '#e0c8ff']
+  };
+  function elIcons() {
+    const o = {};
+    for (const k in EL_ICON) {
+      const P = new Pix(11, 11);
+      EL_ICON[k].forEach((row, j) =>
+        [...row].forEach((ch, i) => {
+          if (ch !== '.') P.set(i + 1, j + 1, rgb(EL_COL[k]['abc'.indexOf(ch)]));
+        })
+      );
+      P.outline(0.3);
+      o[k] = P.done();
+    }
+    return o;
+  }
   function bossArt() {
     const two = f => [f(0), f(1)];
     return [bossRoi, bossSouche, bossLoup, bossReine, bossGolem, bossSala, bossSpectre, bossColosse, bossLiche, bossDevoreur].map(two);
@@ -2763,6 +2792,7 @@
       pebble: [paintPebble(1), paintPebble(2)],
       dgn: dungeonArt(C.DG.map(o => o.c)),
       bosses: bossArt(),
+      elIcons: elIcons(),
       icons: ICONS,
       charSet,
       nodes: { herb: paintHerbNode(), wood: paintWoodNode(), quartz: paintQuartzNode() },

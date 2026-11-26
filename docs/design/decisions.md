@@ -34,3 +34,16 @@ Réponses au formulaire « Points en suspens ». Elles font foi pour la suite.
 | Présentation à l'entrée de la salle | oui | codé |
 | Attaque spéciale par boss | oui | codé (liste dans donjons.md) |
 | Prochaine maquette | faiblesses entre éléments et bonus d'ensemble | à faire |
+
+## Série 3 (éléments)
+
+| Sujet | Décision | État |
+|---|---|---|
+| Force des faiblesses | +30 % / −20 % | codé |
+| Élément d'une arme | fixé par l'arme, modifiable chez Bran | codé |
+| Sorts du bâton | suivent l'élément du bâton | codé |
+| Protection des armures | −5 % par pièce | codé |
+| Bonus d'ensemble | 3 pièces +10 %, 5 pièces aura | codé |
+| Objets actuels | élément d'après leur nom | codé |
+| Affichage en combat | chiffres colorés, « Efficace ! » / « Résiste… » | codé |
+| Ensuite | emplacements Épaules et Mains (maquette d'abord) | à faire |

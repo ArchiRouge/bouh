@@ -335,6 +335,25 @@ function drawChar(e, sx, sy) {
     g.fillRect(gx, gy, 1, 1);
   }
   if (scarf && e.set) drawScarf(e, sx, sy + bob, ck);
+  // aura d'élément : 5 pièces d'armure du même élément
+  const aura = e === me ? (me.setN >= C.EL_SET[2] && me.setEl) || null : e.au;
+  if (aura) {
+    const AC = {
+      fire: ['#ff6a1a', '#ffb040', '#fff0a0'],
+      ice: ['#6ab4ff', '#c8e8ff', '#ffffff'],
+      wood: ['#5ab84a', '#9ae070', '#e0ffd0'],
+      light: ['#ffe070', '#fff6c8', '#ffffff'],
+      dark: ['#7a4ab8', '#b08ae8', '#e0c8ff']
+    }[aura];
+    for (let k = 0; k < 9; k++) {
+      const a = time * 1.3 + k * 0.7,
+        ph = (time * 0.9 + k * 0.37) % 1;
+      g.globalAlpha = 1 - ph;
+      g.fillStyle = AC[k % 3];
+      g.fillRect(Math.round(sx + Math.cos(a) * 8 * ck), Math.round(sy - 2 - ph * 22 * ck + Math.sin(a) * 2), 1, 1);
+    }
+    g.globalAlpha = 1;
+  }
   if (cs.gm)
     for (let k = 0; k < 3; k++) {
       const a = time * 1.6 + k * 2.09 + (e.x || 0),

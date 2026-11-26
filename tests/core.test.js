@@ -290,3 +290,43 @@ test('attaque spéciale de chaque boss : annoncée, puis elle touche le héros r
     assert.ok(near.hp < before, S.n + ' doit toucher le héros resté dans le cercle');
   }
 });
+
+test('éléments : cycle des faiblesses, armes et armures, enchantement chez Bran', () => {
+  assert.equal(C.elK('fire', 'wood'), 1.3);
+  assert.equal(C.elK('wood', 'fire'), 0.8);
+  assert.equal(C.elK('wood', 'ice'), 1.3);
+  assert.equal(C.elK('ice', 'fire'), 1.3);
+  assert.equal(C.elK('light', 'dark'), 1.3);
+  assert.equal(C.elK('dark', 'light'), 1.3);
+  assert.equal(C.elK(null, 'fire'), 1);
+  assert.equal(C.elK('fire', 'light'), 1);
+  // arme du catalogue, armure de braise : élément, protection, bonus d'ensemble à 3 pièces
+  const st = C.computeStats(10, { weapon: [3, 1], chest: [11, 1], feet: [16, 1], legs: [62, 1] }, {});
+  assert.equal(st.el, 'fire');
+  assert.equal(st.setEl, 'fire');
+  assert.equal(st.setN, 3);
+  assert.ok(Math.abs(st.res.fire - 0.15) < 1e-9);
+  // dégâts : la hache de braise (Feu) fait plus mal à une gelée verte (Bois) qu'à une gelée de givre (Eau)
+  const { sim, p } = newSim({ k: 'bourg' }, { lvl: 10, equip: { weapon: [3, 1] } });
+  const wood = sim.mobs.find(m => C.MOBDEF[m.type].el === 'wood'),
+    ice = Object.assign({}, wood, { type: 'frost', hp: 1e6, tagged: new Set() });
+  wood.hp = 1e6;
+  wood.maxhp = 1e6;
+  sim.hitMob(wood, 100, p, false);
+  sim.hitMob(ice, 100, p, false);
+  const hm = sim.events.filter(e => e.e === 'hm');
+  assert.equal(hm[0].ef, 1);
+  assert.equal(hm[1].ef, -1);
+  assert.ok(hm[0].v > hm[1].v);
+  // enchantement : l'arme en main prend l'élément choisi, et la sauvegarde le garde
+  const bran = C.NPCS.bran,
+    ench = C.RECIPES.findIndex(r => r.enchant === 'ice');
+  Object.assign(p, { x: bran.x, y: bran.y, glvl: 10 });
+  p.inv.quartz = 10;
+  p.inv.wood = 10;
+  sim.handle('a', { t: 'craft', r: ench });
+  assert.deepEqual(p.equip.weapon, [3, 1, 1]);
+  assert.equal(p.el, 'ice');
+  const again = newSim({ k: 'bourg' }, JSON.parse(JSON.stringify(sim.saveData(p))));
+  assert.equal(again.p.el, 'ice');
+});

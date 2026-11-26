@@ -1266,7 +1266,42 @@
     DG_MYTH_IN = [1000, 500, 250, 120, 40],
     DG_BOSS_HP = [8, 9, 10, 12, 14, 20];
 
+  /* ---------------- éléments (docs/design/elements.md, formulaire série 3) ----------------
+     Feu bat Bois, Bois bat Eau, Eau bat Feu ; Lumière et Ténèbres se battent l'une l'autre. */
+  const EL_ORDER = ['fire', 'ice', 'wood', 'light', 'dark']; // un enchantement est rangé dans l'objet par son numéro dans cette liste
+  const BEATS = { fire: 'wood', wood: 'ice', ice: 'fire', light: 'dark', dark: 'light' };
+  const EL_STRONG = 1.3,
+    EL_WEAK = 0.8,
+    EL_RESIST = 0.05,
+    EL_SET = [3, 0.1, 5]; // 3 pièces : +10 % ; 5 pièces : aura
+  // élément des objets, d'après leur nom (choix d'Archibald) ; les autres restent neutres
+  const ITEM_EL = {
+    fire: [3, 11, 16, 22, 26, 31, 48, 49, 59, 60, 61, 62, 68, 70],
+    ice: [55, 56, 57, 58, 71],
+    wood: [1, 2, 7, 13, 15, 17, 21, 25, 29, 30, 41, 46, 47, 64],
+    light: [4, 18, 19, 42, 50, 51, 52, 66, 67],
+    dark: [5, 23, 24, 27, 43, 44, 45, 53, 54, 63, 65, 69, 72]
+  };
+  for (const el in ITEM_EL) for (const i of ITEM_EL[el]) ITEMS[i].el = el;
+  // enchantements chez Bran : changer l'élément de l'arme en main
+  for (const el of EL_ORDER)
+    RECIPES.push({
+      id: 'ench_' + el,
+      npc: 'bran',
+      name: 'Enchanter : ' + ELEMENTS[el][0],
+      desc: "L'arme en main devient " + ELEMENTS[el][0],
+      req: 4,
+      cost: { quartz: 4, wood: 2 },
+      enchant: el
+    });
+
   return {
+    EL_ORDER,
+    BEATS,
+    EL_STRONG,
+    EL_WEAK,
+    EL_RESIST,
+    EL_SET,
     ZONES,
     ELEMENTS,
     MOBDEF,

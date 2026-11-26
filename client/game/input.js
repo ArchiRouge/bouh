@@ -342,10 +342,13 @@ function iconURL(t) {
   return u0;
 }
 function statLine(inst) {
-  const st = C.itemStats(inst);
-  return Object.keys(st)
-    .map(k => '+' + st[k] + ' ' + C.STAT_NAMES[k])
-    .join(' · ');
+  const st = C.itemStats(inst),
+    el = C.instEl(inst);
+  return (
+    Object.keys(st)
+      .map(k => '+' + st[k] + ' ' + C.STAT_NAMES[k])
+      .join(' · ') + (el ? ' · <span style="color:' + C.ELEMENTS[el][1] + '">' + C.ELEMENTS[el][0] + '</span>' : '')
+  );
 }
 let charSig = '',
   sel = null,
@@ -414,6 +417,18 @@ function tipHTML(inst, equipped) {
     lines =
       (fam ? `<li>Arme : ${fam.name} · attaque « ${fam.basic.name} »</li>` : '') +
       need +
+      (() => {
+        // élément : forces et faiblesses pour une arme, protection pour une armure
+        const el = C.instEl(inst);
+        if (!el) return '';
+        const E = C.ELEMENTS,
+          strong = C.BEATS[el],
+          weak = Object.keys(C.BEATS).find(k => C.BEATS[k] === el),
+          sp = k => `<span style="color:${E[k][1]}">${E[k][0]}</span>`;
+        return T.slot === 'weapon'
+          ? `<li>${sp(el)}${inst[2] != null ? ' (enchantée)' : ''} : +30 % contre ${sp(strong)}${weak !== strong ? `, −20 % contre ${sp(weak)}` : ''}</li>`
+          : `<li>${sp(el)} : −5 % de dégâts de ${E[el][0]} subis · ensemble : 3 pièces +10 %, 5 pièces aura</li>`;
+      })() +
       lines0 +
       (T.speed ? `<li>+${Math.round(T.speed * 100)} % vitesse de déplacement</li>` : '') +
       (T.fx === 'void' ? '<li class="lore">Laisse des empreintes de néant.</li>' : '') +
@@ -501,7 +516,14 @@ function renderChar() {
     ['Critique', P(now.crit), tr ? P(tr.crit) - P(now.crit) : 0, ' %'],
     ['Réduction', P(now.red), tr ? P(tr.red) - P(now.red) : 0, ' %'],
     ['Vitesse', P(now.speed), tr ? P(tr.speed) - P(now.speed) : 0, ' %'],
-    ['Recharge (Int.)', '−' + P(C.intCdK(now.stats.int)), tr ? P(C.intCdK(now.stats.int)) - P(C.intCdK(tr.stats.int)) : 0, ' %']
+    ['Recharge (Int.)', '−' + P(C.intCdK(now.stats.int)), tr ? P(C.intCdK(now.stats.int)) - P(C.intCdK(tr.stats.int)) : 0, ' %'],
+    ["Élément de l'arme", now.el ? C.ELEMENTS[now.el][0] : 'aucun'],
+    [
+      'Ensemble',
+      now.setN
+        ? now.setN + ' / 5' + (now.setEl ? ' ' + C.ELEMENTS[now.setEl][0] + (now.setN >= C.EL_SET[2] ? ' (aura)' : ' (+10 %)') : '')
+        : 'aucun'
+    ]
   ]);
   // points de caractéristiques (3 par niveau) ; réinitialisation chez Elya
   const free = me.free | 0,

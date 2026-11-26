@@ -8,6 +8,12 @@
   'use strict';
   // contenu du jeu (content.js) : données des monstres, objets, armes, quêtes, îles et donjons
   const {
+    EL_ORDER,
+    BEATS,
+    EL_STRONG,
+    EL_WEAK,
+    EL_RESIST,
+    EL_SET,
     ZONES,
     ELEMENTS,
     MOBDEF,
@@ -116,8 +122,13 @@
     const t = a[0] | 0,
       r = a[1] | 0;
     if (!(t >= 0 && t < ITEMS.length && r >= 0 && r < RARITY.length)) return null;
-    return [t, ITEMS[t].unique ? 4 : Math.min(r, 3)];
+    const inst = [t, ITEMS[t].unique ? 4 : Math.min(r, 3)];
+    if (ITEMS[t].slot === 'weapon' && Number.isInteger(a[2]) && a[2] >= 0 && a[2] < EL_ORDER.length) inst.push(a[2]); // enchantement
+    return inst;
   }
+  // élément d'un objet : enchantement (3e case) ou celui du catalogue ; coefficient de dégâts d'un élément contre un autre
+  const instEl = inst => (!inst ? null : inst[2] != null ? EL_ORDER[inst[2]] : (ITEMS[inst[0]] && ITEMS[inst[0]].el) || null);
+  const elK = (atk, def) => (!atk || !def ? 1 : BEATS[atk] === def ? EL_STRONG : BEATS[def] === atk ? EL_WEAK : 1);
   const MAST_MAX = 20,
     mNeed = l => Math.round(10 * Math.pow(l, 1.7));
   function mTotal(l) {
@@ -228,6 +239,24 @@
     let speed = 1;
     for (const sl of SLOTS) if (on(sl) && ITEMS[equip[sl][0]].speed) speed += ITEMS[equip[sl][0]].speed;
     for (const k in s) s[k] = Math.floor(s[k]);
+    // éléments : celui de l'arme ; chaque pièce d'armure protège de son élément ; 3 pièces assorties = bonus, 5 = aura
+    const res = {},
+      cnt = {};
+    for (const sl of SLOTS) {
+      if (sl === 'weapon' || !on(sl)) continue;
+      const e = instEl(equip[sl]);
+      if (e) {
+        res[e] = (res[e] || 0) + EL_RESIST;
+        cnt[e] = (cnt[e] || 0) + 1;
+      }
+    }
+    let setEl = null,
+      setN = 0;
+    for (const e in cnt)
+      if (cnt[e] > setN) {
+        setN = cnt[e];
+        setEl = e;
+      }
     const st = FAMS[fam].stat,
       atk = st === 'agi' ? 2 + s.agi * 1.6 + s.str * 0.5 : st === 'int' ? 2 + s.int * 1.6 + s.str * 0.3 : 2 + s.str * 1.5;
     return {
@@ -237,7 +266,11 @@
       maxmp: Math.round(15 + s.int * 5),
       atk,
       crit: Math.min(0.5, 0.06 + s.agi * 0.006),
-      red: s.armor / (s.armor + 60)
+      red: s.armor / (s.armor + 60),
+      el: on('weapon') ? instEl(equip.weapon) : null,
+      res,
+      setEl: setN >= EL_SET[0] ? setEl : null,
+      setN
     };
   }
   /* ---------------- cueillette, marche réelle & artisanat ---------------- */
@@ -1720,8 +1753,20 @@
             this.ev({ e: 'msg', id, t: 'Ton sac est plein.' });
             return;
           }
+          if (r.enchant && !p.equip.weapon) {
+            this.ev({ e: 'msg', id, t: "Prends une arme en main pour l'enchanter." });
+            return;
+          }
+          if (r.enchant && instEl(p.equip.weapon) === r.enchant) {
+            this.ev({ e: 'msg', id, t: 'Ton arme est déjà de cet élément.' });
+            return;
+          }
           for (const k in r.cost) if ((p.inv[k] || 0) < r.cost[k]) return;
           for (const k in r.cost) p.inv[k] -= r.cost[k];
+          if (r.enchant) {
+            p.equip.weapon = [p.equip.weapon[0], p.equip.weapon[1], EL_ORDER.indexOf(r.enchant)];
+            this.recalc(p);
+          }
           if (r.potions) p.potions += r.potions;
           if (r.scarf) {
             p.scarves |= 1 << r.scarf;
@@ -2013,6 +2058,9 @@
       if (after > before) this.ev({ e: 'ml', id: p.id, f: fam, lv: after });
     }
     hitMob(m, dmg, p, crit) {
+      // élément de l'arme contre celui du monstre ; bonus d'ensemble si l'arme est du même élément que l'armure
+      const ek = elK(p.el, MOBDEF[m.type].el);
+      dmg = Math.max(1, Math.round(dmg * ek * (p.setEl && p.setEl === p.el ? 1 + EL_SET[1] : 1)));
       if (m.vulnT > this.t) dmg = Math.round(dmg * (1 + m.vulnK));
       if (MOBDEF[m.type].el === 'light') dmg = Math.max(1, Math.round(dmg * 0.8));
       m.hitT = this.t;
@@ -2039,7 +2087,7 @@
       }
       const d = Math.hypot(m.x - p.x, m.y - p.y) || 1;
       moveBy(this.W, m, ((m.x - p.x) / d) * 0.12, ((m.y - p.y) / d) * 0.12);
-      this.ev({ e: 'hm', m: m.k, v: dmg, c: crit ? 1 : 0, by: p.id });
+      this.ev({ e: 'hm', m: m.k, v: dmg, c: crit ? 1 : 0, by: p.id, ef: ek > 1 ? 1 : ek < 1 ? -1 : 0 });
       if (m.hp <= 0) this.killMob(m);
     }
     killMob(m) {
@@ -2166,8 +2214,18 @@
     // dégâts subis par un héros : src = monstre, ou joueur (îles) ; raw : dégâts déjà tirés au sort
     hurt(p, dmg, m, raw) {
       if (p.dead) return;
-      const isMob = m && m.k != null;
-      dmg = Math.max(1, Math.round(dmg * (raw ? 1 : 0.85 + Math.random() * 0.3) * (1 - (p.red || 0)) * (p.buffT > this.t ? 0.7 : 1)));
+      const isMob = m && m.k != null,
+        srcEl = isMob ? MOBDEF[m.type].el : m && m.el; // élément du coup : celui du monstre, ou de l'arme du joueur
+      dmg = Math.max(
+        1,
+        Math.round(
+          dmg *
+            (raw ? 1 : 0.85 + Math.random() * 0.3) *
+            (1 - (p.red || 0)) *
+            (p.buffT > this.t ? 0.7 : 1) *
+            (1 - ((p.res && p.res[srcEl]) || 0))
+        )
+      );
       const blk =
         p.equip.offhand &&
         weaponFam(p.equip) === 'sword' &&
@@ -2460,7 +2518,8 @@
           q.cls,
           q.equip && q.equip.feet && ITEMS[q.equip.feet[0]].fx === 'void' ? 1 : 0,
           gearStr(q.equip),
-          q.tt
+          q.tt,
+          q.setN >= EL_SET[2] ? q.setEl : 0
         ]);
       for (const q of this.mobs)
         m.push([
@@ -2532,13 +2591,19 @@
         stepsToday: p.stepsToday,
         atk: p.atk,
         ttl: p.ttl,
-        tt: p.tt
+        tt: p.tt,
+        el: p.el,
+        res: p.res,
+        setEl: p.setEl,
+        setN: p.setN
       };
     }
   }
 
   // moteur (+ tout le contenu de content.js, réexporté tel quel)
   return Object.assign({}, K, {
+    instEl,
+    elK,
     dgTier,
     trapUp,
     isleName,

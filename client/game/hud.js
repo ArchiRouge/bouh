@@ -253,13 +253,18 @@ function drawUI() {
           col = diff >= 3 ? '#ff7a6a' : diff <= -3 ? '#a8a8b8' : '#ffffff';
         text(u, m.name + ' nv' + m.lvl, x + 3, yy - 9, col, 'center');
         {
-          const E0 = C.ELEMENTS[(C.MOBDEF[m.type] || {}).el];
-          if (E0) {
-            const tw = textW(m.name + ' nv' + m.lvl);
-            u.fillStyle = '#1a0f1c';
-            u.fillRect(x + 3 - (tw >> 1) - 7, yy - 9, 6, 6);
-            u.fillStyle = E0[1];
-            u.fillRect(x + 3 - (tw >> 1) - 6, yy - 8, 4, 4);
+          const el = (C.MOBDEF[m.type] || {}).el;
+          if (el) {
+            // élément du monstre (icône) et, si ton arme a un élément, si tu frappes juste (flèche verte) ou mal (rouge)
+            const tw = textW(m.name + ' nv' + m.lvl),
+              ic = ART.elIcons[el],
+              ix = x + 3 - (tw >> 1) - 12;
+            u.drawImage(ic, ix, yy - 11);
+            const k = C.elK(me.el, el);
+            if (k !== 1) {
+              u.fillStyle = k > 1 ? '#8cf07a' : '#ff7a6a';
+              for (let r = 0; r < 3; r++) u.fillRect(ix - 5 + (k > 1 ? r : 0), yy - 7 + (k > 1 ? 2 - r : r), k > 1 ? 3 - r : 3 - r, 1);
+            }
           }
         }
         const b = Math.floor(time * 4) % 2;

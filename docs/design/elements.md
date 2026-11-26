@@ -1,6 +1,6 @@
 # Pixels Worlds — éléments : faiblesses et bonus d'ensemble
 
-Statut : **maquette, détails à valider** (le principe est validé : formulaire, série 1).
+Statut : **codé** (principe validé en série 1, détails en série 3).
 
 ![Éléments](img/v12-elements.png)
 
@@ -19,6 +19,14 @@ Maquette : `prototype/maquette-elements.html`.
 - **Bonus d'ensemble** : 3 pièces du même élément = +10 % de dégâts de cet élément ; 5 pièces = en plus une aura colorée.
 - **Lisibilité** : icône d'élément sur les objets et à côté du nom des monstres, chiffres colorés, « Efficace ! » / « Résiste… ».
 
-## À valider (formulaire, série 3)
+## Choix d'Archibald (série 3) et code
 
-Valeurs, façon dont les armes reçoivent leur élément, protection des armures, objets actuels, affichage.
+- Faiblesses +30 % / −20 % ; protection de 5 % par pièce ; ensemble : 3 pièces +10 %, 5 pièces aura ; objets actuels d'après leur nom ;
+  « Efficace ! » / « Résiste… » en combat.
+- **Arme** : élément fixé par l'arme, **et modifiable chez Bran** (« Enchanter : Feu »…, 4 quartz + 2 bois, cueillette nv 4).
+  L'enchantement est rangé dans l'objet lui-même : `[numéro, rareté, élément]` (numéro dans `EL_ORDER`), compatible avec les anciennes sauvegardes.
+- **Bâton** : tous les sorts prennent l'élément du bâton (pas d'élément propre aux sorts).
+- Le bonus d'ensemble (+10 %) s'applique quand l'arme est du même élément que l'ensemble.
+- Code : `EL_ORDER`, `BEATS`, `ITEM_EL`, recettes `ench_*` dans `content.js` ; `instEl`, `elK`, `computeStats` (`el`, `res`, `setEl`, `setN`),
+  `hitMob` (événement `hm` avec `ef` : 1 efficace, −1 résiste), `hurt` (protection) dans `core.js` ;
+  icônes `elIcons` (`assets.js`), retours en combat (`net.js`), aura (`render.js`), fiches et statistiques (`input.js`).
