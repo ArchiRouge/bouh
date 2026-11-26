@@ -1036,6 +1036,12 @@
     }
     $('edit').addEventListener('click', () => setResume(false));
     const url = serverUrl(); $('status').textContent = url ? 'Serveur : ' + url.replace(/^wss?:\/\//, '') : 'Mode solo : aucun serveur configuré';
+    if (Cloud.ok === false && !prefs.name && window.claude) { // dans Claude, mais le compte n'a pas répondu : ne pas recréer un héros par erreur
+      const w = document.createElement('div'); w.className = 'cloudwarn';
+      w.innerHTML = '<p>Ta sauvegarde n\'a pas pu être chargée depuis ton compte. Si tu as déjà un héros, ne le recrée pas : réessaie.</p><button type="button">Réessayer</button>';
+      w.querySelector('button').addEventListener('click', () => location.reload());
+      $('form').prepend(w);
+    }
   }
   function refreshLook() { const st = C.START[me.cls] || C.START[0], F = C.FAMS[st[1]]; $('lvc').textContent = F.name; $('clsdesc').textContent = 'Pas de classe : ton arme définit tes attaques. Attaque « ' + F.basic.name + ' », puis ' + F.tech.map(a => a.name).join(', ') + ' en gagnant de la maîtrise. Tu peux changer d\'arme à tout moment.'; LOOK_LABELS.forEach((l, i) => { $('lv' + i).textContent = LOOK_NAMES[i][look[i]]; }); me.set = ARTAPI.charSet(look, me.gear || C.gearStr({ weapon: [st[0], 0], chest: [9, 0] })); }
   function drawPreview() {
@@ -1078,11 +1084,11 @@
   }
   /* ---------- sauvegarde dans le compte Claude (survit aux mises à jour du jeu) ---------- */
   const Cloud = {
-    ref: null, owner: false, last: '', pending: null, writing: false,
+    ref: null, owner: false, last: '', pending: null, writing: false, ok: null, top: null, // top : la progression la plus avancée connue dans le compte
     async init() {
       try {
         if (!window.claude || typeof window.claude.use !== 'function') return false;
-        const to = new Promise(r => setTimeout(() => r(null), 6000));
+        const to = new Promise(r => setTimeout(() => r(null), 12000)); // l'app mobile peut être lente à répondre
         const [db, user] = await Promise.race([Promise.all([window.claude.use('db'), window.claude.use('user')]), to.then(() => [null, null])]);
         if (!db || !user) return false;
         const id = await Promise.race([user.id(), to]); if (!id) return false;
@@ -1091,10 +1097,11 @@
     },
     async load() {
       if (!this.ref) return null;
-      try { const snap = await Promise.race([this.ref.get(), new Promise((_, j) => setTimeout(() => j(new Error('timeout')), 8000))]); return snap.exists ? snap.data() : null; } catch (e) { return null; }
+      try { const snap = await Promise.race([this.ref.get(), new Promise((_, j) => setTimeout(() => j(new Error('timeout')), 8000))]); return snap.exists ? snap.data() : null; } catch (e) { this.ref = null; return null; } // lecture impossible : on n'écrit pas non plus, pour ne rien écraser
     },
     save(solo) {
       if (!this.ref) return;
+      if (this.top && ahead(this.top, solo)) return; // le compte garde un héros plus avancé : on ne l'écrase pas
       const body = { v: 1, prefs: { name: me.name, look: look.slice(), lvl: prefs.lvl || 0, cls: me.cls | 0 }, solo };
       const j = JSON.stringify(body); if (j === this.last) return;
       this.pending = body; this.flush();
@@ -1102,16 +1109,21 @@
     async flush() {
       if (this.writing || !this.pending) return;
       this.writing = true; const body = this.pending; this.pending = null;
-      try { await this.ref.set(Object.assign({ savedAt: Date.now() }, body)); this.last = JSON.stringify(body); } catch (e) { /* hors ligne : on réessaiera à la prochaine sauvegarde */ }
+      try { await this.ref.set(Object.assign({ savedAt: Date.now() }, body)); this.last = JSON.stringify(body); this.top = body.solo; } catch (e) { /* hors ligne : on réessaiera à la prochaine sauvegarde */ }
       this.writing = false; if (this.pending) this.flush();
     }
   };
+  // a est-il plus avancé que b ? (niveau, puis expérience)
+  function ahead(a, b) { if (!a) return false; if (!b) return true; const la = a.lvl | 0, lb = b.lvl | 0; return la !== lb ? la > lb : (a.xp | 0) > (b.xp | 0); }
   async function restoreCloud() {
-    if (!(await Cloud.init())) return;
     $('loading').textContent = 'Récupération de ta sauvegarde…';
-    const c = await Cloud.load(); if (!c || !c.solo) return;
-    let localAt = 0; try { localAt = +localStorage.getItem('etheria_saved_at') || 0; } catch (e) { /* ignore */ }
-    if ((c.savedAt || 0) < localAt) return; // la copie locale est plus récente
+    Cloud.ok = await Cloud.init(); if (!Cloud.ok) return;
+    const c = await Cloud.load(); if (!Cloud.ref) Cloud.ok = false; if (!c || !c.solo) return;
+    Cloud.top = c.solo;
+    let localAt = 0, local = null; try { localAt = +localStorage.getItem('etheria_saved_at') || 0; local = JSON.parse(localStorage.getItem('etheria_solo') || 'null'); } catch (e) { /* ignore */ }
+    if (!prefs.name) local = null;
+    // le héros le plus avancé gagne toujours (un nouveau perso créé par erreur n'écrase pas l'ancien) ; à égalité, la copie la plus récente
+    if (local && (ahead(local, c.solo) || (!ahead(c.solo, local) && (c.savedAt || 0) < localAt))) return;
     try { localStorage.setItem('etheria_solo', JSON.stringify(c.solo)); localStorage.setItem('etheria_saved_at', String(c.savedAt || Date.now())); } catch (e) { /* ignore */ }
     if (c.prefs) {
       Object.assign(prefs, c.prefs); me.name = prefs.name || me.name; me.cls = prefs.cls | 0; look.splice(0, look.length, ...C.cleanLook(prefs.look));
