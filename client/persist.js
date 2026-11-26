@@ -16,6 +16,9 @@
     if (started) return; started = true;
     const s = document.createElement('script'); s.src = 'game.js'; document.body.appendChild(s);
   }
+  // flush() : attend que les sauvegardes en cours soient écrites dans la mémoire native (avant un rechargement, ex. voyage entre îles)
+  const pending = new Set();
+  window.EtheriaPersist = { native, flush: () => Promise.all([...pending]) };
   if (!Prefs) { start(); return; }
 
   const ls = window.localStorage;
@@ -23,7 +26,7 @@
   function mirror() {
     Storage.prototype.setItem = function (k, v) {
       set.call(this, k, v);
-      if (this === ls && String(k).startsWith(PREFIX)) Prefs.set({ key: String(k), value: String(v) }).catch(() => { });
+      if (this === ls && String(k).startsWith(PREFIX)) { const pr = Prefs.set({ key: String(k), value: String(v) }).catch(() => { }); pending.add(pr); pr.then(() => pending.delete(pr)); }
     };
     Storage.prototype.removeItem = function (k) {
       del.call(this, k);

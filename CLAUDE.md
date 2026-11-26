@@ -37,6 +37,8 @@ and `@capacitor/preferences` is linked through Swift Package Manager (`ios/App/C
 - The game saves every 5 s and when the app goes to the background, into localStorage keys `etheria_*`.
 - In the native app, `client/persist.js` mirrors every `etheria_*` key to native Preferences (UserDefaults, included in
   iCloud/Finder backups) and restores them before `game.js` starts. That's what survives iOS purging WebView storage.
+- Native writes are asynchronous and the native copy wins at startup: before any `location.reload()` (island travel), save then
+  `await window.EtheriaPersist.flush()` (with a timeout), or the app could restart on an older save.
 - Data survives app updates (Xcode re-runs, TestFlight, App Store) as long as the bundle id (`appId`) is unchanged.
   Changing the bundle id = a different app = empty save (the seed would load again). Deleting the app deletes the save.
 

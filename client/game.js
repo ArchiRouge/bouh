@@ -552,7 +552,7 @@
         const I = C.ISLES[ev.to.k] || C.ISLES.bourg; travel = { t: time, name: I.name, col: ev.via === 'ether' ? [120, 80, 200] : [230, 170, 70] };
         joy.active = false; input.atkBtn = false;
         gotoIsle(ev.to, false); try { sessionStorage.setItem('etheria_autoplay', '1'); sessionStorage.setItem('etheria_arrive', JSON.stringify({ name: I.name, desc: I.desc || '', fresh: ev.fresh, col: travel.col })); } catch (e) { /* ignore */ }
-        setTimeout(() => { if (link) link.saveNow(); setTimeout(() => location.reload(), 150); }, 1300);
+        setTimeout(async () => { if (link) link.saveNow(); try { await Promise.race([window.EtheriaPersist ? window.EtheriaPersist.flush() : null, new Promise(r => setTimeout(r, 2000))]); } catch (e) { /* ignore */ } location.reload(); }, 1300); // dans l'app iOS : la sauvegarde native doit être écrite avant de recharger
       } break;
       case 'skr': if (ev.id === myId) {
         const [f, t] = String(ev.k).split(':'), nm = t === 'block' ? 'Blocage' : ((C.FAMS[f] || {}).tech || [])[+t] ? C.FAMS[f].tech[+t].name : 'Compétence';
