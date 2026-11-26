@@ -34,3 +34,11 @@ Ce qu'il faudrait pour C ou D en jeu : un rendu « glyphes » calculé à chaque
 Des proportions plus élancées obligent à redessiner toutes les grilles de `sprites.js`.
 
 Questions posées : direction, où l'appliquer, proportions des personnages, moment de la journée, effets, univers.
+
+## Personnages moins enfantins (v14)
+
+Les proportions des héros restent celles du jeu (on abandonne les personnages élancés : ils ne collaient pas au rendu
+glyphes). Ce qui change, dans `client/sprites.js` : yeux plus petits (paupière sombre + iris 2 pixels, sans reflet blanc
+géant), sourcils de la couleur des cheveux, nez et bouche fine en tons de peau, peaux moins roses, iris bleu-gris,
+volume des cheveux réduit d'un pixel de chaque côté (face, dos, profil) et couleurs de tenue plus sourdes.
+Avant / après : `img/v14-visages-adultes.png`.
