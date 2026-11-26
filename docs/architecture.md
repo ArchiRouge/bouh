@@ -90,7 +90,7 @@ Les mêmes messages servent en solo (appel direct de `sim.handle(id, message)`) 
 
 ### Événements (`ev`, champ `e`)
 
-Combat : `hm`, `km`, `mr`, `hp`, `die`, `rs`, `sw`, `ab`, `heal`, `zone`, `imm`, `tp`. Butin et progression : `lt`, `it`,
+Combat : `hm`, `km`, `mr`, `hp`, `die`, `rs`, `sw`, `ab`, `heal`, `zone`, `imm`, `tp`, `bsk` et `bskx` (attaque de boss annoncée, déclenchée). Butin et progression : `lt`, `it`,
 `sold`, `lv`, `ml`, `skr`, `skc`, `gl`, `ga`, `cr`, `eq`, `po`, `st`, `gift`. Quêtes : `qa`, `qp`, `qc`, `qr`. Monde : `travel`,
 `chest`, `looted`, `ttl`, `dgdone` (serveur), `founder`, `gm`. Messages : `ch` (tchat ou annonce `s: 1`), `msg` (au joueur).
 

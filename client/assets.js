@@ -1800,31 +1800,63 @@
      Pixels placés par formes (ellipses, polygones) puis ombrés : même lumière que le bestiaire (haut gauche). */
   const GOLDR = R(['#6a4410', '#a87818', '#e8b83a', '#ffe070', '#fff6c8']);
   function crownOn(P, cx, base, w, gems) {
-    const x0 = Math.round(cx - w / 2), x1 = x0 + w - 1, pts = w >= 14 ? 5 : 3;
-    for (let x = x0; x <= x1; x++) { P.set(x, base, GOLDR[1]); P.set(x, base - 1, GOLDR[2]); P.set(x, base - 2, GOLDR[3]); }
+    const x0 = Math.round(cx - w / 2),
+      x1 = x0 + w - 1,
+      pts = w >= 14 ? 5 : 3;
+    for (let x = x0; x <= x1; x++) {
+      P.set(x, base, GOLDR[1]);
+      P.set(x, base - 1, GOLDR[2]);
+      P.set(x, base - 2, GOLDR[3]);
+    }
     for (let k = 0; k < pts; k++) {
-      const x = Math.round(x0 + (k * (w - 1)) / (pts - 1)), hgt = k % 2 ? 3 : 5;
-      for (let y = 0; y < hgt; y++) { P.set(x, base - 3 - y, GOLDR[y === hgt - 1 ? 4 : 2]); if (k % 2 === 0 && y < hgt - 2) P.set(x + (x < cx ? 1 : -1), base - 3 - y, GOLDR[1]); }
+      const x = Math.round(x0 + (k * (w - 1)) / (pts - 1)),
+        hgt = k % 2 ? 3 : 5;
+      for (let y = 0; y < hgt; y++) {
+        P.set(x, base - 3 - y, GOLDR[y === hgt - 1 ? 4 : 2]);
+        if (k % 2 === 0 && y < hgt - 2) P.set(x + (x < cx ? 1 : -1), base - 3 - y, GOLDR[1]);
+      }
     }
     const g = gems || ['#e8414a', '#4aa0f0'];
-    P.set(Math.round(cx), base - 1, rgb(g[0])); P.set(Math.round(cx) - 1, base - 1, rgb(g[0]));
-    P.set(x0 + 2, base - 1, rgb(g[1])); P.set(x1 - 2, base - 1, rgb(g[1]));
+    P.set(Math.round(cx), base - 1, rgb(g[0]));
+    P.set(Math.round(cx) - 1, base - 1, rgb(g[0]));
+    P.set(x0 + 2, base - 1, rgb(g[1]));
+    P.set(x1 - 2, base - 1, rgb(g[1]));
   }
-  const glowEye = (P, x, y, c, h) => { for (let k = 0; k < (h || 2); k++) { P.set(x, y + k, c); P.set(x + 1, y + k, c); } P.set(x, y, mix(c, [255, 255, 255], 0.6)); };
+  const glowEye = (P, x, y, c, h) => {
+    for (let k = 0; k < (h || 2); k++) {
+      P.set(x, y + k, c);
+      P.set(x + 1, y + k, c);
+    }
+    P.set(x, y, mix(c, [255, 255, 255], 0.6));
+  };
   const BOSS_PAL = {
-    bark: R(['#2a1c14', '#46301e', '#66472a', '#8a6438', '#b0874c', '#d4ac70']), ring: R(['#7a5a34', '#a8824e', '#d0aa70', '#ecd2a0']), leaf: R(['#1f5a2a', '#2e8a3a', '#5ab84a', '#9ae070']),
-    wolf: R(['#1e1c34', '#2e2c4c', '#46446c', '#6a6890', '#9a98b8', '#d0d0e4']), mist: R(['#8aa0c8', '#b8c8e4', '#e4ecf8']),
-    bee: R(['#5a3a06', '#9a6a10', '#d8a020', '#f8d050', '#fff0a0']), beeD: R(['#1a1420', '#2a2030', '#3e3046']), wing: rgb('#e8f4ff'),
-    crys: R(['#2a3e60', '#3e6a94', '#5e98c4', '#8ac8ea', '#c4ecff', '#ffffff']), stone: R(['#2e2c40', '#44425a', '#5e5c76', '#7c7a92', '#a09eb4']),
-    sala: R(['#4a0e0c', '#801c14', '#c0361c', '#e86428', '#ffa040', '#ffe080']), flame: R(['#c0301a', '#ff6a1a', '#ffb040', '#fff0a0']),
-    robe: R(['#120c22', '#221a3c', '#36295a', '#4e3c7c', '#6e5aa0']), ghost: R(['#4a3a78', '#7a68a8', '#b4a8d8', '#e8e0ff']), chain: R(['#3a3a4c', '#6a6a80', '#a4a4b8']),
-    rock: R(['#140c10', '#241618', '#3a2420', '#54342a', '#704634']), lava: R(['#a8200e', '#ff5a14', '#ffa030', '#fff0a0']),
-    ice: R(['#1a2e5a', '#2a4a86', '#4a78b4', '#7aaed8', '#b8dcf4', '#f0faff']), bone: R(['#8a8a94', '#b4b4be', '#dcdce4', '#ffffff']),
-    void: R(['#06020e', '#140824', '#24103e', '#3a1a5e', '#5a2a86']), teeth: R(['#c8c0d8', '#f4f0ff'])
+    bark: R(['#2a1c14', '#46301e', '#66472a', '#8a6438', '#b0874c', '#d4ac70']),
+    ring: R(['#7a5a34', '#a8824e', '#d0aa70', '#ecd2a0']),
+    leaf: R(['#1f5a2a', '#2e8a3a', '#5ab84a', '#9ae070']),
+    wolf: R(['#1e1c34', '#2e2c4c', '#46446c', '#6a6890', '#9a98b8', '#d0d0e4']),
+    mist: R(['#8aa0c8', '#b8c8e4', '#e4ecf8']),
+    bee: R(['#5a3a06', '#9a6a10', '#d8a020', '#f8d050', '#fff0a0']),
+    beeD: R(['#1a1420', '#2a2030', '#3e3046']),
+    wing: rgb('#e8f4ff'),
+    crys: R(['#2a3e60', '#3e6a94', '#5e98c4', '#8ac8ea', '#c4ecff', '#ffffff']),
+    stone: R(['#2e2c40', '#44425a', '#5e5c76', '#7c7a92', '#a09eb4']),
+    sala: R(['#4a0e0c', '#801c14', '#c0361c', '#e86428', '#ffa040', '#ffe080']),
+    flame: R(['#c0301a', '#ff6a1a', '#ffb040', '#fff0a0']),
+    robe: R(['#120c22', '#221a3c', '#36295a', '#4e3c7c', '#6e5aa0']),
+    ghost: R(['#4a3a78', '#7a68a8', '#b4a8d8', '#e8e0ff']),
+    chain: R(['#3a3a4c', '#6a6a80', '#a4a4b8']),
+    rock: R(['#140c10', '#241618', '#3a2420', '#54342a', '#704634']),
+    lava: R(['#a8200e', '#ff5a14', '#ffa030', '#fff0a0']),
+    ice: R(['#1a2e5a', '#2a4a86', '#4a78b4', '#7aaed8', '#b8dcf4', '#f0faff']),
+    bone: R(['#8a8a94', '#b4b4be', '#dcdce4', '#ffffff']),
+    void: R(['#06020e', '#140824', '#24103e', '#3a1a5e', '#5a2a86']),
+    teeth: R(['#c8c0d8', '#f4f0ff'])
   };
   // 0 Roi Gelée : grande gelée royale, un trésor englouti dans le ventre
   function bossRoi(fr) {
-    const P = new Pix(48, 46), S = SLIMES.boss, q = fr ? 1 : 0;
+    const P = new Pix(48, 46),
+      S = SLIMES.boss,
+      q = fr ? 1 : 0;
     fillEllipse(P, 24, 30 + q * 0.6, 20.5 + q * 0.8, 14.5 - q * 0.6, (x, y, nx, ny) => {
       if (y > 43) return null;
       const core = Math.max(0, 1 - Math.hypot(nx, ny + 0.3) * 1.25);
@@ -1832,166 +1864,528 @@
     });
     for (let x = 4; x < 44; x++) if (P.a(x, 43)) P.set(x, 44, S[0]);
     for (let t = 0; t < 12; t++) P.set(12 + t, Math.round(38 - t * 0.55), t < 3 ? rgb('#6a4a20') : mix(S[1], [210, 220, 240], 0.5));
-    for (const [x, y] of [[30, 38], [33, 39], [35, 37], [31, 40]]) { P.set(x, y, mix(S[2], GOLDR[3], 0.65)); P.set(x + 1, y, mix(S[2], GOLDR[2], 0.6)); }
-    for (const [x, y, k] of [[11, 24, 5], [12, 23, 5], [13, 23, 5], [11, 25, 4], [10, 27, 4], [37, 35, 4], [14, 22, 4]]) P.set(x, y, S[k]);
-    for (const ex of [19, 28]) { for (let y = 0; y < 4; y++) { P.set(ex, 26 + y + q, EYE); P.set(ex + 1, 26 + y + q, EYE); } P.set(ex, 26 + q, WHITE); }
+    for (const [x, y] of [
+      [30, 38],
+      [33, 39],
+      [35, 37],
+      [31, 40]
+    ]) {
+      P.set(x, y, mix(S[2], GOLDR[3], 0.65));
+      P.set(x + 1, y, mix(S[2], GOLDR[2], 0.6));
+    }
+    for (const [x, y, k] of [
+      [11, 24, 5],
+      [12, 23, 5],
+      [13, 23, 5],
+      [11, 25, 4],
+      [10, 27, 4],
+      [37, 35, 4],
+      [14, 22, 4]
+    ])
+      P.set(x, y, S[k]);
+    for (const ex of [19, 28]) {
+      for (let y = 0; y < 4; y++) {
+        P.set(ex, 26 + y + q, EYE);
+        P.set(ex + 1, 26 + y + q, EYE);
+      }
+      P.set(ex, 26 + q, WHITE);
+    }
     for (let x = 21; x < 28; x++) P.set(x, 33 + q, mul(S[0], 0.8));
-    P.set(21, 32 + q, mul(S[0], 0.8)); P.set(27, 32 + q, mul(S[0], 0.8));
+    P.set(21, 32 + q, mul(S[0], 0.8));
+    P.set(27, 32 + q, mul(S[0], 0.8));
     crownOn(P, 24, 17 + q, 16);
     P.outline(0.45);
-    for (let k = 3; k < P.d.length; k += 4) if (P.d[k] === 255) { const y = Math.floor(k / 4 / P.w); if (y > 19 && y < 42) P.d[k] = 240; }
+    for (let k = 3; k < P.d.length; k += 4)
+      if (P.d[k] === 255) {
+        const y = Math.floor(k / 4 / P.w);
+        if (y > 19 && y < 42) P.d[k] = 240;
+      }
     return P.done();
   }
   // 1 Souche ancestrale : vieux tronc qui marche sur ses racines, une pousse sur la tête, yeux d'ambre
   function bossSouche(fr) {
-    const P = new Pix(48, 48), B = BOSS_PAL.bark, L = BOSS_PAL.leaf, b = fr ? 1 : 0;
-    for (const [x0, dir, ph] of [[14, -1, 0], [19, -1, 1], [29, 1, 1], [34, 1, 0]]) for (let t = 0; t < 7; t++) { const lift = (fr + ph) % 2 && t > 4 ? -1 : 0, x = Math.round(x0 + dir * t * 0.75), y = Math.round(40 + t * 0.85) + lift; P.set(x, y, B[1]); P.set(x + 1, y, B[2]); }
-    for (let y = 15 + b; y < 43; y++) for (let x = 12; x < 36; x++) {
-      const nx = (x + 0.5 - 24) / 11.5, ny = (y + 0.5 - 29) / 14; if (Math.abs(nx) > 1 || (Math.abs(nx) > 0.85 && Math.abs(ny) > 0.85)) continue;
-      const grain = (x * 3 + (y >> 2)) % 6 === 0 ? -0.14 : 0;
-      P.set(x, y, ramp(B, 0.6 - nx * 0.32 + grain + (hash(x, y, 9) - 0.5) * 0.08, x, y, 0.5));
-    }
-    fillEllipse(P, 24, 16 + b, 11.5, 3.2, (x, y, nx, ny, d) => ramp(BOSS_PAL.ring, 0.75 - d * 0.35 - (Math.round(Math.sqrt(d) * 4) % 2) * 0.22, x, y, 0.3));
-    for (let x = 12; x < 36; x++) if (hash(x, 3, 5) < 0.55) { P.set(x, 18 + b, L[1 + (x % 2)]); if (hash(x, 4, 5) < 0.4) P.set(x, 19 + b, L[1]); }
+    const P = new Pix(48, 48),
+      B = BOSS_PAL.bark,
+      L = BOSS_PAL.leaf,
+      b = fr ? 1 : 0;
+    for (const [x0, dir, ph] of [
+      [14, -1, 0],
+      [19, -1, 1],
+      [29, 1, 1],
+      [34, 1, 0]
+    ])
+      for (let t = 0; t < 7; t++) {
+        const lift = (fr + ph) % 2 && t > 4 ? -1 : 0,
+          x = Math.round(x0 + dir * t * 0.75),
+          y = Math.round(40 + t * 0.85) + lift;
+        P.set(x, y, B[1]);
+        P.set(x + 1, y, B[2]);
+      }
+    for (let y = 15 + b; y < 43; y++)
+      for (let x = 12; x < 36; x++) {
+        const nx = (x + 0.5 - 24) / 11.5,
+          ny = (y + 0.5 - 29) / 14;
+        if (Math.abs(nx) > 1 || (Math.abs(nx) > 0.85 && Math.abs(ny) > 0.85)) continue;
+        const grain = (x * 3 + (y >> 2)) % 6 === 0 ? -0.14 : 0;
+        P.set(x, y, ramp(B, 0.6 - nx * 0.32 + grain + (hash(x, y, 9) - 0.5) * 0.08, x, y, 0.5));
+      }
+    fillEllipse(P, 24, 16 + b, 11.5, 3.2, (x, y, nx, ny, d) =>
+      ramp(BOSS_PAL.ring, 0.75 - d * 0.35 - (Math.round(Math.sqrt(d) * 4) % 2) * 0.22, x, y, 0.3)
+    );
+    for (let x = 12; x < 36; x++)
+      if (hash(x, 3, 5) < 0.55) {
+        P.set(x, 18 + b, L[1 + (x % 2)]);
+        if (hash(x, 4, 5) < 0.4) P.set(x, 19 + b, L[1]);
+      }
     for (let t = 0; t < 7; t++) P.set(27, 15 + b - t, B[3]);
-    for (const [x, y] of [[24, 10], [25, 9], [26, 9], [28, 9], [29, 10], [25, 8], [28, 8], [27, 7], [26, 7], [30, 9], [23, 10]]) P.set(x, y + b, L[(x + y) % 3 + 1]);
+    for (const [x, y] of [
+      [24, 10],
+      [25, 9],
+      [26, 9],
+      [28, 9],
+      [29, 10],
+      [25, 8],
+      [28, 8],
+      [27, 7],
+      [26, 7],
+      [30, 9],
+      [23, 10]
+    ])
+      P.set(x, y + b, L[((x + y) % 3) + 1]);
     // bras-branches
-    for (let t = 0; t < 10; t++) { P.set(12 - t, 27 - Math.round(t * 0.6) + (t > 6 ? b : 0), B[2]); P.set(12 - t, 28 - Math.round(t * 0.6) + (t > 6 ? b : 0), B[1]); }
-    for (let t = 0; t < 9; t++) { P.set(35 + t, 26 - Math.round(t * 0.4) - (t > 5 ? b : 0), B[3]); P.set(35 + t, 27 - Math.round(t * 0.4) - (t > 5 ? b : 0), B[1]); }
-    for (const [x, y] of [[4, 21], [3, 22], [5, 20], [43, 22], [44, 21], [42, 21]]) P.set(x, y, L[2]);
-    for (const ex of [19, 27]) { P.set(ex, 26 + b, rgb('#ffe070')); P.set(ex + 1, 26 + b, rgb('#ffd040')); P.set(ex, 27 + b, rgb('#c07020')); P.set(ex + 1, 27 + b, rgb('#c07020')); }
+    for (let t = 0; t < 10; t++) {
+      P.set(12 - t, 27 - Math.round(t * 0.6) + (t > 6 ? b : 0), B[2]);
+      P.set(12 - t, 28 - Math.round(t * 0.6) + (t > 6 ? b : 0), B[1]);
+    }
+    for (let t = 0; t < 9; t++) {
+      P.set(35 + t, 26 - Math.round(t * 0.4) - (t > 5 ? b : 0), B[3]);
+      P.set(35 + t, 27 - Math.round(t * 0.4) - (t > 5 ? b : 0), B[1]);
+    }
+    for (const [x, y] of [
+      [4, 21],
+      [3, 22],
+      [5, 20],
+      [43, 22],
+      [44, 21],
+      [42, 21]
+    ])
+      P.set(x, y, L[2]);
+    for (const ex of [19, 27]) {
+      P.set(ex, 26 + b, rgb('#ffe070'));
+      P.set(ex + 1, 26 + b, rgb('#ffd040'));
+      P.set(ex, 27 + b, rgb('#c07020'));
+      P.set(ex + 1, 27 + b, rgb('#c07020'));
+    }
     for (let x = 20; x < 29; x++) P.set(x, 33 + b + (x % 2), B[0]);
-    P.outline(0.45); return P.done();
+    P.outline(0.45);
+    return P.done();
   }
   // 2 Grand Loup des brumes : loup immense, crinière de brume, yeux bleu glacé
   function bossLoup(fr) {
-    const P = new Pix(52, 40), M = BOSS_PAL.wolf, b = fr ? 1 : 0;
-    for (const [lx, ph] of [[13, 0], [18, 1], [33, 0], [38, 1]]) { const lift = (fr + ph) % 2; for (let y = 29 - lift; y < 38 - lift; y++) { P.set(lx, y, M[1]); P.set(lx + 1, y, M[2]); P.set(lx + 2, y, M[1]); } P.set(lx + 3, 37 - lift, M[1]); }
-    for (let t = 0; t < 10; t++) { const y = Math.round(22 - t * 0.9 + (fr ? 1 : 0) * (t > 5 ? 1 : 0)); P.set(5 - Math.round(t * 0.25), y, M[2]); P.set(6 - Math.round(t * 0.25), y, M[3]); }
+    const P = new Pix(52, 40),
+      M = BOSS_PAL.wolf,
+      b = fr ? 1 : 0;
+    for (const [lx, ph] of [
+      [13, 0],
+      [18, 1],
+      [33, 0],
+      [38, 1]
+    ]) {
+      const lift = (fr + ph) % 2;
+      for (let y = 29 - lift; y < 38 - lift; y++) {
+        P.set(lx, y, M[1]);
+        P.set(lx + 1, y, M[2]);
+        P.set(lx + 2, y, M[1]);
+      }
+      P.set(lx + 3, 37 - lift, M[1]);
+    }
+    for (let t = 0; t < 10; t++) {
+      const y = Math.round(22 - t * 0.9 + (fr ? 1 : 0) * (t > 5 ? 1 : 0));
+      P.set(5 - Math.round(t * 0.25), y, M[2]);
+      P.set(6 - Math.round(t * 0.25), y, M[3]);
+    }
     fillEllipse(P, 24, 25, 15, 8, (x, y, nx, ny) => lit(M, nx, ny, x, y));
     fillEllipse(P, 41, 17 + b * 0.5, 7, 6.2, (x, y, nx, ny) => lit(M, nx, ny, x, y, 0.58));
-    fillPoly(P, [[44, 18 + b], [51, 20 + b], [50, 23 + b], [44, 23 + b]], (x, y) => ramp(M, 0.5 - (y - 18) * 0.05, x, y, 0.4));
-    for (const ex of [37, 42]) { for (let y = 0; y < 5; y++) { P.set(ex, 7 + y + b, M[y < 2 ? 3 : 2]); P.set(ex + 1, 8 + y + b, M[2]); } }
+    fillPoly(
+      P,
+      [
+        [44, 18 + b],
+        [51, 20 + b],
+        [50, 23 + b],
+        [44, 23 + b]
+      ],
+      (x, y) => ramp(M, 0.5 - (y - 18) * 0.05, x, y, 0.4)
+    );
+    for (const ex of [37, 42]) {
+      for (let y = 0; y < 5; y++) {
+        P.set(ex, 7 + y + b, M[y < 2 ? 3 : 2]);
+        P.set(ex + 1, 8 + y + b, M[2]);
+      }
+    }
     glowEye(P, 44, 15 + b, rgb('#7af0ff'));
     P.set(51, 20 + b, EYE);
     for (let x = 45; x < 50; x++) if (x % 2) P.set(x, 23 + b, WHITE);
     // crinière de brume
-    for (let k = 0; k < 90; k++) { const a = hash(k, 1, 3) * Math.PI * 2, r = 5 + hash(k, 2, 3) * 8, x = Math.round(33 + Math.cos(a) * r * 1.2 + (fr ? 1 : 0) * (k % 3 === 0 ? 1 : 0)), y = Math.round(18 + Math.sin(a) * r * 0.8); if (!P.a(x, y) || y < 17) P.set(x, y, BOSS_PAL.mist[k % 3], 220); }
-    P.outline(0.42); return P.done();
+    for (let k = 0; k < 90; k++) {
+      const a = hash(k, 1, 3) * Math.PI * 2,
+        r = 5 + hash(k, 2, 3) * 8,
+        x = Math.round(33 + Math.cos(a) * r * 1.2 + (fr ? 1 : 0) * (k % 3 === 0 ? 1 : 0)),
+        y = Math.round(18 + Math.sin(a) * r * 0.8);
+      if (!P.a(x, y) || y < 17) P.set(x, y, BOSS_PAL.mist[k % 3], 220);
+    }
+    P.outline(0.42);
+    return P.done();
   }
   // 3 Reine des abeilles : abdomen rayé, quatre ailes, couronne et sceptre de miel
   function bossReine(fr) {
-    const P = new Pix(48, 46), Y = BOSS_PAL.bee, D = BOSS_PAL.beeD, b = fr ? 1 : 0;
-    for (const [cx, cy, rx, ry] of [[16, 12 - b, 9, 6], [26, 10 - b, 8, 5], [14, 20 + b, 7, 4], [23, 19 + b, 6, 3.5]]) fillEllipse(P, cx, cy, rx, ry, (x, y, nx, ny) => (nx * nx + ny * ny > 0.7 ? mix(BOSS_PAL.wing, [160, 190, 230], 0.4) : BOSS_PAL.wing));
+    const P = new Pix(48, 46),
+      Y = BOSS_PAL.bee,
+      D = BOSS_PAL.beeD,
+      b = fr ? 1 : 0;
+    for (const [cx, cy, rx, ry] of [
+      [16, 12 - b, 9, 6],
+      [26, 10 - b, 8, 5],
+      [14, 20 + b, 7, 4],
+      [23, 19 + b, 6, 3.5]
+    ])
+      fillEllipse(P, cx, cy, rx, ry, (x, y, nx, ny) =>
+        nx * nx + ny * ny > 0.7 ? mix(BOSS_PAL.wing, [160, 190, 230], 0.4) : BOSS_PAL.wing
+      );
     for (let k = 3; k < P.d.length; k += 4) if (P.d[k]) P.d[k] = 170;
-    fillEllipse(P, 15, 31, 11, 8.5, (x, y, nx, ny) => { const band = Math.floor((x - 4) / 4) % 2; return band ? ramp(D, 0.5 - ny * 0.4, x, y, 0.4) : lit(Y, nx, ny, x, y); });
+    fillEllipse(P, 15, 31, 11, 8.5, (x, y, nx, ny) => {
+      const band = Math.floor((x - 4) / 4) % 2;
+      return band ? ramp(D, 0.5 - ny * 0.4, x, y, 0.4) : lit(Y, nx, ny, x, y);
+    });
     for (let t = 0; t < 4; t++) P.set(3 - Math.min(t, 2), 31 + t, D[0]);
     fillEllipse(P, 29, 27, 6.5, 6, (x, y, nx, ny) => ramp(D, 0.55 - ny * 0.35 - nx * 0.2, x, y, 0.4));
-    for (let k = 0; k < 14; k++) P.set(24 + (k % 7), 23 + (k >> 1) % 3, Y[3]);
+    for (let k = 0; k < 14; k++) P.set(24 + (k % 7), 23 + ((k >> 1) % 3), Y[3]);
     fillEllipse(P, 38, 22, 6, 5.5, (x, y, nx, ny) => lit(Y, nx, ny, x, y, 0.6));
-    glowEye(P, 40, 20, EYE, 3); P.set(40, 20, WHITE);
-    for (let t = 0; t < 5; t++) { P.set(36 + t, 15 - t, D[1]); P.set(41 + t, 16 - t, D[1]); }
+    glowEye(P, 40, 20, EYE, 3);
+    P.set(40, 20, WHITE);
+    for (let t = 0; t < 5; t++) {
+      P.set(36 + t, 15 - t, D[1]);
+      P.set(41 + t, 16 - t, D[1]);
+    }
     crownOn(P, 38, 16, 9, ['#e8414a', '#ff9a3c']);
     for (const lx of [25, 29, 33]) for (let y = 32; y < 39 + ((lx + fr) % 2); y++) P.set(lx, y, D[0]);
     for (let y = 22; y < 40; y++) P.set(45, y, rgb('#8a5a20'));
     fillEllipse(P, 45, 21, 2.6, 2.6, (x, y, nx, ny) => lit(R(['#a86010', '#f0a020', '#ffd060', '#fff0a0']), nx, ny, x, y));
     for (let y = 38; y < 43; y++) P.set(16, y + b, Y[2]);
-    P.outline(0.42); return P.done();
+    P.outline(0.42);
+    return P.done();
   }
   // 4 Golem de cristal ancien : pierre couverte de mousse, cristaux qui poussent des épaules, cœur lumineux
   function bossGolem(fr) {
-    const P = new Pix(52, 52), S = BOSS_PAL.stone, Q = BOSS_PAL.crys, b = fr ? 1 : 0;
-    for (const lx of [16, 29]) for (let y = 40; y < 51; y++) for (let x = lx; x < lx + 7; x++) P.set(x, y, ramp(S, 0.55 - (x - lx) * 0.06 - (y - 40) * 0.02, x, y, 0.4));
-    for (let y = 17 + b; y < 42; y++) for (let x = 10; x < 42; x++) {
-      const nx = (x + 0.5 - 26) / 16, ny = (y + 0.5 - 29) / 13; if (Math.abs(nx) > 1 || (Math.abs(nx) > 0.75 && Math.abs(ny) > 0.75)) continue;
-      const crack = hash(x >> 1, y >> 1, 21) < 0.07 ? -0.25 : 0; P.set(x, y, ramp(S, 0.55 + 0.4 * -(nx * 0.55 + ny * 0.6) + crack, x, y, 0.5));
-    }
-    for (const s of [-1, 1]) for (let y = 21 + b; y < 41 + (s > 0 ? 1 - b : b); y++) for (let k = 0; k < 6; k++) { const x = s < 0 ? 3 + k : 43 + k; P.set(x, y, ramp(S, (s < 0 ? 0.7 : 0.35) - k * 0.03 - (y - 21) * 0.008, x, y, 0.4)); }
+    const P = new Pix(52, 52),
+      S = BOSS_PAL.stone,
+      Q = BOSS_PAL.crys,
+      b = fr ? 1 : 0;
+    for (const lx of [16, 29])
+      for (let y = 40; y < 51; y++)
+        for (let x = lx; x < lx + 7; x++) P.set(x, y, ramp(S, 0.55 - (x - lx) * 0.06 - (y - 40) * 0.02, x, y, 0.4));
+    for (let y = 17 + b; y < 42; y++)
+      for (let x = 10; x < 42; x++) {
+        const nx = (x + 0.5 - 26) / 16,
+          ny = (y + 0.5 - 29) / 13;
+        if (Math.abs(nx) > 1 || (Math.abs(nx) > 0.75 && Math.abs(ny) > 0.75)) continue;
+        const crack = hash(x >> 1, y >> 1, 21) < 0.07 ? -0.25 : 0;
+        P.set(x, y, ramp(S, 0.55 + 0.4 * -(nx * 0.55 + ny * 0.6) + crack, x, y, 0.5));
+      }
+    for (const s of [-1, 1])
+      for (let y = 21 + b; y < 41 + (s > 0 ? 1 - b : b); y++)
+        for (let k = 0; k < 6; k++) {
+          const x = s < 0 ? 3 + k : 43 + k;
+          P.set(x, y, ramp(S, (s < 0 ? 0.7 : 0.35) - k * 0.03 - (y - 21) * 0.008, x, y, 0.4));
+        }
     for (const s of [-1, 1]) fillEllipse(P, s < 0 ? 6 : 46, 42, 4, 3.4, (x, y, nx, ny) => lit(S, nx, ny, x, y, 0.45));
     fillEllipse(P, 26, 13 + b, 7, 6, (x, y, nx, ny) => lit(S, nx, ny, x, y, 0.6));
-    glowEye(P, 23, 12 + b, rgb('#bfefff')); glowEye(P, 28, 12 + b, rgb('#bfefff'));
-    const shard = (x0, y0, h, w, lean) => { for (let t = 0; t < h; t++) { const ww = Math.max(0, Math.round(w * (1 - t / h))); for (let k = -ww; k <= ww; k++) P.set(Math.round(x0 + k + lean * t), y0 - t, Q[k < 0 ? 4 : k === 0 ? 5 : 2]); } };
-    shard(12, 20 + b, 11, 2, -0.35); shard(16, 18 + b, 8, 1.5, -0.1); shard(39, 20 + b, 12, 2, 0.35); shard(35, 18 + b, 7, 1.5, 0.1); shard(44, 22 + b, 6, 1, 0.5);
+    glowEye(P, 23, 12 + b, rgb('#bfefff'));
+    glowEye(P, 28, 12 + b, rgb('#bfefff'));
+    const shard = (x0, y0, h, w, lean) => {
+      for (let t = 0; t < h; t++) {
+        const ww = Math.max(0, Math.round(w * (1 - t / h)));
+        for (let k = -ww; k <= ww; k++) P.set(Math.round(x0 + k + lean * t), y0 - t, Q[k < 0 ? 4 : k === 0 ? 5 : 2]);
+      }
+    };
+    shard(12, 20 + b, 11, 2, -0.35);
+    shard(16, 18 + b, 8, 1.5, -0.1);
+    shard(39, 20 + b, 12, 2, 0.35);
+    shard(35, 18 + b, 7, 1.5, 0.1);
+    shard(44, 22 + b, 6, 1, 0.5);
     fillEllipse(P, 26, 29 + b, 4.5, 4.5, (x, y, nx, ny, d) => Q[Math.max(1, 5 - Math.round(d * 4))]);
-    for (let x = 12; x < 40; x++) if (hash(x, 9, 4) < 0.5) P.set(x, 18 + b + (hash(x, 8, 4) < 0.3 ? 1 : 0), rgb(['#3e6a4a', '#5a8a5a'][x % 2]));
+    for (let x = 12; x < 40; x++)
+      if (hash(x, 9, 4) < 0.5) P.set(x, 18 + b + (hash(x, 8, 4) < 0.3 ? 1 : 0), rgb(['#3e6a4a', '#5a8a5a'][x % 2]));
     crownOn(P, 26, 7 + b, 9, ['#7af0ff', '#c4ecff']);
-    P.outline(0.42); return P.done();
+    P.outline(0.42);
+    return P.done();
   }
   // 5 Salamandre-reine : longue salamandre, collerette et crête de flammes, queue qui brûle
   function bossSala(fr) {
-    const P = new Pix(56, 36), M = BOSS_PAL.sala, F = BOSS_PAL.flame, b = fr ? 1 : 0;
-    for (let t = 0; t < 16; t++) { const x = 18 - t, y = Math.round(24 + Math.sin(t * 0.45 + fr * 1.5) * 2.2), r = 3.2 - t * 0.17; fillEllipse(P, x, y, Math.max(0.8, r), Math.max(0.8, r * 0.8), (xx, yy, nx, ny) => lit(M, nx, ny, xx, yy)); }
+    const P = new Pix(56, 36),
+      M = BOSS_PAL.sala,
+      F = BOSS_PAL.flame,
+      b = fr ? 1 : 0;
+    for (let t = 0; t < 16; t++) {
+      const x = 18 - t,
+        y = Math.round(24 + Math.sin(t * 0.45 + fr * 1.5) * 2.2),
+        r = 3.2 - t * 0.17;
+      fillEllipse(P, x, y, Math.max(0.8, r), Math.max(0.8, r * 0.8), (xx, yy, nx, ny) => lit(M, nx, ny, xx, yy));
+    }
     for (let k = 0; k < 8; k++) P.set(2 + (k % 3), 20 - k + (fr ? k % 2 : 0), F[k % 4]);
-    for (const [lx, ph] of [[18, 0], [24, 1], [34, 0], [40, 1]]) { const lift = (fr + ph) % 2; for (let y = 27 - lift; y < 33 - lift; y++) { P.set(lx, y, M[1]); P.set(lx + 1, y, M[2]); } P.set(lx + 2, 32 - lift, M[1]); P.set(lx - 1, 32 - lift, M[1]); }
+    for (const [lx, ph] of [
+      [18, 0],
+      [24, 1],
+      [34, 0],
+      [40, 1]
+    ]) {
+      const lift = (fr + ph) % 2;
+      for (let y = 27 - lift; y < 33 - lift; y++) {
+        P.set(lx, y, M[1]);
+        P.set(lx + 1, y, M[2]);
+      }
+      P.set(lx + 2, 32 - lift, M[1]);
+      P.set(lx - 1, 32 - lift, M[1]);
+    }
     fillEllipse(P, 29, 24, 13, 6.5, (x, y, nx, ny) => (ny > 0.45 ? ramp(M, 0.85, x, y, 0.3) : lit(M, nx, ny, x, y)));
-    for (let x = 18; x < 41; x++) if ((x + b) % 3 === 0) { const h = 3 + ((x * 7) % 3); for (let k = 0; k < h; k++) P.set(x, 17 - k + (k === h - 1 ? 0 : 0), F[Math.min(3, k)]); }
+    for (let x = 18; x < 41; x++)
+      if ((x + b) % 3 === 0) {
+        const h = 3 + ((x * 7) % 3);
+        for (let k = 0; k < h; k++) P.set(x, 17 - k + (k === h - 1 ? 0 : 0), F[Math.min(3, k)]);
+      }
     fillEllipse(P, 46, 20 + b * 0.5, 7, 5.2, (x, y, nx, ny) => lit(M, nx, ny, x, y, 0.6));
-    for (let k = 0; k < 9; k++) { const a = -2.4 + k * 0.45, x = Math.round(42 + Math.cos(a) * 8), y = Math.round(20 + b + Math.sin(a) * 7); P.set(x, y, F[k % 3 + 1]); P.set(x + (x < 42 ? 1 : 0), y + 1, F[1]); }
-    glowEye(P, 48, 18 + b, rgb('#fff060')); P.set(52, 22 + b, EYE);
+    for (let k = 0; k < 9; k++) {
+      const a = -2.4 + k * 0.45,
+        x = Math.round(42 + Math.cos(a) * 8),
+        y = Math.round(20 + b + Math.sin(a) * 7);
+      P.set(x, y, F[(k % 3) + 1]);
+      P.set(x + (x < 42 ? 1 : 0), y + 1, F[1]);
+    }
+    glowEye(P, 48, 18 + b, rgb('#fff060'));
+    P.set(52, 22 + b, EYE);
     for (let x = 47; x < 53; x++) P.set(x, 23 + b, M[0]);
     crownOn(P, 45, 14 + b, 9, ['#ffe060', '#ff7a2a']);
-    P.outline(0.4); return P.done();
+    P.outline(0.4);
+    return P.done();
   }
   // 6 Spectre couronné : robe de brume en lambeaux, chaînes, lanterne d'âmes
   function bossSpectre(fr) {
-    const P = new Pix(48, 52), Rb = BOSS_PAL.robe, G = BOSS_PAL.ghost, Ch = BOSS_PAL.chain, b = fr ? 1 : 0;
+    const P = new Pix(48, 52),
+      Rb = BOSS_PAL.robe,
+      G = BOSS_PAL.ghost,
+      Ch = BOSS_PAL.chain,
+      b = fr ? 1 : 0;
     fillEllipse(P, 24, 16 + b, 9, 9, (x, y, nx, ny) => lit(Rb, nx, ny, x, y, 0.55));
-    for (let y = 18 + b; y < 48; y++) { const w = 8 + (y - 18) * 0.38, sway = Math.sin(y * 0.35 + fr * Math.PI) * 1.5; for (let x = Math.round(24 - w + sway); x <= Math.round(24 + w + sway); x++) { const nx = (x - 24 - sway) / w; P.set(x, y, ramp(Rb, 0.55 - nx * 0.35 - (y - 18) * 0.006, x, y, 0.5)); } }
-    for (let x = 8; x < 42; x++) { const cut = Math.round(2 + 2 * Math.sin(x * 1.3 + fr * 2)); for (let y = 48 - cut; y < 52; y++) P.clr(x, y); for (let y = 46 - cut; y < 48 - cut; y++) if (P.a(x, y)) P.set(x, y, G[0]); }
+    for (let y = 18 + b; y < 48; y++) {
+      const w = 8 + (y - 18) * 0.38,
+        sway = Math.sin(y * 0.35 + fr * Math.PI) * 1.5;
+      for (let x = Math.round(24 - w + sway); x <= Math.round(24 + w + sway); x++) {
+        const nx = (x - 24 - sway) / w;
+        P.set(x, y, ramp(Rb, 0.55 - nx * 0.35 - (y - 18) * 0.006, x, y, 0.5));
+      }
+    }
+    for (let x = 8; x < 42; x++) {
+      const cut = Math.round(2 + 2 * Math.sin(x * 1.3 + fr * 2));
+      for (let y = 48 - cut; y < 52; y++) P.clr(x, y);
+      for (let y = 46 - cut; y < 48 - cut; y++) if (P.a(x, y)) P.set(x, y, G[0]);
+    }
     fillEllipse(P, 24, 17 + b, 5.5, 5.5, (x, y, nx, ny) => ramp(R(['#05020a', '#0e0818']), 0.4 + ny * 0.2, x, y, 0.3));
-    glowEye(P, 21, 16 + b, rgb('#7af0ff')); glowEye(P, 26, 16 + b, rgb('#7af0ff'));
-    for (let t = 0; t < 16; t++) { const x = 12 + t * 1.6, y = 30 + Math.round(Math.sin(t * 0.7) * 2) + b; P.set(Math.round(x), y, Ch[t % 2 ? 1 : 2]); P.set(Math.round(x), y + 1, Ch[0]); }
+    glowEye(P, 21, 16 + b, rgb('#7af0ff'));
+    glowEye(P, 26, 16 + b, rgb('#7af0ff'));
+    for (let t = 0; t < 16; t++) {
+      const x = 12 + t * 1.6,
+        y = 30 + Math.round(Math.sin(t * 0.7) * 2) + b;
+      P.set(Math.round(x), y, Ch[t % 2 ? 1 : 2]);
+      P.set(Math.round(x), y + 1, Ch[0]);
+    }
     for (let y = 22 + b; y < 34; y++) P.set(41, y, Ch[1]);
     fillEllipse(P, 41, 36 + b * 0.5, 3.2, 3.8, (x, y, nx, ny, d) => (d < 0.4 ? rgb('#c8fff4') : d < 0.75 ? rgb('#5ae0d0') : Ch[2]));
     crownOn(P, 24, 8 + b, 13, ['#7af0ff', '#b08ae8']);
     P.outline(0.42);
-    for (let k = 3; k < P.d.length; k += 4) if (P.d[k] === 255) { const y = Math.floor(k / 4 / P.w); if (y > 38) P.d[k] = 200; }
+    for (let k = 3; k < P.d.length; k += 4)
+      if (P.d[k] === 255) {
+        const y = Math.floor(k / 4 / P.w);
+        if (y > 38) P.d[k] = 200;
+      }
     return P.done();
   }
   // 7 Colosse de magma : géant de roche, fissures de lave, poings en fusion
   function bossColosse(fr) {
-    const P = new Pix(56, 56), Rk = BOSS_PAL.rock, L = BOSS_PAL.lava, b = fr ? 1 : 0;
-    for (const lx of [17, 31]) for (let y = 42; y < 55; y++) for (let x = lx; x < lx + 8; x++) P.set(x, y, ramp(Rk, 0.6 - (x - lx) * 0.05, x, y, 0.4));
-    fillPoly(P, [[12, 20 + b], [44, 20 + b], [40, 44], [16, 44]], (x, y) => { const nx = (x - 28) / 16, ny = (y - 32) / 12; return ramp(Rk, 0.55 + 0.4 * -(nx * 0.6 + ny * 0.5), x, y, 0.5); });
+    const P = new Pix(56, 56),
+      Rk = BOSS_PAL.rock,
+      L = BOSS_PAL.lava,
+      b = fr ? 1 : 0;
+    for (const lx of [17, 31])
+      for (let y = 42; y < 55; y++) for (let x = lx; x < lx + 8; x++) P.set(x, y, ramp(Rk, 0.6 - (x - lx) * 0.05, x, y, 0.4));
+    fillPoly(
+      P,
+      [
+        [12, 20 + b],
+        [44, 20 + b],
+        [40, 44],
+        [16, 44]
+      ],
+      (x, y) => {
+        const nx = (x - 28) / 16,
+          ny = (y - 32) / 12;
+        return ramp(Rk, 0.55 + 0.4 * -(nx * 0.6 + ny * 0.5), x, y, 0.5);
+      }
+    );
     fillEllipse(P, 28, 21 + b, 17, 5, (x, y, nx, ny) => lit(Rk, nx, ny, x, y, 0.6));
-    for (const s of [-1, 1]) { for (let y = 22 + b; y < 40; y++) for (let k = 0; k < 7; k++) { const x = s < 0 ? 4 + k : 45 + k; P.set(x, y, ramp(Rk, (s < 0 ? 0.65 : 0.35) - (y - 22) * 0.01, x, y, 0.4)); }
-      fillEllipse(P, s < 0 ? 7.5 : 48.5, 43 + (s < 0 ? b : 1 - b), 5.5, 5, (x, y, nx, ny, d) => (d < 0.35 ? L[3] : d < 0.7 ? L[2] : L[1])); }
-    const crack = pts => { for (let i = 0; i + 1 < pts.length; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let t = 0; t <= n; t++) { const x = Math.round(x0 + ((x1 - x0) * t) / n), y = Math.round(y0 + ((y1 - y0) * t) / n) + b; if (P.a(x, y)) { P.set(x, y, L[(t + fr) % 3 === 0 ? 2 : 1]); } } } };
-    crack([[18, 24], [22, 30], [20, 36], [24, 42]]); crack([[34, 23], [31, 29], [35, 34], [33, 40]]); crack([[26, 30], [29, 33], [27, 37]]); crack([[6, 28], [8, 33]]); crack([[49, 27], [47, 32]]);
+    for (const s of [-1, 1]) {
+      for (let y = 22 + b; y < 40; y++)
+        for (let k = 0; k < 7; k++) {
+          const x = s < 0 ? 4 + k : 45 + k;
+          P.set(x, y, ramp(Rk, (s < 0 ? 0.65 : 0.35) - (y - 22) * 0.01, x, y, 0.4));
+        }
+      fillEllipse(P, s < 0 ? 7.5 : 48.5, 43 + (s < 0 ? b : 1 - b), 5.5, 5, (x, y, nx, ny, d) => (d < 0.35 ? L[3] : d < 0.7 ? L[2] : L[1]));
+    }
+    const crack = pts => {
+      for (let i = 0; i + 1 < pts.length; i++) {
+        const [x0, y0] = pts[i],
+          [x1, y1] = pts[i + 1],
+          n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+        for (let t = 0; t <= n; t++) {
+          const x = Math.round(x0 + ((x1 - x0) * t) / n),
+            y = Math.round(y0 + ((y1 - y0) * t) / n) + b;
+          if (P.a(x, y)) {
+            P.set(x, y, L[(t + fr) % 3 === 0 ? 2 : 1]);
+          }
+        }
+      }
+    };
+    crack([
+      [18, 24],
+      [22, 30],
+      [20, 36],
+      [24, 42]
+    ]);
+    crack([
+      [34, 23],
+      [31, 29],
+      [35, 34],
+      [33, 40]
+    ]);
+    crack([
+      [26, 30],
+      [29, 33],
+      [27, 37]
+    ]);
+    crack([
+      [6, 28],
+      [8, 33]
+    ]);
+    crack([
+      [49, 27],
+      [47, 32]
+    ]);
     fillEllipse(P, 28, 13 + b, 6.5, 5.5, (x, y, nx, ny) => lit(Rk, nx, ny, x, y, 0.55));
-    for (const ex of [25, 30]) { P.set(ex, 13 + b, L[3]); P.set(ex + 1, 13 + b, L[2]); P.set(ex, 14 + b, L[1]); P.set(ex + 1, 14 + b, L[1]); }
+    for (const ex of [25, 30]) {
+      P.set(ex, 13 + b, L[3]);
+      P.set(ex + 1, 13 + b, L[2]);
+      P.set(ex, 14 + b, L[1]);
+      P.set(ex + 1, 14 + b, L[1]);
+    }
     for (let k = 0; k < 5; k++) P.set(24 + k * 2, 8 + b - (k % 2) * 2, L[k % 2 ? 3 : 2]);
     crownOn(P, 28, 9 + b, 11, ['#fff0a0', '#ff5a14']);
-    P.outline(0.4); return P.done();
+    P.outline(0.4);
+    return P.done();
   }
   // 8 Liche de Givre : crâne couronné de glace, robe de givre, bâton à orbe gelée
   function bossLiche(fr) {
-    const P = new Pix(48, 54), I = BOSS_PAL.ice, Bn = BOSS_PAL.bone, b = fr ? 1 : 0;
-    for (let y = 18 + b; y < 50; y++) { const w = 6 + (y - 18) * 0.42, sway = Math.sin(y * 0.3 + fr * Math.PI) * 1; for (let x = Math.round(22 - w + sway); x <= Math.round(22 + w + sway); x++) { const nx = (x - 22 - sway) / w; P.set(x, y, ramp(I, 0.5 - nx * 0.35 - (y - 18) * 0.005 + ((x + y) % 7 === 0 ? 0.2 : 0), x, y, 0.5)); } }
-    for (let x = 6; x < 40; x++) { const c = Math.round(1.5 + 1.5 * Math.sin(x * 1.7)); for (let y = 50 - c; y < 54; y++) P.clr(x, y); }
+    const P = new Pix(48, 54),
+      I = BOSS_PAL.ice,
+      Bn = BOSS_PAL.bone,
+      b = fr ? 1 : 0;
+    for (let y = 18 + b; y < 50; y++) {
+      const w = 6 + (y - 18) * 0.42,
+        sway = Math.sin(y * 0.3 + fr * Math.PI) * 1;
+      for (let x = Math.round(22 - w + sway); x <= Math.round(22 + w + sway); x++) {
+        const nx = (x - 22 - sway) / w;
+        P.set(x, y, ramp(I, 0.5 - nx * 0.35 - (y - 18) * 0.005 + ((x + y) % 7 === 0 ? 0.2 : 0), x, y, 0.5));
+      }
+    }
+    for (let x = 6; x < 40; x++) {
+      const c = Math.round(1.5 + 1.5 * Math.sin(x * 1.7));
+      for (let y = 50 - c; y < 54; y++) P.clr(x, y);
+    }
     for (let y = 20 + b; y < 46; y++) P.set(22, y, I[5]);
     fillEllipse(P, 22, 14 + b, 6.5, 6.5, (x, y, nx, ny) => lit(Bn, nx, ny, x, y, 0.62));
-    for (const ex of [19, 24]) { P.set(ex, 13 + b, EYE); P.set(ex + 1, 13 + b, EYE); P.set(ex, 14 + b, EYE); P.set(ex + 1, 14 + b, EYE); P.set(ex, 13 + b, rgb('#7ad8ff')); }
+    for (const ex of [19, 24]) {
+      P.set(ex, 13 + b, EYE);
+      P.set(ex + 1, 13 + b, EYE);
+      P.set(ex, 14 + b, EYE);
+      P.set(ex + 1, 14 + b, EYE);
+      P.set(ex, 13 + b, rgb('#7ad8ff'));
+    }
     for (let x = 19; x < 26; x++) if (x % 2) P.set(x, 18 + b, EYE);
-    for (let k = 0; k < 7; k++) { const x = 16 + k * 2, h = k % 2 ? 4 : 7; for (let y = 0; y < h; y++) P.set(x, 8 + b - y, I[y > h - 2 ? 5 : 3]); }
+    for (let k = 0; k < 7; k++) {
+      const x = 16 + k * 2,
+        h = k % 2 ? 4 : 7;
+      for (let y = 0; y < h; y++) P.set(x, 8 + b - y, I[y > h - 2 ? 5 : 3]);
+    }
     for (let y = 6; y < 50; y++) P.set(38, y + (y > 40 ? 0 : b), rgb(y % 6 === 0 ? '#c8dcf0' : '#5a6a8a'));
-    for (let t = 0; t < 6; t++) { P.set(29 + t, 27 + b, Bn[2]); }
-    P.set(36, 26 + b, Bn[3]); P.set(37, 27 + b, Bn[2]);
+    for (let t = 0; t < 6; t++) {
+      P.set(29 + t, 27 + b, Bn[2]);
+    }
+    P.set(36, 26 + b, Bn[3]);
+    P.set(37, 27 + b, Bn[2]);
     fillEllipse(P, 38, 5 + b, 4, 4, (x, y, nx, ny, d) => (d < 0.3 ? I[5] : lit(I, nx, ny, x, y, 0.75)));
-    for (let k = 0; k < 6; k++) { const a = k + fr * 0.5; P.set(Math.round(38 + Math.cos(a) * 6), Math.round(5 + b + Math.sin(a) * 6), I[5]); }
-    P.outline(0.42); return P.done();
+    for (let k = 0; k < 6; k++) {
+      const a = k + fr * 0.5;
+      P.set(Math.round(38 + Math.cos(a) * 6), Math.round(5 + b + Math.sin(a) * 6), I[5]);
+    }
+    P.outline(0.42);
+    return P.done();
   }
   // 9 Le Dévoreur d'Éther (mythique) : bouche du vide, yeux multiples, tentacules, liseré prismatique
   function bossDevoreur(fr) {
-    const P = new Pix(60, 56), V = BOSS_PAL.void, T = BOSS_PAL.teeth, b = fr ? 1 : 0;
+    const P = new Pix(60, 56),
+      V = BOSS_PAL.void,
+      T = BOSS_PAL.teeth,
+      b = fr ? 1 : 0;
     const prism = ['#ff4a7a', '#ffb43a', '#5ee870', '#5aa8ff', '#c47cff'].map(rgb);
-    for (let k = 0; k < 7; k++) { const a0 = -0.4 + k * 0.6; for (let t = 0; t < 18; t++) { const a = a0 + Math.sin(t * 0.35 + k + fr * 1.4) * 0.25, r = 14 + t, x = Math.round(30 + Math.cos(a + Math.PI / 2) * r * 0.9), y = Math.round(28 + Math.sin(a + Math.PI / 2) * r * 0.55); if (y >= 56) continue; P.set(x, y, V[t > 12 ? 2 : 3]); if (t < 12) P.set(x + 1, y, V[2]); if (t === 17) P.set(x, y, prism[k % 5]); } }
-    fillEllipse(P, 30, 26 + b * 0.5, 20, 18, (x, y, nx, ny, d) => (d > 0.86 ? prism[Math.floor((Math.atan2(ny, nx) + Math.PI) / (Math.PI * 2) * 15 + fr) % 5] : lit(V, nx, ny, x, y, 0.45)));
+    for (let k = 0; k < 7; k++) {
+      const a0 = -0.4 + k * 0.6;
+      for (let t = 0; t < 18; t++) {
+        const a = a0 + Math.sin(t * 0.35 + k + fr * 1.4) * 0.25,
+          r = 14 + t,
+          x = Math.round(30 + Math.cos(a + Math.PI / 2) * r * 0.9),
+          y = Math.round(28 + Math.sin(a + Math.PI / 2) * r * 0.55);
+        if (y >= 56) continue;
+        P.set(x, y, V[t > 12 ? 2 : 3]);
+        if (t < 12) P.set(x + 1, y, V[2]);
+        if (t === 17) P.set(x, y, prism[k % 5]);
+      }
+    }
+    fillEllipse(P, 30, 26 + b * 0.5, 20, 18, (x, y, nx, ny, d) =>
+      d > 0.86 ? prism[Math.floor(((Math.atan2(ny, nx) + Math.PI) / (Math.PI * 2)) * 15 + fr) % 5] : lit(V, nx, ny, x, y, 0.45)
+    );
     fillEllipse(P, 32, 31 + b * 0.5, 11, 6.5 + b, (x, y, nx, ny, d) => (d > 0.72 ? V[0] : rgb('#0a0412')));
-    for (let k = 0; k < 9; k++) { const x = 23 + k * 2.2, up = k % 2; for (let t = 0; t < 3; t++) { P.set(Math.round(x), Math.round(25 + b * 0.5 + t), T[t ? 0 : 1]); P.set(Math.round(x + 0.6), Math.round(37 + b - t), T[t ? 0 : 1]); } void up; }
-    for (const [ex, ey, s] of [[22, 16, 2], [33, 13, 3], [42, 18, 2], [16, 24, 1], [45, 26, 1], [28, 19, 1]]) { fillEllipse(P, ex, ey + b * 0.5, s + 0.6, s + 0.3, (x, y, nx, ny, d) => (d < 0.35 ? rgb('#ff4a7a') : d < 0.7 ? rgb('#ffd0e0') : rgb('#fff6fa'))); P.set(ex, ey + b * 0.5, EYE); }
+    for (let k = 0; k < 9; k++) {
+      const x = 23 + k * 2.2,
+        up = k % 2;
+      for (let t = 0; t < 3; t++) {
+        P.set(Math.round(x), Math.round(25 + b * 0.5 + t), T[t ? 0 : 1]);
+        P.set(Math.round(x + 0.6), Math.round(37 + b - t), T[t ? 0 : 1]);
+      }
+      void up;
+    }
+    for (const [ex, ey, s] of [
+      [22, 16, 2],
+      [33, 13, 3],
+      [42, 18, 2],
+      [16, 24, 1],
+      [45, 26, 1],
+      [28, 19, 1]
+    ]) {
+      fillEllipse(P, ex, ey + b * 0.5, s + 0.6, s + 0.3, (x, y, nx, ny, d) =>
+        d < 0.35 ? rgb('#ff4a7a') : d < 0.7 ? rgb('#ffd0e0') : rgb('#fff6fa')
+      );
+      P.set(ex, ey + b * 0.5, EYE);
+    }
     crownOn(P, 30, 9 + b, 15, ['#ff4a7a', '#5aa8ff']);
-    P.outline(0.35, [20, 6, 30]); return P.done();
+    P.outline(0.35, [20, 6, 30]);
+    return P.done();
   }
   function bossArt() {
     const two = f => [f(0), f(1)];

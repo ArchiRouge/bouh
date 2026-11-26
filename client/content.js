@@ -1196,17 +1196,66 @@
   ];
   const DG_MYTH = { n: 'Mythique', c: '#ff4a7a' };
   // boss : dessin (type de monstre), rareté (5 = mythique), objet propre, titre (bit de « ttl »)
+  /* Attaque spéciale de chaque boss (sk) : annoncée par un cercle au sol pendant « wind » secondes, puis déclenchée.
+     at : 'cible' (sous le héros visé) ou 'soi' (autour du boss) ; r rayon ; k dégâts (× attaque du boss) ;
+     fx : 'saut' (le boss atterrit au centre), 'lent' (ralentit 3 s), 'racines' (presque immobile 1,5 s),
+     'brule' (dégâts sur 4 s), 'attire' (ramène les héros touchés contre le boss). */
   const DG_BOSSES = [
-    { type: 'boss', n: 'Roi Gelée', r: 0, item: 63 },
-    { type: 'souche', n: 'Souche ancestrale', r: 0, item: 64 },
-    { type: 'loup', n: 'Grand Loup des brumes', r: 1, item: 65 },
-    { type: 'abeille', n: 'Reine des abeilles', r: 1, item: 66 },
-    { type: 'golem', n: 'Golem de cristal ancien', r: 2, item: 67 },
-    { type: 'salamandre', n: 'Salamandre-reine', r: 3, item: 68 },
-    { type: 'spectre', n: 'Spectre couronné', r: 3, item: 69 },
-    { type: 'magma', n: 'Colosse de magma', r: 4, item: 70, title: 1 },
-    { type: 'esprit', n: 'Liche de Givre', r: 4, item: 71, title: 2 },
-    { type: 'spectre', n: "Le Dévoreur d'Éther", r: 5, item: 72, title: 4 }
+    {
+      type: 'boss',
+      n: 'Roi Gelée',
+      r: 0,
+      item: 63,
+      sk: { n: 'Saut écrasant', at: 'cible', r: 2.2, wind: 1.1, k: 1.6, fx: ['saut', 'lent'] }
+    },
+    { type: 'souche', n: 'Souche ancestrale', r: 0, item: 64, sk: { n: 'Racines', at: 'cible', r: 1.8, wind: 1, k: 1.2, fx: ['racines'] } },
+    {
+      type: 'loup',
+      n: 'Grand Loup des brumes',
+      r: 1,
+      item: 65,
+      sk: { n: 'Bond', at: 'cible', r: 1.6, wind: 0.8, k: 1.5, fx: ['saut', 'brule'] }
+    },
+    { type: 'abeille', n: 'Reine des abeilles', r: 1, item: 66, sk: { n: 'Essaim', at: 'cible', r: 2.2, wind: 1, k: 0.8, fx: ['brule'] } },
+    {
+      type: 'golem',
+      n: 'Golem de cristal ancien',
+      r: 2,
+      item: 67,
+      sk: { n: 'Éclats de cristal', at: 'soi', r: 3.2, wind: 1.2, k: 1.4, fx: [] }
+    },
+    {
+      type: 'salamandre',
+      n: 'Salamandre-reine',
+      r: 3,
+      item: 68,
+      sk: { n: 'Souffle de feu', at: 'cible', r: 2.4, wind: 1, k: 1.3, fx: ['brule'] }
+    },
+    { type: 'spectre', n: 'Spectre couronné', r: 3, item: 69, sk: { n: 'Chaînes', at: 'cible', r: 2, wind: 0.9, k: 1, fx: ['attire'] } },
+    {
+      type: 'magma',
+      n: 'Colosse de magma',
+      r: 4,
+      item: 70,
+      title: 1,
+      sk: { n: 'Frappe du sol', at: 'soi', r: 3.5, wind: 1.3, k: 2, fx: ['racines'] }
+    },
+    {
+      type: 'esprit',
+      n: 'Liche de Givre',
+      r: 4,
+      item: 71,
+      title: 2,
+      sk: { n: 'Gel de la salle', at: 'soi', r: 5, wind: 1.6, k: 1.1, fx: ['lent'] }
+    },
+    {
+      type: 'spectre',
+      n: "Le Dévoreur d'Éther",
+      r: 5,
+      item: 72,
+      title: 4,
+      sk: { n: 'Dévorer', at: 'soi', r: 6, wind: 1.8, k: 2, fx: ['attire'] }
+    }
   ];
   const TITLES = [
     [1, 'Fléau du Colosse'],

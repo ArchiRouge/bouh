@@ -2125,6 +2125,39 @@
       }
       if (p.lvl >= MAX_LVL) p.xp = 0;
     }
+    // attaque spéciale d'un boss (DG_BOSSES[].sk) : touche les héros dans le cercle annoncé
+    bossSkill(m, c) {
+      const S = DG_BOSSES[m.dgBoss].sk,
+        fx = new Set(S.fx);
+      if (fx.has('saut') && this.W.walkable(Math.floor(c.x), Math.floor(c.y))) {
+        m.x = c.x;
+        m.y = c.y;
+      }
+      this.ev({ e: 'bskx', m: m.k, x: +c.x.toFixed(2), y: +c.y.toFixed(2), r: S.r, fx: S.fx });
+      for (const p of this.players.values()) {
+        if (p.dead || Math.hypot(p.x - c.x, p.y - c.y) > S.r) continue;
+        this.hurt(p, m.atk * S.k, m);
+        if (p.dead) continue;
+        if (fx.has('lent')) p.pslowT = this.t + 3;
+        if (fx.has('racines')) p.rootT = this.t + 1.5;
+        if (fx.has('brule')) {
+          p.pburnT = this.t + 4;
+          p.pburnDps = Math.max(1, m.atk * 0.15);
+          p.pburnBy = m;
+        }
+        if (fx.has('attire')) {
+          const d = Math.hypot(p.x - m.x, p.y - m.y) || 1,
+            nx = m.x + ((p.x - m.x) / d) * 1.1,
+            ny = m.y + ((p.y - m.y) / d) * 1.1;
+          if (this.W.walkable(Math.floor(nx), Math.floor(ny))) {
+            p.x = nx;
+            p.y = ny;
+            p.lastMv = this.t;
+            this.ev({ e: 'tp', id: p.id, x: p.x, y: p.y, dash: 1 });
+          }
+        }
+      }
+    }
     // un joueur adverse sur les îles (pvp) ; foe(p, id) : cible valide seulement si le combat entre joueurs est permis
     foe(p, id) {
       const o = this.players.get(String(id));
@@ -2351,6 +2384,27 @@
           moveBy(W, m, (dx / d) * s, (dy / d) * s);
           m.moving = true;
         };
+        // boss de donjon : attaque spéciale annoncée par un cercle au sol, immobile pendant l'annonce
+        if (m.dgBoss != null) {
+          if (m.cast) {
+            if (this.t >= m.cast.at) {
+              this.bossSkill(m, m.cast);
+              m.cast = null;
+            }
+            continue;
+          }
+          if (tp && !m.returning) {
+            m.skT = (m.skT == null ? 4 : m.skT) - dt;
+            if (m.skT <= 0) {
+              const S = DG_BOSSES[m.dgBoss].sk,
+                o = S.at === 'soi' ? m : tp;
+              m.skT = 7 + Math.random() * 3;
+              m.cast = { at: this.t + S.wind, x: o.x, y: o.y };
+              this.ev({ e: 'bsk', m: m.k, n: S.n, x: +o.x.toFixed(2), y: +o.y.toFixed(2), r: S.r, d: S.wind });
+              continue;
+            }
+          }
+        }
         if (m.returning) {
           step(m.hx, m.hy, m.speed * 1.6);
           m.hp = Math.min(m.maxhp, m.hp + m.maxhp * 0.6 * dt);
@@ -2444,7 +2498,7 @@
         potions: p.potions,
         dead: p.dead ? 1 : 0,
         deadT: Math.ceil(p.deadT),
-        speed: p.speed * (p.hasteT > this.t ? 1.3 : 1) * (p.pslowT > this.t ? 0.65 : 1),
+        speed: p.speed * (p.hasteT > this.t ? 1.3 : 1) * (p.pslowT > this.t ? 0.65 : 1) * (p.rootT > this.t ? 0.2 : 1),
         pburn: p.pburnT > this.t ? 1 : 0,
         pslow: p.pslowT > this.t ? 1 : 0,
         cls: p.cls,

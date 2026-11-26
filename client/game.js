@@ -503,7 +503,7 @@
       lunge: 0,
       phase: Math.random() * TAU,
       flip: false,
-      scale: s.type === 'boss' || s.boss ? 2 : C.MOBDEF[s.type].sc || 1,
+      scale: s.type === 'boss' || s.boss ? 1.6 : C.MOBDEF[s.type].sc || 1,
       elite: s.elite ? 1 : 0,
       dgBoss: s.boss ? s.bi : null
     };
@@ -2244,6 +2244,26 @@
       case 'zone':
         ZONES.push({ x: ev.x, y: ev.y, r: ev.r, until: time + ev.d });
         break;
+      case 'bsk': {
+        const mb = mobs[ev.m];
+        TELE.push({ m: ev.m, x: ev.x, y: ev.y, r: ev.r, d: ev.d, until: time + ev.d });
+        if (mb) floatAt(mb, ev.n + ' !', '#ff9a7a', true);
+        break;
+      }
+      case 'bskx': {
+        const pos = { x: ev.x, y: ev.y, z: W.hAt(ev.x, ev.y) };
+        ring(pos, ev.r, '#ff7a5a', 0.45);
+        burst(pos, '#ffb080', 26, 30);
+        if (Math.hypot(me.x - ev.x, me.y - ev.y) < ev.r + 2) shake = Math.max(shake, 0.35);
+        if ((ev.fx || []).includes('saut')) {
+          const mb = mobs[ev.m];
+          if (mb) {
+            mb.x = mb.fx = mb.tx = ev.x;
+            mb.y = mb.fy = mb.ty = ev.y;
+          }
+        }
+        break;
+      }
       case 'imm': {
         const mb = mobs[ev.m];
         if (mb) floatAt(mb, ev.fx === 'burn' ? 'Insensible au feu' : 'Insensible au froid', '#c8c0d8');
@@ -2560,6 +2580,13 @@
         j0 = Math.floor(me.y);
       for (let b = -4; b <= 4; b++)
         for (let a = -4; a <= 4; a++) if (W.inb(i0 + a, j0 + b) && a * a + b * b <= 18) SEEN[idx(i0 + a, j0 + b)] = 1;
+      const bm = mobs[W.dg.bossK];
+      if (!bossIntroDone && bm.alive && Math.hypot(bm.x - me.x, bm.y - me.y) < 5.5) {
+        bossIntroDone = true;
+        const T = C.dgTier(bm.dgBoss);
+        bossIntro = { t: time, name: bm.name, tier: T.n, col: T.c };
+        shake = Math.max(shake, 0.3);
+      }
     }
     nearCorpse = null;
     for (const cp of CORPSES) if (Math.hypot(cp.x - me.x, cp.y - me.y) < 1.4) nearCorpse = cp;
@@ -3198,7 +3225,24 @@
       }
     };
     let top;
-    if (ART.mobs[m.type]) {
+    const bi = m.dgBoss != null ? m.dgBoss : m.type === 'boss' ? 0 : -1;
+    if (bi >= 0) {
+      // boss : dessin propre (2 images, il respire ; immobile et tremblant pendant une attaque annoncée)
+      const cast = TELE.find(t => t.m === m.k && t.until > time),
+        fr = Math.floor(time * (cast ? 8 : 1.6) + m.phase) % 2,
+        img = ART.bosses[bi][fr];
+      const w = img.width,
+        h = img.height,
+        jit = cast ? Math.round(Math.sin(time * 60)) : 0;
+      if (m.flip) {
+        g.save();
+        g.translate(sx + lx + jit, 0);
+        g.scale(-1, 1);
+        dImg(img, -(w >> 1), sy - h + 2 + ly);
+        g.restore();
+      } else dImg(img, sx - (w >> 1) + lx + jit, sy - h + 2 + ly);
+      top = sy - h;
+    } else if (ART.mobs[m.type]) {
       // bestiaire : 2 images (marche ou battement d'ailes), regard vers la cible ; les volants flottent
       const fly = ART.floaters[m.type],
         fr = Math.floor(time * (fly ? 6 : m.moving ? 7 : 1.5) + m.phase) % 2,
@@ -3316,6 +3360,29 @@
         const all = st.concat(dy).sort((a, b) => a.x + a.y - (b.x + b.y));
         for (const e of all) drawEntity(e, ox, oy);
       } else for (const e of st) drawEntity(e, ox, oy);
+    }
+    // attaques de boss annoncées : cercle rouge au sol qui se remplit jusqu'au déclenchement
+    for (let i = TELE.length - 1; i >= 0; i--) {
+      const T = TELE[i];
+      if (time > T.until) {
+        TELE.splice(i, 1);
+        continue;
+      }
+      const [tx, ty] = ePx({ x: T.x, y: T.y, z: W.hAt(T.x, T.y) }),
+        f = 1 - (T.until - time) / T.d,
+        n = Math.max(16, Math.floor(T.r * 14));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * TAU;
+        g.fillStyle = k % 2 ? '#ff5a4a' : '#ffd0a0';
+        g.globalAlpha = 0.6 + 0.4 * Math.sin(time * 14);
+        g.fillRect(Math.round(ox + tx + Math.cos(a) * T.r * 16), Math.round(oy + ty + Math.sin(a) * T.r * 8), 1, 1);
+      }
+      g.globalAlpha = 0.18 + 0.22 * f;
+      g.fillStyle = '#e8414a';
+      g.beginPath();
+      g.ellipse(ox + tx, oy + ty, T.r * 16 * f, T.r * 8 * f, 0, 0, TAU);
+      g.fill();
+      g.globalAlpha = 1;
     }
     for (const Z of ZONES) {
       const [zx, zy] = ePx({ x: Z.x, y: Z.y, z: W.hAt(Z.x, Z.y) });
@@ -3931,11 +3998,21 @@
     {
       const hb = !DGN && mode === 'play' && (W.bridges || []).find(b => b.kind === 'home');
       if (hb && !me.dead && !travel) {
-        const bx = (lastOX + SUBX / RQ + (hb.hx - hb.hy) * 16) * K, by = (lastOY + SUBY / RQ + (hb.hx + hb.hy) * 8) * K;
+        const bx = (lastOX + SUBX / RQ + (hb.hx - hb.hy) * 16) * K,
+          by = (lastOY + SUBY / RQ + (hb.hx + hb.hy) * 8) * K;
         const m = 18;
         if (bx < m || bx > UW - m || by < m + ST || by > UH - m - SB) {
-          const cx = UW / 2, cy = UH / 2, dx = bx - cx, dy = by - cy, k = Math.min((UW / 2 - 30) / Math.abs(dx || 1e-6), (UH / 2 - 60) / Math.abs(dy || 1e-6));
-          const ax = Math.round(cx + dx * k), ay = Math.round(cy + dy * k), a = Math.atan2(dy, dx), ca = Math.cos(a), sa = Math.sin(a), pul = 0.75 + 0.25 * Math.sin(time * 4);
+          const cx = UW / 2,
+            cy = UH / 2,
+            dx = bx - cx,
+            dy = by - cy,
+            k = Math.min((UW / 2 - 30) / Math.abs(dx || 1e-6), (UH / 2 - 60) / Math.abs(dy || 1e-6));
+          const ax = Math.round(cx + dx * k),
+            ay = Math.round(cy + dy * k),
+            a = Math.atan2(dy, dx),
+            ca = Math.cos(a),
+            sa = Math.sin(a),
+            pul = 0.75 + 0.25 * Math.sin(time * 4);
           const tri = (s, col) => {
             u.fillStyle = col;
             u.beginPath();
@@ -4048,6 +4125,25 @@
         y = UH - 38 - SB;
       pring(x, y, 18, 'rgba(255,240,210,' + (0.35 + 0.25 * Math.sin(time * 4)).toFixed(2) + ')');
       text(u, 'Bouger', x, y - 3, '#fff', 'center');
+    }
+    // présentation du boss à l'entrée de sa salle : nom et rareté en grand
+    if (bossIntro) {
+      const f = (time - bossIntro.t) / 2.6;
+      if (f >= 1) bossIntro = null;
+      else {
+        const a = f < 0.15 ? f / 0.15 : f > 0.75 ? (1 - f) / 0.25 : 1,
+          y = Math.round(UH * 0.3);
+        u.globalAlpha = a * 0.75;
+        u.fillStyle = '#0c0a1c';
+        u.fillRect(0, y - 8, UW, 46);
+        u.globalAlpha = a;
+        u.fillStyle = bossIntro.col;
+        u.fillRect(0, y - 8, UW, 1);
+        u.fillRect(0, y + 37, UW, 1);
+        text(u, bossIntro.name, UW >> 1, y, '#fff2d0', 'center', textW(bossIntro.name, 3) < UW - 16 ? 3 : 2);
+        text(u, 'Boss ' + bossIntro.tier, UW >> 1, y + 24, bossIntro.col, 'center', 1);
+        u.globalAlpha = 1;
+      }
     }
     // traversée d'un pont : la brume monte (départ), puis se dissipe à l'arrivée sur la nouvelle île
     if (travel) drawVeil(clamp((time - travel.t) / 1.1, 0, 1), travel.col, 'Traversée…', travel.name);
@@ -4384,6 +4480,9 @@
       await new Promise(() => {});
     }
   }
+  const TELE = []; // attaques de boss annoncées
+  let bossIntro = null,
+    bossIntroDone = false;
   let restoredSolo = null,
     arrive = null;
   function boot() {

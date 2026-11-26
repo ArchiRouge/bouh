@@ -238,12 +238,55 @@ test('le serveur et le client parlent la même version', () => {
 
 test("traverser ensemble : deux héros partis à moins de 10 s d'écart arrivent sur la même île", () => {
   for (let k = 0; k < 20; k++) {
-    const W = C.buildWorld(C.SEED), sim = new C.Sim(W), eb = W.bridges.find(b => b.kind === 'ether'), to = [];
-    for (const id of ['a', 'b']) { const p = sim.addPlayer(id, id, [0, 0, 0, 0, 0], { lvl: 5, ether: 10 }); p.x = eb.ex; p.y = eb.ey; }
+    const W = C.buildWorld(C.SEED),
+      sim = new C.Sim(W),
+      eb = W.bridges.find(b => b.kind === 'ether'),
+      to = [];
+    for (const id of ['a', 'b']) {
+      const p = sim.addPlayer(id, id, [0, 0, 0, 0, 0], { lvl: 5, ether: 10 });
+      p.x = eb.ex;
+      p.y = eb.ey;
+    }
     sim.handle('a', { t: 'cross', b: 0 });
     for (let i = 0; i < 50; i++) sim.step(0.1); // 5 s plus tard
     sim.handle('b', { t: 'cross', b: 0 });
     for (const e of sim.events) if (e.e === 'travel') to.push(JSON.stringify(e.to));
-    assert.equal(to.length, 2); assert.equal(to[0], to[1]);
+    assert.equal(to.length, 2);
+    assert.equal(to[0], to[1]);
+  }
+});
+
+test('attaque spéciale de chaque boss : annoncée, puis elle touche le héros resté dans le cercle', () => {
+  for (let b = 0; b < C.DG_BOSSES.length; b++) {
+    const isle = { k: 'donjon', s: 11, r: Math.min(4, C.DG_BOSSES[b].r), b, f: { k: 'givre' } };
+    const W = C.buildWorld(C.SEED, isle),
+      sim = new C.Sim(W, { lvl: 20 }),
+      boss = sim.mobs[W.dg.bossK],
+      S = C.DG_BOSSES[b].sk;
+    for (const o of sim.mobs) if (o !== boss) ((o.alive = false), (o.respawnT = 1e9));
+    const near = sim.addPlayer('a', 'Proche', [0, 0, 0, 0, 0], { lvl: 20, isle });
+    near.x = boss.x + 0.6;
+    near.y = boss.y;
+    near.hp = near.maxhp = 1e6;
+    boss.target = 'a';
+    boss.skT = 0;
+    boss.atkCd = 1e9; // seule l'attaque spéciale peut toucher
+    let told = null;
+    for (let i = 0; i < 40 && !told; i++) {
+      sim.step(0.1);
+      told = sim.events.find(e => e.e === 'bsk');
+    }
+    assert.ok(told, 'attaque annoncée : ' + S.n);
+    assert.equal(told.n, S.n);
+    const before = near.hp;
+    for (let i = 0; i < 25; i++) {
+      sim.step(0.1);
+      boss.atkCd = 1e9;
+    }
+    assert.ok(
+      sim.events.some(e => e.e === 'bskx'),
+      'attaque déclenchée : ' + S.n
+    );
+    assert.ok(near.hp < before, S.n + ' doit toucher le héros resté dans le cercle');
   }
 });

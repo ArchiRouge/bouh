@@ -10,7 +10,7 @@ Réponses au formulaire « Points en suspens ». Elles font foi pour la suite.
 | Mourir dans un donjon | retour à l'entrée du donjon | codé |
 | Boss mythiques | un seul, le Dévoreur d'Éther | codé |
 | Titres | boss Légendaires et Mythique seulement, au-dessus du nom | codé |
-| Dessins propres aux boss | au prochain chantier (maquette d'abord) | **prochain chantier** |
+| Dessins propres aux boss | les dix validés tels quels (série 2) | codé |
 | Îles à ajouter | les quatre : Champignons, Céleste, Lagon de Corail, Marais englouti | à faire (maquette d'abord) |
 | Traverser ensemble | à moins de 10 s d'écart depuis la même île, même destination | codé |
 | Flèche vers le pont du retour | oui, au bord de l'écran | codé |
@@ -22,4 +22,15 @@ Réponses au formulaire « Points en suspens ». Elles font foi pour la suite.
 | Découper game.js en modules | oui, au prochain moment calme | à faire |
 | Multijoueur en ligne (Fly.io, ~5 $/mois) | pas encore | — |
 | Apple Developer (99 €/an) | pas encore | — |
-| Prochain chantier | dessins des boss | en cours |
+| Prochain chantier | dessins des boss | codé |
+
+## Série 2 (dessins des boss)
+
+| Sujet | Décision | État |
+|---|---|---|
+| Les dix dessins | parfaits | codé |
+| Taille en jeu | comme la maquette | codé |
+| Couronne | sur chacun | codé |
+| Présentation à l'entrée de la salle | oui | codé |
+| Attaque spéciale par boss | oui | codé (liste dans donjons.md) |
+| Prochaine maquette | faiblesses entre éléments et bonus d'ensemble | à faire |

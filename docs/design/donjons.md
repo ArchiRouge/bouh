@@ -71,7 +71,7 @@ Les boss y sont de grandes versions couronnées des monstres du bestiaire ; en j
 Le butin propre au boss tombe à 5 % (Commun) et jusqu'à 12 % (Légendaire). Ce sont des objets dessinés pour le boss ;
 ceux qui se portent sont visibles sur le personnage.
 
-### Dessins propres (maquette v11, à valider)
+### Dessins propres (validés, en jeu)
 
 ![Boss](img/v11-boss.png)
 
@@ -79,8 +79,29 @@ Chaque boss a maintenant son dessin, à l'échelle d'un grand monstre (48 à 60 
 gelée royale avec un trésor englouti, vieux tronc sur ses racines, loup à crinière de brume, reine des abeilles avec son
 sceptre de miel, golem aux cristaux et au cœur lumineux, salamandre à collerette de flammes, spectre à lanterne et
 chaînes, colosse aux fissures de lave et aux poings en fusion, liche au crâne givré et à l'orbe gelée, et le Dévoreur
-d'Éther : bouche du vide, six yeux, tentacules et liseré arc-en-ciel. Dessins : `assets.js` (`bossArt`, pas encore en jeu) ;
+d'Éther : bouche du vide, six yeux, tentacules et liseré arc-en-ciel. Dessins : `assets.js` (`bossArt`, aussi pour le Roi Gelée du Bourg) ;
 maquette : `prototype/maquette-boss.html`.
+
+### En combat (validé dans le formulaire, série 2)
+
+- **Présentation** : en entrant dans sa salle, le nom du boss et sa rareté s'affichent en grand pendant 2 s.
+- **Attaque spéciale** (toutes les 7 à 10 s quand il a une cible) : annoncée par « Nom de l'attaque ! » et un cercle rouge
+  au sol qui se remplit ; le boss reste immobile et tremble pendant l'annonce. Il suffit de sortir du cercle à temps.
+
+| Boss | Attaque | Où | Effet |
+|---|---|---|---|
+| Roi Gelée | Saut écrasant | sous la cible | il atterrit dessus, dégâts ×1,6, ralentit |
+| Souche ancestrale | Racines | sous la cible | dégâts ×1,2, presque immobile 1,5 s |
+| Grand Loup des brumes | Bond | sous la cible | il bondit, dégâts ×1,5, saignement 4 s |
+| Reine des abeilles | Essaim | sous la cible | dégâts ×0,8 puis 4 s de piqûres |
+| Golem de cristal ancien | Éclats de cristal | autour de lui | dégâts ×1,4 |
+| Salamandre-reine | Souffle de feu | sous la cible | dégâts ×1,3, brûlure 4 s |
+| Spectre couronné | Chaînes | sous la cible | dégâts, ramène le héros contre lui |
+| Colosse de magma | Frappe du sol | autour de lui | dégâts ×2, presque immobile 1,5 s |
+| Liche de Givre | Gel de la salle | grand cercle autour d'elle | dégâts ×1,1, ralentit 3 s |
+| Le Dévoreur d'Éther | Dévorer | très grand cercle | dégâts ×2, attire tout le monde |
+
+Données : `DG_BOSSES[].sk` dans `content.js` ; moteur : `Sim.bossSkill` ; événements `bsk` (annonce) et `bskx` (déclenchement).
 
 ## Récompenses
 
