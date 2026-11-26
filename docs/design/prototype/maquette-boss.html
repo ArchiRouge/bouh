@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Maquette des boss</title>
+<style>body{margin:0;background:#120e22;color:#f4ead8;font:15px/1.35 Georgia,serif}canvas{display:block;image-rendering:pixelated}</style></head><body>
+<canvas id="c"></canvas>
+<script src="../../../client/content.js"></script>
+<script src="../../../client/core.js"></script>
+<script src="../../../client/sprites.js"></script>
+<script src="../../../client/assets.js"></script>
+<script>
+(() => {
+  const C = window.EtheriaCore, A = window.EtheriaArt, WW = 1260, cv = document.getElementById('c'), g = cv.getContext('2d');
+  cv.width = WW; cv.height = 3000; g.imageSmoothingEnabled = false;
+  const ART = A.buildAll(C.buildWorld(C.SEED)), hero = A.charSet([1, 6, 2, 1, 0], C.gearStr({ head: [33, 4], chest: [34, 4], legs: [35, 4], feet: [36, 4], weapon: [39, 4] }));
+  const label = (x, y, t, col, size, align, bold) => { g.font = `${bold ? 'bold ' : ''}${size || 15}px Georgia, serif`; g.textAlign = align || 'center'; g.fillStyle = col || '#f4ead8'; g.fillText(t, x, y); g.textAlign = 'left'; };
+  const old = (B) => B.type === 'boss' ? ART.boss : ART.mobs[B.type][0];
+  g.fillStyle = '#120e22'; g.fillRect(0, 0, WW, cv.height);
+  label(40, 60, 'Pixels Worlds — Dessins des boss', '#f4ead8', 40, 'left', true);
+  label(40, 92, 'Maquette v11 · un dessin propre à chaque boss de donjon · à droite de chaque carte : le dessin actuel (monstre agrandi)', '#c8bcdc', 18, 'left');
+  let Y = 130;
+  C.DG_BOSSES.forEach((B, i) => {
+    const col = i % 2, row = (i / 2) | 0, x0 = 30 + col * 610, y0 = Y + row * 380, T = C.dgTier(i), fr = ART.bosses[i];
+    g.fillStyle = '#1c1636'; g.fillRect(x0, y0, 590, 360); g.strokeStyle = T.c; g.lineWidth = B.r >= 4 ? 4 : 2; g.strokeRect(x0 + 1, y0 + 1, 588, 358);
+    if (B.r === 5) { const pr = ['#ff4a7a', '#ffb43a', '#5ee870', '#5aa8ff', '#c47cff']; for (let s = 0; s < 147; s++) { g.fillStyle = pr[s % 5]; g.fillRect(x0 + s * 4, y0, 4, 4); g.fillRect(x0 + s * 4, y0 + 356, 4, 4); } }
+    // sol + halo
+    g.fillStyle = 'rgba(255,255,255,.05)'; g.beginPath(); g.ellipse(x0 + 200, y0 + 300, 160, 26, 0, 0, 7); g.fill();
+    const im = fr[0], s = Math.min(5, Math.floor(230 / im.height)); g.drawImage(im, Math.round(x0 + 200 - im.width * s / 2), y0 + 304 - im.height * s, im.width * s, im.height * s);
+    const im1 = fr[1], s1 = 2; g.drawImage(im1, x0 + 400, y0 + 130 - im1.height * s1, im1.width * s1, im1.height * s1); label(x0 + 400 + im1.width, y0 + 150, 'image 2', '#c8bcdc', 13);
+    const o = old(B), so = 4; g.globalAlpha = 0.85; g.drawImage(o, x0 + 470, y0 + 290 - o.height * so, o.width * so, o.height * so); g.globalAlpha = 1; label(x0 + 470 + o.width * so / 2, y0 + 310, 'actuel', '#8a80a8', 13);
+    label(x0 + 20, y0 + 36, B.n, '#f4ead8', 22, 'left', true);
+    label(x0 + 20, y0 + 60, (B.r === 5 ? 'MYTHIQUE' : C.DG[B.r].n.toUpperCase()) + ' · butin : ' + C.ITEMS[B.item].n, T.c, 15, 'left', true);
+  });
+  Y += 5 * 380 + 20;
+  label(40, Y + 30, 'À l\'échelle du jeu, face à Archi404 (vue normale)', '#f2c94c', 26, 'left', true);
+  Y += 50; g.fillStyle = '#2a2244'; g.fillRect(20, Y, WW - 40, 360);
+  for (let x = 20; x < WW - 20; x += 24) for (let y = Y; y < Y + 360; y += 12) { g.fillStyle = ((x + y) / 12) % 2 ? '#30284e' : '#2a2244'; g.fillRect(x, y, 24, 12); }
+  const SC = 1.5; let x = 50; const base = Y + 320;
+  { const h = hero.front[0]; g.drawImage(h, x, base - hero.foot * SC, h.width * SC, h.height * SC); x += h.width * SC - 30; }
+  ART.bosses.forEach((fr, i) => { const im = fr[0], sc = 2; if (x + im.width * sc > WW - 30) return; g.drawImage(im, x, base - im.height * sc, im.width * sc, im.height * sc); x += im.width * sc + 6; });
+  window.__H = Y + 380;
+})();
+</script></body></html>

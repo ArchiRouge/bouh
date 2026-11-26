@@ -71,6 +71,17 @@ Les boss y sont de grandes versions couronnées des monstres du bestiaire ; en j
 Le butin propre au boss tombe à 5 % (Commun) et jusqu'à 12 % (Légendaire). Ce sont des objets dessinés pour le boss ;
 ceux qui se portent sont visibles sur le personnage.
 
+### Dessins propres (maquette v11, à valider)
+
+![Boss](img/v11-boss.png)
+
+Chaque boss a maintenant son dessin, à l'échelle d'un grand monstre (48 à 60 pixels), avec 2 images d'animation :
+gelée royale avec un trésor englouti, vieux tronc sur ses racines, loup à crinière de brume, reine des abeilles avec son
+sceptre de miel, golem aux cristaux et au cœur lumineux, salamandre à collerette de flammes, spectre à lanterne et
+chaînes, colosse aux fissures de lave et aux poings en fusion, liche au crâne givré et à l'orbe gelée, et le Dévoreur
+d'Éther : bouche du vide, six yeux, tentacules et liseré arc-en-ciel. Dessins : `assets.js` (`bossArt`, pas encore en jeu) ;
+maquette : `prototype/maquette-boss.html`.
+
 ## Récompenses
 
 - **Coffre final** :
