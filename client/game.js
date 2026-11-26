@@ -4,7 +4,7 @@
   const C = window.EtheriaCore, ARTAPI = window.EtheriaArt;
   // île où se trouve le héros (voyage par les ponts) : lue dans la sauvegarde avant de construire le monde
   const ISLE = (() => { try { const f = sessionStorage.getItem('etheria_isle_force'); if (f) return C.cleanIsle(JSON.parse(f)); } catch (e) { /* ignore */ } try { const sv = JSON.parse(localStorage.getItem('etheria_solo') || 'null') || (window.ETHERIA_SEED && window.ETHERIA_SEED.solo); return C.cleanIsle(sv && sv.isle); } catch (e) { return { k: 'bourg' }; } })();
-  const W = C.buildWorld(C.SEED, ISLE), ISLE_INFO = C.ISLES[W.isle] || C.ISLES.bourg, PVP = W.isle !== 'bourg';
+  const W = C.buildWorld(C.SEED, ISLE), PVP = W.isle !== 'bourg';
   const DGN = W.isle === 'donjon' ? C.DG[W.tier] : null; // dans un donjon : sa rareté (couleur, lumière)
   let ISLE_DG = null, simT = 0, simT0 = 0; // donjon de l'île [rareté, boss, éteint] ; horloge de la simulation (pièges)
   const sameIsle = (a, b) => a && b && a.k === b.k && (a.s | 0) === (b.s | 0);
@@ -446,7 +446,7 @@
   const chp = $('chprev').getContext('2d'); chp.imageSmoothingEnabled = false;
   function drawCharPreview() {
     if ($('char').hidden || !me.set) return;
-    const set = (prevSet || me.set).hd, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 10) % 8;
+    const set = prevSet || me.set, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 10) % 8;
     const img = d === 'sideL' ? set.sideL[fr] : d === 'side' ? set.side[fr] : set[d][Math.floor(time * 2) % 4 === 0 && d === 'front' ? 0 : fr];
     chp.clearRect(0, 0, 64, 68); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(20, 62, 24, 4); chp.drawImage(img, 3, 9);
   }
@@ -812,7 +812,6 @@
   // ck = même échelle exprimée comme l'ancien facteur (~1,2) pour les effets placés autour du héros.
   // 3 pixels d'écran par pixel de personnage quel que soit le recul de la caméra : le héros et son armure restent lisibles
   function charP() { return Math.max(1, Math.round(3 * RQ / S)) / RQ; }
-  function charK() { return charP() * 2; }
   function drawChar(e, sx, sy) {
     if (!e.set) return;
     const p = charP(), ck = p * 2, cs = e.set, dw = cs.w * p, dh = cs.h * p, dx0 = sx - cs.cx * p, dy0 = sy - cs.foot * p;
@@ -841,25 +840,25 @@
     if (m.lunge > 0 && mode === 'play') { const a = screenAng(m, me), k = Math.sin((1 - m.lunge / 0.15) * Math.PI); lx = Math.round(Math.cos(a) * 3 * k); ly = Math.round(Math.sin(a) * 2 * k); }
     if (m.elite || m.dgBoss != null) { const col = m.dgBoss != null ? C.dgTier(m.dgBoss).c : DGN ? DGN.c : '#c47cff', pu = 0.5 + 0.2 * Math.sin(time * 4 + m.phase); g.fillStyle = col; for (let a = 0; a < 24; a++) { const t = a / 24 * TAU + time; if ((a + Math.floor(time * 6)) % 3 === 0) continue; g.globalAlpha = pu; g.fillRect(Math.round(sx + Math.cos(t) * 9 * sc), Math.round(sy - 1 + Math.sin(t) * 3.5 * sc), 1, 1); } g.globalAlpha = 1; }
     g.drawImage(SHADOW, sx - 7 * sc, sy - 3 * sc, 14 * sc, 5 * sc);
-    const blink = false, fl = m.hitFlash > 0 ? Math.min(1, m.hitFlash / 0.15) * 0.75 : 0;
+    const fl = m.hitFlash > 0 ? Math.min(1, m.hitFlash / 0.15) * 0.75 : 0;
     const dImg = (im, ...a) => { g.drawImage(im, ...a); if (fl) { g.globalAlpha = fl; g.drawImage(whiteOf(im), ...a); g.globalAlpha = 1; } };
     let top;
     if (ART.mobs[m.type]) {
       // bestiaire : 2 images (marche ou battement d'ailes), regard vers la cible ; les volants flottent
-      const fl = ART.floaters[m.type], fr = Math.floor(time * (fl ? 6 : m.moving ? 7 : 1.5) + m.phase) % 2, img = ART.mobs[m.type][fr], sc2 = m.scale || 1;
-      const w = Math.round(img.width * sc2), h = Math.round(img.height * sc2), bob = fl ? Math.round(Math.sin(time * 3 + m.phase) * 1.5) - 3 : 0;
-      if (!blink) { if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); dImg(img, -(w >> 1), sy - h + 1 + bob + ly, w, h); g.restore(); } else dImg(img, sx - (w >> 1) + lx, sy - h + 1 + bob + ly, w, h); }
+      const fly = ART.floaters[m.type], fr = Math.floor(time * (fly ? 6 : m.moving ? 7 : 1.5) + m.phase) % 2, img = ART.mobs[m.type][fr], sc2 = m.scale || 1;
+      const w = Math.round(img.width * sc2), h = Math.round(img.height * sc2), bob = fly ? Math.round(Math.sin(time * 3 + m.phase) * 1.5) - 3 : 0;
+      if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); dImg(img, -(w >> 1), sy - h + 1 + bob + ly, w, h); g.restore(); } else dImg(img, sx - (w >> 1) + lx, sy - h + 1 + bob + ly, w, h); 
       top = sy - h + bob;
       if (m.dgBoss != null) { g.drawImage(ART.crown, sx - 9 + lx, top - 10 + ly, 18, 12); top -= 10; }
     } else if (m.type === 'champi') {
       const img = ART.champi[m.moving ? Math.floor(time * 6) % 2 : 0], bob = m.moving ? Math.abs(Math.sin(time * 9 + m.phase)) * -1.5 | 0 : 0;
-      if (!blink) { if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); dImg(img, -9, sy - 19 + bob + ly); g.restore(); } else dImg(img, sx - 9 + lx, sy - 19 + bob + ly); }
+      if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); dImg(img, -9, sy - 19 + bob + ly); g.restore(); } else dImg(img, sx - 9 + lx, sy - 19 + bob + ly); 
       top = sy - 20;
     } else {
       const img = ART[m.type], hop = m.moving ? Math.abs(Math.sin(time * 7 + m.phase)) : 0, sq = 1 + Math.sin(time * 6 + m.phase) * 0.08 * (m.moving || m.aggro ? 1.6 : 1) + hop * 0.08;
       ly -= Math.round(hop * 3 * sc);
       const w = Math.round(16 * sc * (2 - sq)), h = Math.round(14 * sc * sq);
-      if (!blink) dImg(img, sx - (w >> 1) + lx, sy - h + 2 + ly, w, h);
+      dImg(img, sx - (w >> 1) + lx, sy - h + 2 + ly, w, h);
       if (m.type === 'boss') g.drawImage(ART.crown, sx - 9 + lx, sy - h - 8 + ly, 18, 12);
       top = sy - h - (m.type === 'boss' ? 8 : 0);
     }
@@ -886,7 +885,6 @@
     for (const cp of CORPSES) push(cp);
     if (mode === 'play') { me.kind = 'char'; push(me); }
     const wf = Math.floor(time * 3) % 4;
-    const sMin = Math.max(0, Math.floor((-ox - 60) / 16 + (-oy - 40) / 8) - 4);
     for (let s = 0; s < NB; s++) {
       if (s <= MW + MH - 2) { const i0 = Math.max(0, s - MH + 1), i1 = Math.min(MW - 1, s); for (let i = i0; i <= i1; i++) drawTile(i, s - i, ox, oy, wf); }
       const st = STATIC[s], dy = DYN[s];
@@ -894,7 +892,6 @@
       if (dy.length) { const all = st.concat(dy).sort((a, b) => (a.x + a.y) - (b.x + b.y)); for (const e of all) drawEntity(e, ox, oy); }
       else for (const e of st) drawEntity(e, ox, oy);
     }
-    void sMin;
     for (const Z of ZONES) { const [zx, zy] = ePx({ x: Z.x, y: Z.y, z: W.hAt(Z.x, Z.y) }); g.globalAlpha = 0.55 + 0.2 * Math.sin(time * 9); g.drawImage(GLOW, Math.round(ox + zx - Z.r * 20), Math.round(oy + zy - Z.r * 10), Math.round(Z.r * 40), Math.round(Z.r * 20)); g.globalAlpha = 1; }
     for (const r of rings) { const f = r.t / r.dur, rad = r.r0 + (r.r1 - r.r0) * f; g.fillStyle = r.color; g.globalAlpha = 1 - f * 0.6; const n = Math.max(12, Math.floor(rad * 5)); for (let i = 0; i < n; i++) { const a = i / n * TAU; g.fillRect(Math.round(ox + r.x + Math.cos(a) * rad), Math.round(oy + r.y + Math.sin(a) * rad * 0.5), 1, 1); } g.globalAlpha = 1; }
     for (const q of parts) {

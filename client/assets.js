@@ -119,9 +119,6 @@
           const r = hash(gx, gy, 77);
           if (r < 0.004) c = rgb(['#fff6e0', '#ffe066', '#ff9ec0', '#a8c8ff'][Math.floor(hash(gx, gy, 78) * 4)]);
           else if (r < 0.03) v += 0.18;
-          // transition vers le chemin / le sable
-          const tl = (b) => b === 4 || b === 1;
-          void tl;
         } else if (t === 1) {
           v = 0.5 + 0.3 * (fbm(gx / 20, gy / 10, 4) - 0.5) + 0.08 * Math.sin(gx * 0.35 + gy * 0.25);
           if (hash(gx, gy, 41) < 0.02) v -= 0.3;
@@ -222,12 +219,9 @@
   const SKINS = [['#ffe4c8', '#f6c49c', '#d8946e'], ['#f0c08e', '#d89c68', '#b0704a'], ['#b8784c', '#94583a', '#6a3a26']].map(R);
   const HAIRS = [['#3a1e14', '#5e3420', '#88502e', '#b47846'], ['#7a1e12', '#b0301c', '#e2522c', '#ff8c56'], ['#a86a12', '#dc9a1e', '#ffcc3a', '#fff19a'], ['#6e74a0', '#a2a8cc', '#d4d8f0', '#ffffff'], ['#1c1e5a', '#2c3a96', '#4664cc', '#80a4ff'], ['#145a2e', '#1f8a3e', '#3cbc4e', '#86ec78'], ['#8a1e62', '#c4348a', '#f05cb4', '#ffa6dc']].map(R);
   const TUNICS = [['#16307a', '#1e50b8', '#3a7cf0', '#7cb4ff'], ['#6a1018', '#a8202a', '#e0402e', '#ff8462'], ['#0f5226', '#1a7e34', '#34b24a', '#7ee06a'], ['#6a3a08', '#a86010', '#e09a1e', '#ffd05a'], ['#3e1262', '#6420a0', '#9a3ede', '#cc86ff'], ['#24242e', '#3a3a4c', '#5a5a74', '#8e8eaa'], ['#0a4250', '#107080', '#1aa8b4', '#62e0e2']].map(R);
-  const PANTS = R(['#2a2238', '#3c3256', '#544a78']), BOOT = R(['#3a1e10', '#5e3418', '#8a5228']);
-  const BELT = rgb('#5a3018'), GOLD = rgb('#ffd23f'), EYE = rgb('#1a1030'), WHITE = rgb('#ffffff'), BLUSH = rgb('#ff8c8c');
-  const IRIS = rgb('#3a6cf0'), IRIS2 = rgb('#1e2e9a');
-  const STEEL = R(['#3a4060', '#5c6488', '#8c96b8', '#c8d2ea', '#ffffff']);
+  const GOLD = rgb('#ffd23f'), EYE = rgb('#1a1030'), WHITE = rgb('#ffffff'), BLUSH = rgb('#ff8c8c');
   /* Les personnages sont peints par sprites.js (pixel art posé à la main, en couches) ; ici on les met en cache
-     sous forme de canvas : 4 images de marche par direction, clignement des yeux, profil gauche = miroir. */
+     sous forme de canvas : 8 images de marche par direction, 3 poses d'attaque, clignement des yeux, profil gauche = miroir. */
   const SPR = window.EtheriaSprites;
   function sprCanvas(im) { const c = document.createElement('canvas'); c.width = im.w; c.height = im.h; const o = c.getContext('2d'), d = o.createImageData(im.w, im.h); d.data.set(im.data); o.putImageData(d, 0, 0); return c; }
   const charCache = new Map();
@@ -247,7 +241,6 @@
     // attaque : [arme armée, frappe, retour] ; de dos l'arme reste dans le dos (on garde la pose de repos)
     const af = [1, 2, 3].map(q => pc('front', 0, false, q)), as = [1, 2, 3].map(q => pc('side', 0, false, q));
     s.atk = { front: af, back: [b[0], b[0], b[0]], side: as, sideL: as.map(flip) };
-    s.hd = s; // (ancien jeu HD : les nouveaux sprites ont déjà tout le détail)
     if (charCache.size > 300) charCache.clear();
     charCache.set(key, s); return s;
   }

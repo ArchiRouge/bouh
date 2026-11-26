@@ -7,6 +7,8 @@ Talk to him in French, keep explanations short, and ask before anything that cos
 
 ## Project map
 - `client/` — the game (web). This folder is the Capacitor `webDir`. Do not restructure it.
+  - `content.js` — game content as plain data (monsters, items, loot, weapons and techniques, crafting, NPCs and quests, islands,
+    dungeons). `core.js` is the engine (world generation + authoritative simulation); it reads `content.js` and re-exports it (`C.ITEMS`…).
   - `config.js` — server address. `'auto'` falls back to **solo mode** inside the app (good for a first local build).
   - `steps.js` — reads real steps through the native `Pedometer` plugin when running in the iOS app.
 - `ios-plugin/` — native Swift: `PedometerPlugin.swift` (CoreMotion step counter) and `MainViewController.swift` (registers it).
@@ -124,7 +126,7 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 ## Rules
 - Player progress must survive updates: never rename or remove fields of `saveData()` in `client/core.js`; new fields need a default in `addPlayer`.
 - After any change in `client/`, run `npx cap sync ios` before rebuilding.
-- Load order in `index.html` matters: `persist.js` must stay last; it loads `game.js` itself.
+- Load order in `index.html` matters: `content.js` before `core.js`; `persist.js` must stay last; it loads `game.js` itself.
 - Don't edit generated files under `ios/App/App/public/` — they are overwritten by sync.
-- Keep the game in French. Keep `client/core.js` identical between client and server (the server requires it).
+- Keep the game in French. `client/content.js` and `client/core.js` are shared by client and server (the server requires them from `client/`).
 - Never commit or print signing certificates, Apple credentials or tokens.
