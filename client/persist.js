@@ -13,24 +13,35 @@
   const Prefs = native ? Cap.registerPlugin('Preferences') : null;
   let started = false;
   function start() {
-    if (started) return; started = true;
-    const s = document.createElement('script'); s.src = 'game.js'; document.body.appendChild(s);
+    if (started) return;
+    started = true;
+    const s = document.createElement('script');
+    s.src = 'game.js';
+    document.body.appendChild(s);
   }
   // flush() : attend que les sauvegardes en cours soient écrites dans la mémoire native (avant un rechargement, ex. voyage entre îles)
   const pending = new Set();
   window.EtheriaPersist = { native, flush: () => Promise.all([...pending]) };
-  if (!Prefs) { start(); return; }
+  if (!Prefs) {
+    start();
+    return;
+  }
 
   const ls = window.localStorage;
-  const set = Storage.prototype.setItem, del = Storage.prototype.removeItem;
+  const set = Storage.prototype.setItem,
+    del = Storage.prototype.removeItem;
   function mirror() {
     Storage.prototype.setItem = function (k, v) {
       set.call(this, k, v);
-      if (this === ls && String(k).startsWith(PREFIX)) { const pr = Prefs.set({ key: String(k), value: String(v) }).catch(() => { }); pending.add(pr); pr.then(() => pending.delete(pr)); }
+      if (this === ls && String(k).startsWith(PREFIX)) {
+        const pr = Prefs.set({ key: String(k), value: String(v) }).catch(() => {});
+        pending.add(pr);
+        pr.then(() => pending.delete(pr));
+      }
     };
     Storage.prototype.removeItem = function (k) {
       del.call(this, k);
-      if (this === ls && String(k).startsWith(PREFIX)) Prefs.remove({ key: String(k) }).catch(() => { });
+      if (this === ls && String(k).startsWith(PREFIX)) Prefs.remove({ key: String(k) }).catch(() => {});
     };
   }
   async function hydrate() {
@@ -38,12 +49,23 @@
     const keys = ((r && r.keys) || []).filter(k => k.startsWith(PREFIX));
     if (keys.length) {
       // La copie native fait foi : elle est écrite à chaque sauvegarde.
-      for (const k of keys) { const g = await Prefs.get({ key: k }); if (g && g.value != null) set.call(ls, k, g.value); }
+      for (const k of keys) {
+        const g = await Prefs.get({ key: k });
+        if (g && g.value != null) set.call(ls, k, g.value);
+      }
     } else {
       // Première ouverture avec ce fichier : on recopie ce que la WebView contient déjà.
-      for (let i = 0; i < ls.length; i++) { const k = ls.key(i); if (k && k.startsWith(PREFIX)) await Prefs.set({ key: k, value: ls.getItem(k) }); }
+      for (let i = 0; i < ls.length; i++) {
+        const k = ls.key(i);
+        if (k && k.startsWith(PREFIX)) await Prefs.set({ key: k, value: ls.getItem(k) });
+      }
     }
   }
   const timeout = new Promise(r => setTimeout(r, 4000));
-  Promise.race([hydrate(), timeout]).catch(() => { }).then(() => { mirror(); start(); });
+  Promise.race([hydrate(), timeout])
+    .catch(() => {})
+    .then(() => {
+      mirror();
+      start();
+    });
 })();
