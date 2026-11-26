@@ -9,7 +9,8 @@
     "ios:assets": "npx capacitor-assets generate --ios",
     "ios:sync": "npx cap sync ios",
     "ios:open": "npx cap open ios",
-    "build:preview": "node tools/build-preview.js"
+    "build:preview": "node tools/build-preview.js",
+    "test": "node --test tests/core.test.js"
   },
   "dependencies": {
     "@capacitor/core": "^8.6.2",
