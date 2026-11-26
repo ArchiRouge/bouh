@@ -277,6 +277,7 @@ function handleEvent(ev) {
       const mine = ev.by === myId;
       // éléments : chiffres orange quand l'élément de l'arme est fort contre le monstre, gris quand il est faible
       const efCol = ev.ef > 0 ? '#ffb43a' : ev.ef < 0 ? '#a8a8c0' : null;
+      if (ev.c && mine) critFx(mb); // éclair en croix et « glitch »
       floatAt(
         mb,
         ev.v,

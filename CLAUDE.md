@@ -120,6 +120,13 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - Save fields `dg`, `ttl`, `tt`; `arr: 2` respawns in front of the gate. Dungeon mobs never respawn; death respawns at the dungeon start.
 - Rendering: walls are terrain height 3 (`DG_STONE` per rarity), walls in front of the hero are drawn translucent, darkness is a cached dithered radial canvas.
 
+## Adult look (glyphs, day and night)
+- `docs/design/direction-adulte.md`. `client/game/atmo.js`: the fixed decor of a world is baked once into a canvas and turned into
+  3×5 glyphs (`buildGlyphDecor`, `GD`); `render()` draws that canvas, then only live entities (`LIVE_KINDS`) and characters with a
+  glow (`charGlow`). Day = 20 real minutes from `Date.now()` (`dayLight`, `nightK`), rain windows (`rainK`), neon effects, crit flare +
+  glitch (`critFx`). `GLYPH` (setup.js) switches it off with `localStorage.etheria_glyph = '0'`. New static decor kinds are baked by
+  default; anything animated or interactive must be added to `LIVE_KINDS`.
+
 ## Rendering & smoothness
 - The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving
   characters glide at screen-pixel precision; static art stays on the game-pixel grid. `adaptQuality()` halves `RQ` if the
@@ -139,8 +146,8 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - Player progress must survive updates: never rename or remove fields of `saveData()` in `client/core.js`; new fields need a default in `addPlayer`.
 - After any change in `client/`, run `npx cap sync ios` before rebuilding.
 - Load order in `index.html` matters: `content.js` before `core.js`; `persist.js` must stay last; it loads the client files `client/game/*.js` itself, in order (`GAME_FILES`).
-- The client is 8 classic scripts in `client/game/` sharing one global scope (top-level `const`/`function` of a file are visible to the
-  next ones): setup → scene → input → net → update → render → hud → main. Keep that order in `persist.js` and `tools/build-preview.js`;
+- The client is 9 classic scripts in `client/game/` sharing one global scope (top-level `const`/`function` of a file are visible to the
+  next ones): setup → scene → input → net → update → render → atmo → hud → main. Keep that order in `persist.js` and `tools/build-preview.js`;
   a file may only use, at load time, what earlier files declared (calls inside functions are fine).
 - Don't edit generated files under `ios/App/App/public/` — they are overwritten by sync.
 - Keep the game in French. `client/content.js` and `client/core.js` are shared by client and server (the server requires them from `client/`).

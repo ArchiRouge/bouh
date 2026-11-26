@@ -47,3 +47,14 @@ Réponses au formulaire « Points en suspens ». Elles font foi pour la suite.
 | Objets actuels | élément d'après leur nom | codé |
 | Affichage en combat | chiffres colorés, « Efficace ! » / « Résiste… » | codé |
 | Ensuite | emplacements Épaules et Mains (maquette d'abord) | à faire |
+
+## Série 4 (graphismes plus adultes)
+
+| Sujet | Décision | État |
+|---|---|---|
+| Direction | D · Mixte : décor en glyphes, personnages en pixel art éclairés | codé |
+| Où | partout | codé |
+| Proportions | plus élancés (environ 3,5 têtes) | à faire (maquette d'abord) |
+| Moment de la journée | cycle jour et nuit (20 minutes) | codé |
+| Effets | pluie et brume, sorts en néon, lueur, glitch sur les critiques | codé |
+| Univers | garder notre monde | — |

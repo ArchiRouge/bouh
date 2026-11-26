@@ -22,7 +22,7 @@ client/          le jeu (c'est aussi le dossier embarqué dans l'app iOS)
   core.js        moteur : mondes et simulation, partagés avec le serveur
   sprites.js     héros et équipement porté, pixel art posé à la main
   assets.js      tout le reste de l'art, procédural
-  game/          le client en 8 fichiers : setup, scene, input, net, update, render, hud, main
+  game/          le client en 9 fichiers : setup, scene, input, net, update, render, atmo, hud, main
   steps.js       vrais pas du téléphone (app iOS)
 server/          serveur multijoueur (Node + ws)
 tests/           tests du moteur (npm test)

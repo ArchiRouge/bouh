@@ -16,14 +16,14 @@ function drawTile(i, j, ox, oy, wf) {
     if (DECK[k]) g.drawImage(ART.deck[DECK[k]], x, yb - 3);
     return;
   }
-  if (DGN && h && i + j > me.x + me.y - 0.5 && i + j < me.x + me.y + 4 && Math.abs(i - j - (me.x - me.y)) < 3.5) {
+  if (!BAKING && DGN && h && i + j > me.x + me.y - 0.5 && i + j < me.x + me.y + 4 && Math.abs(i - j - (me.x - me.y)) < 3.5) {
     g.globalAlpha = 0.3;
     g.drawImage(ART.terrain.land[k], x, yb - h * 8);
     g.globalAlpha = 1;
     return;
   } // donjon : on voit le héros à travers les murs devant lui
   g.drawImage(ART.terrain.land[k], x, yb - h * 8);
-  if (TRAPS[k] != null) g.drawImage(ART.dgn.spikes[C.trapUp(simNow(), TRAPS[k]) ? 1 : 0], x, yb - 6);
+  if (!BAKING && TRAPS[k] != null) g.drawImage(ART.dgn.spikes[C.trapUp(simNow(), TRAPS[k]) ? 1 : 0], x, yb - 6);
 }
 const simNow = () => simT + (time - simT0); // horloge de la simulation, extrapolée entre deux états
 function drawSlash(cx, cy, ang, prog, r) {
@@ -293,6 +293,7 @@ function drawChar(e, sx, sy) {
     labels.push({ x: sx, y: sy - 34 * ck, t: e.name, c: '#a8a8b8' });
     return;
   }
+  charGlow(sx, sy, cs.gm ? '#ffe070' : e.kind === 'npc' ? '#ffd8a0' : '#fff0d8', 0.9);
   g.drawImage(SHADOW, sx - 7 * ck, sy - 3, 14 * ck, 5);
   const scarf = e.kind !== 'npc';
   const bob = e.moving && Math.floor(e.anim) % 4 === 2 ? -p : 0;
@@ -412,6 +413,10 @@ function drawMob(m, sx, sy) {
       g.fillRect(Math.round(sx + Math.cos(t) * 9 * sc), Math.round(sy - 1 + Math.sin(t) * 3.5 * sc), 1, 1);
     }
     g.globalAlpha = 1;
+  }
+  {
+    const el = (C.MOBDEF[m.type] || {}).el;
+    charGlow(sx, sy, m.dgBoss != null ? C.dgTier(m.dgBoss).c : el ? C.ELEMENTS[el][1] : '#ffffff', 0.6 * sc);
   }
   g.drawImage(SHADOW, sx - 7 * sc, sy - 3 * sc, 14 * sc, 5 * sc);
   const fl = m.hitFlash > 0 ? Math.min(1, m.hitFlash / 0.15) * 0.75 : 0;
@@ -546,20 +551,41 @@ function render() {
     push(me);
   }
   const wf = Math.floor(time * 3) % 4;
-  for (let s = 0; s < NB; s++) {
-    if (s <= MW + MH - 2) {
-      const i0 = Math.max(0, s - MH + 1),
-        i1 = Math.min(MW - 1, s);
-      for (let i = i0; i <= i1; i++) drawTile(i, s - i, ox, oy, wf);
+  if (GLYPH) {
+    if (!GD) buildGlyphDecor();
+    g.drawImage(GD.cv, ox + GD.x0, oy + GD.y0);
+    for (const k in TRAPS) {
+      const i = k % MW,
+        j = (k / MW) | 0,
+        x = ox + (i - j) * 16 - 16,
+        yb = oy + (i + j) * 8;
+      if (x > -32 && x < VW && yb > -26 && yb < VH) g.drawImage(ART.dgn.spikes[C.trapUp(simNow(), TRAPS[k]) ? 1 : 0], x, yb - 6);
     }
-    const st = STATIC[s],
-      dy = DYN[s];
-    if (!st.length && !dy.length) continue;
-    if (dy.length) {
-      const all = st.concat(dy).sort((a, b) => a.x + a.y - (b.x + b.y));
+    for (let s = 0; s < NB; s++) {
+      const dy = DYN[s],
+        st = STATIC[s];
+      let all = dy;
+      if (st.length) {
+        const live = st.filter(e => LIVE_KINDS.has(e.kind));
+        if (live.length) all = live.concat(dy).sort((a, b) => a.x + a.y - (b.x + b.y));
+      }
       for (const e of all) drawEntity(e, ox, oy);
-    } else for (const e of st) drawEntity(e, ox, oy);
-  }
+    }
+  } else
+    for (let s = 0; s < NB; s++) {
+      if (s <= MW + MH - 2) {
+        const i0 = Math.max(0, s - MH + 1),
+          i1 = Math.min(MW - 1, s);
+        for (let i = i0; i <= i1; i++) drawTile(i, s - i, ox, oy, wf);
+      }
+      const st = STATIC[s],
+        dy = DYN[s];
+      if (!st.length && !dy.length) continue;
+      if (dy.length) {
+        const all = st.concat(dy).sort((a, b) => a.x + a.y - (b.x + b.y));
+        for (const e of all) drawEntity(e, ox, oy);
+      } else for (const e of st) drawEntity(e, ox, oy);
+    }
   // attaques de boss annoncées : cercle rouge au sol qui se remplit jusqu'au déclenchement
   for (let i = TELE.length - 1; i >= 0; i--) {
     const T = TELE[i];
@@ -589,6 +615,7 @@ function render() {
     g.drawImage(GLOW, Math.round(ox + zx - Z.r * 20), Math.round(oy + zy - Z.r * 10), Math.round(Z.r * 40), Math.round(Z.r * 20));
     g.globalAlpha = 1;
   }
+  if (GLYPH) g.globalCompositeOperation = 'lighter'; // sorts en néon sur le fond sombre
   for (const r of rings) {
     const f = r.t / r.dur,
       rad = r.r0 + (r.r1 - r.r0) * f;
@@ -650,6 +677,8 @@ function render() {
       g.fillRect(Math.round(x - dx * 4), Math.round(y - dy * 4), 2, 2);
     }
   }
+  g.globalCompositeOperation = 'source-over';
+  drawFlares(ox, oy);
   // papillons
   for (const f of FLIES) {
     const x = Math.round(f.x - camX + VW / 2),
@@ -774,6 +803,7 @@ function render() {
     g.globalAlpha = 1;
     g.globalCompositeOperation = 'source-over';
   }
+  drawAtmosphere(ox, oy);
   g.imageSmoothingEnabled = false;
   // pollen
   for (const m of motes) {
@@ -795,6 +825,7 @@ function render() {
       g.globalAlpha = 1;
     }
   }
+  drawGlitch();
 }
 
 let hudWalk = null;

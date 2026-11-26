@@ -13,7 +13,7 @@
   const Prefs = native ? Cap.registerPlugin('Preferences') : null;
   let started = false;
   // le client du jeu, dans l'ordre (scripts classiques : chaque fichier voit les déclarations des précédents)
-  const GAME_FILES = ['setup', 'scene', 'input', 'net', 'update', 'render', 'hud', 'main'].map(f => 'game/' + f + '.js');
+  const GAME_FILES = ['setup', 'scene', 'input', 'net', 'update', 'render', 'atmo', 'hud', 'main'].map(f => 'game/' + f + '.js');
   window.ETHERIA_GAME_FILES = GAME_FILES;
   function start() {
     if (started) return;

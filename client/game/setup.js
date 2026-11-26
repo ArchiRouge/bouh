@@ -54,8 +54,17 @@ const $ = id => document.getElementById(id);
 /* ---------- canvases : monde (pixels fins) + interface (pixels plus gros) ---------- */
 const cvW = $('world'),
   cvU = $('ui'),
-  g = cvW.getContext('2d'),
   u = cvU.getContext('2d');
+let g = cvW.getContext('2d'); // le monde (atmo.js le détourne un instant pour peindre le décor en glyphes)
+// rendu en glyphes : activé par défaut ; localStorage.etheria_glyph = '0' le coupe (et la qualité adaptative peut le couper)
+let GLYPH = (() => {
+  try {
+    return localStorage.getItem('etheria_glyph') !== '0';
+  } catch (e) {
+    return true;
+  }
+})();
+
 let ST = 0,
   SB = 0,
   S = 4,
@@ -166,6 +175,19 @@ function zoneGrade(i) {
 }
 // mer peinte : dégradé profond, auréoles d'aquarelle et fines lignes de houle (précalculé par taille d'écran)
 function buildBackdrop() {
+  if (GLYPH) {
+    // décor en glyphes : fond presque noir, comme un écran
+    const c = document.createElement('canvas');
+    c.width = VW;
+    c.height = VH;
+    const o = c.getContext('2d'),
+      gr = o.createLinearGradient(0, 0, 0, VH);
+    gr.addColorStop(0, '#07060f');
+    gr.addColorStop(1, '#0b0a18');
+    o.fillStyle = gr;
+    o.fillRect(0, 0, VW, VH);
+    return c;
+  }
   const c = document.createElement('canvas');
   c.width = VW;
   c.height = VH;
@@ -205,16 +227,20 @@ function buildBackdrop() {
 // obscurité du donjon : cercle de lumière autour du héros, en bandes tramées (style pixel), précalculée par taille d'écran
 let DARK = null,
   CGLOW = null;
-function darkness() {
-  if (DARK && DARK.width === VW * 2 && DARK.height === VH * 2) return DARK;
+// light : rayon de la lumière (donjon : selon sa rareté ; nuit : atmo.js)
+const DARKS = new Map();
+function darkness(light) {
+  light = light || DGN.light;
+  const key = VW + 'x' + VH + ':' + light;
+  if (DARKS.has(key)) return DARKS.get(key);
   const c = document.createElement('canvas');
   c.width = VW * 2;
   c.height = VH * 2;
   const o = c.getContext('2d'),
     im = o.createImageData(c.width, c.height),
     d = im.data;
-  const r0 = 80 * DGN.light,
-    r1 = 210 * DGN.light,
+  const r0 = 80 * light,
+    r1 = 210 * light,
     BY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
   for (let y = 0; y < c.height; y++)
     for (let x = 0; x < c.width; x++) {
@@ -228,7 +254,9 @@ function darkness() {
       d[k + 3] = Math.round(clamp(q, 0, 1) * 222);
     }
   o.putImageData(im, 0, 0);
-  return (DARK = c);
+  if (DARKS.size > 6) DARKS.clear();
+  DARKS.set(key, c);
+  return c;
 }
 function cglow() {
   if (CGLOW) return CGLOW;

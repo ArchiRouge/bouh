@@ -11,7 +11,7 @@ content.js  (données)  ──►  core.js  (moteur : mondes + simulation)  ◄�
                                ▲
 sprites.js  (héros, pixel art) │
 assets.js   (tout le reste de l'art, procédural)
-game/       (client en 8 fichiers : rendu, interface, entrées, réseau)  ── solo : fait tourner core.js dans la page
+game/       (client en 9 fichiers : rendu, interface, entrées, réseau)  ── solo : fait tourner core.js dans la page
 persist.js  (app iOS : sauvegarde native, puis charge game/)
 steps.js    (app iOS : vrais pas du téléphone)
 ```
@@ -30,7 +30,7 @@ steps.js    (app iOS : vrais pas du téléphone)
 | `client/core.js` | Moteur partagé : hasard déterministe, génération du Bourg, des îles et des donjons, déplacements, simulation (`Sim` : combat, progression, voyage, sauvegarde). Réexporte tout `content.js` (`C.ITEMS`…). | `content.js` |
 | `client/sprites.js` | Héros et équipement porté, en pixel art posé à la main (grilles par direction et par couche) ; sans DOM, donc testable dans Node. | rien |
 | `client/assets.js` | Tout l'art procédural : terrain, palettes, arbres, maisons, monstres, icônes, ponts, donjons. Met en cache les sprites des héros. | `core.js`, `sprites.js` |
-| `client/game/*.js` | Client, en 8 fichiers (détail ci-dessous) : canvas, caméra, rendu 2.5D, interface, entrées tactiles et clavier, réseau (solo ou WebSocket), sauvegarde dans le compte Claude. | tout ce qui précède |
+| `client/game/*.js` | Client, en 9 fichiers (détail ci-dessous) : canvas, caméra, rendu 2.5D, interface, entrées tactiles et clavier, réseau (solo ou WebSocket), sauvegarde dans le compte Claude. | tout ce qui précède |
 | `client/persist.js` | App iOS : recopie les clés `etheria_*` dans les préférences natives et les restaure, puis charge `client/game/`. | Capacitor |
 | `client/steps.js` | App iOS : plugin natif `Pedometer` (CoreMotion). | Capacitor |
 | `client/config.js` | Adresse du serveur (`'auto'`, une adresse fixe ou `null`), drapeaux `founder` et `gm`. | rien |
@@ -46,7 +46,7 @@ dernier** : c'est lui qui charge les fichiers de `client/game/`, dans l'ordre, u
 
 ### Le client : `client/game/`
 
-Huit scripts classiques, chargés dans cet ordre (`GAME_FILES` dans `persist.js`, même liste dans `tools/build-preview.js`).
+Neuf scripts classiques, chargés dans cet ordre (`GAME_FILES` dans `persist.js`, même liste dans `tools/build-preview.js`).
 Ils partagent une seule portée globale : ce qu'un fichier déclare au premier niveau (`const`, `let`, `function`) sert aux fichiers
 suivants. Au chargement, un fichier ne peut utiliser que ce que les précédents ont déclaré ; dans une fonction appelée plus
 tard, tout est disponible.
@@ -59,6 +59,7 @@ tard, tout est disponible.
 | `net.js` | `LocalLink` (solo) et `WsLink` (en ligne), `onMsg`, `handleEvent`. |
 | `update.js` | Mise à jour à chaque image : héros, monstres et joueurs interpolés, invites, caméra. |
 | `render.js` | Rendu du monde : tuiles, entités, héros (`drawChar`), monstres et boss (`drawMob`), lumières. |
+| `atmo.js` | Direction « plus adulte » : décor en glyphes précalculé, jour et nuit, pluie et brume, néons, éclair et glitch des critiques. |
 | `hud.js` | Interface sur le canevas : étiquettes, statut, mini-carte, boutons, barre du boss, invites, voiles. |
 | `main.js` | Menu de création, boucle principale, sauvegarde dans le compte Claude (`Cloud`), démarrage (`boot`). |
 
