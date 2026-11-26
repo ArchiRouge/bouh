@@ -59,7 +59,7 @@ tard, tout est disponible.
 | `net.js` | `LocalLink` (solo) et `WsLink` (en ligne), `onMsg`, `handleEvent`. |
 | `update.js` | Mise à jour à chaque image : héros, monstres et joueurs interpolés, invites, caméra. |
 | `render.js` | Rendu du monde : tuiles, entités, héros (`drawChar`), monstres et boss (`drawMob`), lumières. |
-| `atmo.js` | Direction « plus adulte » : décor en glyphes précalculé, jour et nuit, pluie et brume, néons, éclair et glitch des critiques. |
+| `atmo.js` | Direction « plus adulte » : décor en glyphes précalculé (désactivé par défaut, `etheria_glyph = '1'`), jour et nuit, pluie et brume, néons, éclair et glitch des critiques. |
 | `hud.js` | Interface sur le canevas : étiquettes, statut, mini-carte, boutons, barre du boss, invites, voiles. |
 | `main.js` | Menu de création, boucle principale, sauvegarde dans le compte Claude (`Cloud`), démarrage (`boot`). |
 

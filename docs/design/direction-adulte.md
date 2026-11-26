@@ -8,7 +8,8 @@ Statut : **en jeu (étape 1)**. Choix d'Archibald (série 4) : **D · Mixte**, *
 - Décor en glyphes : `client/game/atmo.js` peint le décor fixe d'une île une seule fois (`buildGlyphDecor`), le convertit en
   glyphes de 3 × 5 pixels sur des cases de 4 × 6, et chaque image le recopie. Personnages, monstres, PNJ, ressources, coffres,
   portails, torches et lanternes restent en pixel art par-dessus, avec une lueur (`charGlow`). Plus rapide que l'ancien rendu
-  (mesure, processeur ralenti ×4 : 27 images/s contre 15). `localStorage.etheria_glyph = '0'` revient à l'ancien rendu.
+  (mesure, processeur ralenti ×4 : 27 images/s contre 15). **Désactivé par défaut depuis v14** (Archibald préfère le décor
+  peint) : `localStorage.etheria_glyph = '1'` le rallume. Nuit, lanternes, pluie et éclairs des critiques restent actifs.
 - Jour et nuit : une journée = 20 minutes réelles, la même pour tous (`dayLight`, `nightK`) ; la nuit, l'obscurité laisse un
   cercle de lumière autour du héros et les lanternes brillent ; teinte orangée à l'aube et au crépuscule.
 - Météo : pluie et brume environ 4 minutes sur 10 (`rainK`), jamais dans les donjons.

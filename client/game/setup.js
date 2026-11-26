@@ -56,12 +56,12 @@ const cvW = $('world'),
   cvU = $('ui'),
   u = cvU.getContext('2d');
 let g = cvW.getContext('2d'); // le monde (atmo.js le détourne un instant pour peindre le décor en glyphes)
-// rendu en glyphes : activé par défaut ; localStorage.etheria_glyph = '0' le coupe (et la qualité adaptative peut le couper)
+// rendu en glyphes : coupé par défaut (décor peint classique) ; localStorage.etheria_glyph = '1' l'active
 let GLYPH = (() => {
   try {
-    return localStorage.getItem('etheria_glyph') !== '0';
+    return localStorage.getItem('etheria_glyph') === '1';
   } catch (e) {
-    return true;
+    return false;
   }
 })();
 

@@ -124,7 +124,7 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - `docs/design/direction-adulte.md`. `client/game/atmo.js`: the fixed decor of a world is baked once into a canvas and turned into
   3×5 glyphs (`buildGlyphDecor`, `GD`); `render()` draws that canvas, then only live entities (`LIVE_KINDS`) and characters with a
   glow (`charGlow`). Day = 20 real minutes from `Date.now()` (`dayLight`, `nightK`), rain windows (`rainK`), neon effects, crit flare +
-  glitch (`critFx`). `GLYPH` (setup.js) switches it off with `localStorage.etheria_glyph = '0'`. New static decor kinds are baked by
+  glitch (`critFx`). `GLYPH` (setup.js) is off by default (Archibald prefers the painted decor); `localStorage.etheria_glyph = '1'` switches it on. Night, rain and crit flares stay on either way. New static decor kinds are baked by
   default; anything animated or interactive must be added to `LIVE_KINDS`.
 
 ## Rendering & smoothness
