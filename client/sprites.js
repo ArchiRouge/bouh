@@ -315,13 +315,13 @@
   }
   const DEG = Math.PI / 180;
   // angle de l'arme selon la pose : 1 = armer, 2 = frapper (au corps à corps grand arc, à distance geste court)
-  const SWING = { tome: [-12, 14], sword: [35, -70], axe: [40, -70], great: [40, -70], dagger: [30, -55], spear: [15, -35], staff: [10, -18], gmstaff: [10, -18], bow: [0, 0] };
-  const SWING_SIDE = { tome: [-15, 18], sword: [-55, 40], axe: [-60, 45], great: [-60, 45], dagger: [-45, 35], spear: [-20, 15], staff: [-15, 20], gmstaff: [-15, 20], bow: [0, 0] };
+  const SWING = { tome: [-12, 14, 5], sword: [35, -70, -28], axe: [40, -70, -28], great: [40, -70, -28], dagger: [30, -55, -20], spear: [15, -35, -12], staff: [10, -18, -6], gmstaff: [10, -18, -6], bow: [0, 0, 0] };
+  const SWING_SIDE = { tome: [-15, 18, 6], sword: [-55, 40, 16], axe: [-60, 45, 18], great: [-60, 45, 18], dagger: [-45, 35, 12], spear: [-20, 15, 6], staff: [-15, 20, 8], gmstaff: [-15, 20, 8], bow: [0, 0, 0] };
 
   /* ---------- peintre ---------- */
   // look : [coiffure, couleur des cheveux, tenue, peau, chapeau] ; gear : { slot: { icon, c, rar } }
   // dir : 'front' | 'back' | 'side' ; fr : image de marche 0–3 ; blink : yeux fermés
-  // pose : 0 normal, 1 arme armée, 2 frappe (animation d'attaque)
+  // pose : 0 normal, 1 arme armée, 2 frappe, 3 retour (animation d'attaque)
   function paint(look, gear, dir, fr, blink, pose) {
     gear = gear || {}; pose = pose | 0;
     const data = new Uint8ClampedArray(W * H * 4), mat = new Int16Array(W * H).fill(-1); // mat : indice de la rampe (pour le contour teinté)
@@ -353,7 +353,9 @@
         else if (FIX[c]) put(x, yy, FIX[c], c === 'L' || c === 'M' || c === 'N' ? FIX_LEATHER : c === 'o' || c === 'O' || c === 'P' ? FIX_WOOD : FIX_DARK);
       }
     };
-    const step = fr === 1 ? 1 : fr === 3 ? -1 : 0; // 1 : jambe gauche levée ; -1 : jambe droite levée
+    // marche sur 8 images : la jambe gauche se lève puis redescend (1, 2, 1), puis la droite ; bras et arme en balancier
+    const W8 = [[0, 0], [1, 0], [2, 0], [1, 0], [0, 0], [0, 1], [0, 2], [0, 1]], wl = W8[(fr | 0) % 8], liftL = wl[0], liftR = wl[1];
+    const step = liftL ? 1 : liftR ? -1 : 0; // 1 : jambe gauche levée ; -1 : jambe droite levée
     // arme peinte à part puis tournée autour de la main (px, py en coordonnées de grille)
     const layerRot = (rows, R, T, dx, dy, deg, px, py) => {
       if (!deg) return layer(rows, R, T, dx, dy);
@@ -364,7 +366,7 @@
     const style = look[0] | 0, hatK = hd ? 0 : look[4] | 0;
     const hatPal = look[4] === 1 ? ramp5('#5e3cb4') : null;
     const wpR = wp ? (wp.fx === 'gm' ? GMR : wp.icon === 'staff' || wp.icon === 'bow' || wp.icon === 'tome' ? ramp5(wp.c) : metal(wp.c)) : null;
-    const tome = wp && wp.icon === 'tome', bob = [0, -1, 0, 1][fr | 0] || 0;
+    const tome = wp && wp.icon === 'tome', bob = [0, -1, -1, -1, 0, 1, 1, 1][(fr | 0) % 8] || 0;
     const wpT = wp ? (wp.fx === 'gm' ? GMT : goldOr(wp.rar, STEEL)) : GOLD;
     const gmKnee = lg && lg.fx === 'gm', gmHelm = hd && hd.icon === 'gmhelm';
     const cape = (rows0, rows1, front) => { if (!capeR) return; for (let y = rows0; y <= rows1; y++) { const l = y < 28 ? 8 : y < 34 ? 7 : 6, r = 37 - l; let s = ''; for (let x = l; x <= r; x++) { const f = (x - l) % 5; s += front ? (x === l ? '5' : x < l + 5 ? (f !== 4 ? '4' : '3') : x < r - 4 ? (f !== 4 ? '3' : '2') : (f !== 1 ? '2' : '3')) : (x === l ? '4' : f === 2 ? '2' : x < 19 ? '4' : '3'); } if (y === rows1) s = s.split('').map((c, i) => (i % 5) > 2 ? '.' : c).join(''); layer([[y, l, s]], capeR); } };
@@ -372,9 +374,9 @@
       cape(23, 44, true);
       if (style === 1) layer(F.hairBack);
       const A = gm ? F.gm : plate ? F.plate : F.tunic, AT = gm ? GMT : plate ? goldOr(ch.rar, STEEL) : ch ? goldOr(ch.rar, chestR) : goldOr(0, tunic);
-      layer(F.legL, legsR, null, 0, step > 0 ? -2 : 0); layer(F.legR, legsR, null, 0, step < 0 ? -2 : 0);
-      layer(F.bootL, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step > 0 ? -2 : 0); layer(F.bootR, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step < 0 ? -2 : 0);
-      if (gmKnee) { layer(F.gmKnee.slice(0, 2), GMR, GMT, 0, step > 0 ? -2 : 0); layer(F.gmKnee.slice(2), GMR, GMT, 0, step < 0 ? -2 : 0); }
+      layer(F.legL, legsR, null, 0, -liftL); layer(F.legR, legsR, null, 0, -liftR);
+      layer(F.bootL, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, -liftL); layer(F.bootR, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, -liftR);
+      if (gmKnee) { layer(F.gmKnee.slice(0, 2), GMR, GMT, 0, -liftL); layer(F.gmKnee.slice(2), GMR, GMT, 0, -liftR); }
       layer(A.body, chestR, AT);
       layer(A.armR, chestR, AT, 0, -step);
       layer(F.face, skin); if (blink) layer(F.blink, skin);
@@ -391,7 +393,7 @@
       if (wp) {
         const key = wp.fx === 'gm' && wp.icon === 'staff' ? 'gmstaff' : wp.icon, rows = F.weapons[key];
         if (rows) {
-          const sw = SWING[key] || [0, 0], deg = pose ? sw[pose - 1] : step * 6;
+          const sw = SWING[key] || [0, 0, 0], deg = pose ? sw[pose - 1] : (liftL - liftR) * 3;
           const main = key === 'dagger' ? rows.filter(r => r[1] < 20) : rows;
           layerRot(main, wpR, wpT, ax, ay, deg, 9, 31);
           if (key === 'dagger') layerRot(rows.filter(r => r[1] >= 20), wpR, wpT, 0, -step, pose ? -sw[pose - 1] : 0, 29, 31);
@@ -402,8 +404,8 @@
       if (tome) layer(orbAt(31 + (pose === 2 ? 1 : 0), 26 + bob - (pose === 1 ? 4 : pose === 2 ? 1 : 0), fr | 0).concat(pose === 2 ? [[24, 30, 'l'], [31, 37, 'l'], [23, 35, 'w']] : []));
     } else if (dir === 'back') {
       if (wp && B.weapons[wp.icon]) layer(B.weapons[wp.icon], wpR, wpT);
-      layer(B.legL, legsR, null, 0, step > 0 ? -2 : 0); layer(B.legR, legsR, null, 0, step < 0 ? -2 : 0);
-      layer(B.bootL, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step > 0 ? -2 : 0); layer(B.bootR, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, step < 0 ? -2 : 0);
+      layer(B.legL, legsR, null, 0, -liftL); layer(B.legR, legsR, null, 0, -liftR);
+      layer(B.bootL, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, -liftL); layer(B.bootR, feetR, goldOr(ft ? ft.rar : 0, feetR), 0, -liftR);
       if (gmKnee) layer(B.gmKnee, GMR, GMT);
       layer(plate || gm ? B.plate : B.tunic, chestR, gm ? GMT : plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR));
       if (capeR) cape(23, 44, false);
@@ -422,10 +424,10 @@
       }
     } else {
       // profil : la jambe et le bras arrière sont plus sombres et peints avant le corps
-      const Lg = S.legs[step === 0 ? 0 : step > 0 ? 1 : 2], A = plate || gm ? S.plate : S.tunic, AT = gm ? GMT : plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR);
+      const Lg = S.legs[liftL ? 1 : liftR ? 2 : 0], A = plate || gm ? S.plate : S.tunic, AT = gm ? GMT : plate ? goldOr(ch.rar, STEEL) : goldOr(ch ? ch.rar : 0, chestR);
       if (capeR) { for (let y = 23; y <= 43; y++) { const w = 3 + ((y - 23) >> 2); layer([[y, 12 - w + 2, '4'.repeat(1) + '3'.repeat(Math.max(1, w - 2)) + '2']], capeR); } }
       if (style === 1) layer(S.hairLong);
-      const sax = pose === 1 ? -1 : pose === 2 ? 2 : step, say = pose === 1 ? -1 : 0, ssw = wp ? SWING_SIDE[wp.icon] || [0, 0] : [0, 0], sdeg = pose ? ssw[pose - 1] : step * -5;
+      const sax = pose === 1 ? -1 : pose === 2 ? 2 : step, say = pose === 1 ? -1 : 0, ssw = wp ? SWING_SIDE[wp.icon] || [0, 0, 0] : [0, 0, 0], sdeg = pose ? ssw[pose - 1] : (liftL - liftR) * -2.5;
       if (wp && wp.icon === 'staff') layerRot(S.weapons.staff, wpR, wpT, sax, say + (step ? -1 : 0), sdeg, 19, 31);
       layer(Lg.back, legsR); layer(Lg.bootB, feetR, goldOr(ft ? ft.rar : 0, feetR));
       layer(Lg.front, legsR); layer(Lg.bootF, feetR, goldOr(ft ? ft.rar : 0, feetR));

@@ -66,7 +66,7 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   pauldrons, legs, boots, hood / helm / crown, creation hats, sword / axe / staff / bow, cape for rare+ chest pieces).
   Digits 1–5 in a grid are tones of that layer's material, recoloured from the item colour (`ramp5`, `metal`); letters are
   fixed colours (skin, eyes, hair a–f, gold g/G/y/Y, leather, wood). Sprites are 58×57 (side margin for weapon swings), ~2.2 heads,
-  feet at y = 55, centre x = 28.5. Attack poses (`paint(..., pose)` 1 = wind-up, 2 = strike, `set.atk`) rotate the weapon around the hand
+  feet at y = 55, centre x = 28.5. Walk cycle: 8 frames (`W8` in `sprites.js`: leg lift 1-2-1, arm and weapon sway; 1 sprite-pixel bob at the passing frames). Attack poses (`paint(..., pose)` 1 = wind-up, 2 = strike, 3 = recover, `set.atk`, timings `ATK_T`/`ATK_STRIKE`/`ATK_RECOVER`) rotate the weapon around the hand
   with RotSprite (Scale2x ×2, nearest rotation, resample) — keeps blades clean; angles in `SWING` / `SWING_SIDE`. `e.atkT` drives them in `game.js`.
   `sprites.js` has no DOM dependency (paints into an RGBA array), so it can be tested in Node; `assets.js` `charSet` caches canvases.
 - In the world a character pixel is always 3 screen pixels (`charP()` in `game.js`), whatever the camera distance, so the hero stays readable.
@@ -107,6 +107,8 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - Camera distance: `ZOOM` (0 close, 1 normal = default, 2 far; `localStorage.etheria_zoom`, magnifier button / mouse wheel)
   lowers the integer screen scale `S` by one step per level, so the world stays pixel-sharp.
 - Interface size: HUD canvas scale `SU = round(pm / 279)` and `.card { zoom: .7 }` for the HTML panels (30 % smaller than the original).
+- Monsters and other players arrive at 10 Hz: they move at constant speed between two received states (`fx/fy → tx/ty` over `snapDt`),
+  never with exponential catch-up (that looked jerky). Hits show a short white flash (`whiteOf`), not a blink; screen shake is gentle and only on big hits.
 - Avoid full-screen per-frame effects (composite modes, scaled smoothed draws): cache them per screen size (see `OVERLAY`).
 - Measure before/after with a CPU-throttled headless run; headless rAF timestamps snap to 16.7 ms, so judge movement by time, not per frame.
 

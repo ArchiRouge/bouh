@@ -96,7 +96,7 @@
   let lastOX = 0, lastOY = 0, sendT = 0, saveT = 0, usedTouch = false, movedOnce = false;
   let chat = [];
   const floats = [], parts = [], rings = [], labels = [], motes = [];
-  let link = null, myId = null;
+  let link = null, myId = null, lastSnap = 0, snapDt = 0.1;
   const prefs = (() => { try { return JSON.parse(localStorage.getItem('etheria_prefs') || 'null') || {}; } catch (e) { return {}; } })();
   const SEED = window.ETHERIA_SEED || null; // progression importée (première ouverture uniquement)
   if (!prefs.name && SEED && SEED.prefs) Object.assign(prefs, SEED.prefs);
@@ -177,7 +177,7 @@
   const shots = [], FOOT = [];
   function shoot(from, to, kind, dur) { const [x0, y0] = ePx(from), [x1, y1] = ePx(to); shots.push({ x0, y0: y0 - 12, x1, y1: y1 - 6, t: 0, dur: dur || 0.18, kind }); }
   // animation d'attaque : l'arme est armée puis frappe (ATK_T secondes en tout, la frappe sur les ATK_STRIKE dernières)
-  const ATK_T = 0.26, ATK_STRIKE = 0.16;
+  const ATK_T = 0.3, ATK_STRIKE = 0.21, ATK_RECOVER = 0.09; // armer 0,09 s · frapper 0,12 s · retour 0,09 s
   function basicFx(e, tgt, fx) {
     fx = fx || 'slash'; e.atkT = ATK_T;
     if (fx === 'slash') { e.slash = 0.18; e.slashAng = screenAng(e, tgt); }
@@ -408,7 +408,7 @@
   const chp = $('chprev').getContext('2d'); chp.imageSmoothingEnabled = false;
   function drawCharPreview() {
     if ($('char').hidden || !me.set) return;
-    const set = (prevSet || me.set).hd, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 5) % 4;
+    const set = (prevSet || me.set).hd, d = ['front', 'side', 'back', 'sideL'][prevDir], fr = Math.floor(time * 10) % 8;
     const img = d === 'sideL' ? set.sideL[fr] : d === 'side' ? set.side[fr] : set[d][Math.floor(time * 2) % 4 === 0 && d === 'front' ? 0 : fr];
     chp.clearRect(0, 0, 64, 68); chp.fillStyle = 'rgba(10,12,40,.35)'; chp.fillRect(20, 62, 24, 4); chp.drawImage(img, 3, 9);
   }
@@ -511,16 +511,17 @@
     if (m.t === 'err') { sys(m.msg || 'Erreur serveur'); return; }
     if (m.t !== 's') return;
     online = m.n || 1;
+    if (lastSnap) snapDt = snapDt * 0.8 + clamp(time - lastSnap, 0.05, 0.3) * 0.2; lastSnap = time;
     const seen = new Set();
     for (const a of m.p) {
       const [id, name, lk, x, y, f, fl, mv, hp, mh, lv, dead, sc, cl, vd, gr] = a; if (id === myId) continue; seen.add(id);
       let o = others.get(id);
       if (!o) { o = { id, x, y, z: W.hAt(x, y), anim: 0, hitFlash: 0, slash: 0, slashAng: 0, spin: 0 }; others.set(id, o); }
       o.name = name; if (o.lk !== lk || o.gr !== gr) { o.lk = lk; o.gr = gr; o.set = ARTAPI.charSet(lk.split('').map(Number), gr || ''); }
-      o.tx = x; o.ty = y; o.face = FACES[f] || 'front'; o.flip = !!fl; o.moving = !!mv; o.hp = hp; o.maxhp = mh; o.lvl = lv; o.dead = !!dead; o.scarf = sc | 0; o.cls = cl | 0; o.voidFx = !!vd;
+      o.fx = o.x; o.fy = o.y; o.t0 = time; o.tx = x; o.ty = y; o.face = FACES[f] || 'front'; o.flip = !!fl; o.moving = !!mv; o.hp = hp; o.maxhp = mh; o.lvl = lv; o.dead = !!dead; o.scarf = sc | 0; o.cls = cl | 0; o.voidFx = !!vd;
     }
     for (const id of [...others.keys()]) if (!seen.has(id)) others.delete(id);
-    m.m.forEach((a, k) => { const mb = mobs[k]; if (!mb) return; const [x, y, hp, al, ag, mv, st] = a; mb.status = st | 0; if (!mb.alive && al) { mb.x = x; mb.y = y; } mb.tx = x; mb.ty = y; mb.hp = hp; mb.alive = !!al; mb.aggro = !!ag; mb.moving = !!mv; });
+    m.m.forEach((a, k) => { const mb = mobs[k]; if (!mb) return; const [x, y, hp, al, ag, mv, st] = a; mb.status = st | 0; if (!mb.alive && al) { mb.x = x; mb.y = y; } mb.fx = mb.x; mb.fy = mb.y; mb.t0 = time; mb.tx = x; mb.ty = y; mb.hp = hp; mb.alive = !!al; mb.aggro = !!ag; mb.moving = !!mv; });
     if (m.me) { const wasDead = me.dead; Object.assign(me, m.me); { const gs = C.gearStr(me.equip); if (gs !== me.gear) { me.gear = gs; me.set = ARTAPI.charSet(look, gs); } } if (!$('craft').hidden) renderCraft(); if (!$('walk').hidden) renderWalk(); if (!$('char').hidden) renderChar(); if (me.lvl !== prefs.lvl) { prefs.lvl = me.lvl; try { localStorage.setItem('etheria_prefs', JSON.stringify({ name: me.name, look, lvl: me.lvl })); } catch (e) { /* ignore */ } } if (!wasDead && me.dead) { joy.active = false; } }
     if (m.c != null) chestOpen = !!m.c;
     if (m.cp) CORPSES = m.cp.map(([id, x, y, n, name, left]) => ({ kind: 'corpse', id, x, y, z: W.hAt(x, y), n, name, left }));
@@ -532,12 +533,12 @@
       case 'hm': { const mb = mobs[ev.m]; if (!mb) break; mb.hitFlash = 0.15; const mine = ev.by === myId; floatAt(mb, ev.v, ev.burn ? '#ff9a3c' : ev.bleed ? '#ff5a6a' : mine ? (ev.c ? '#ffd23f' : '#ffffff') : '#b8c4e0', ev.c && mine); burst(mb, ART.slimeLight[mb.type], ev.c ? 9 : 4); break; }
       case 'km': { const mb = mobs[ev.m]; if (!mb) break; burst(mb, ART.slimeLight[mb.type], 18, 20); burst(mb, '#ffffff', 6, 30); mb.alive = false; break; }
       case 'lt': if (ev.id === myId) { const mb = mobs[ev.m]; setTimeout(() => floatAt(mb, '+' + ev.xp + ' XP', '#8cf07a'), 150); setTimeout(() => floatAt(mb, '+' + ev.g + ' PO', '#ffd23f'), 450); if (ev.pot) setTimeout(() => floatAt(mb, '+1 potion', '#ff8ac0'), 750); if (ev.grp) setTimeout(() => floatAt(mb, 'Bonus groupe', '#9fe0ff'), 1000); } break;
-      case 'hp': { const t = ent(ev.id), mb = mobs[ev.m]; if (mb) mb.lunge = 0.15; if (!t) break; t.hitFlash = 0.25; if (t !== me && ev.by === myId) floatAt(t, ev.v, '#ffffff'); if (t === me) { if (ev.sh) floatAt(me, 'Absorbé', '#bfe6ff'); else { floatAt(me, '-' + ev.v, ev.burn ? '#ff9a3c' : '#ff5a5a'); if (!ev.burn) shake = 0.15; } } if (ev.b) { floatAt(t, 'Bloqué !', '#bfe6ff'); ring(t, 1.2, '#bfe6ff', 0.25); } break; }
+      case 'hp': { const t = ent(ev.id), mb = mobs[ev.m]; if (mb) mb.lunge = 0.15; if (!t) break; t.hitFlash = 0.18; if (t !== me && ev.by === myId) floatAt(t, ev.v, '#ffffff'); if (t === me) { if (ev.sh) floatAt(me, 'Absorbé', '#bfe6ff'); else { floatAt(me, '-' + ev.v, ev.burn ? '#ff9a3c' : '#ff5a5a'); if (!ev.burn && ev.v > me.maxhp * 0.08) shake = 0.15; } } if (ev.b) { floatAt(t, 'Bloqué !', '#bfe6ff'); ring(t, 1.2, '#bfe6ff', 0.25); } break; }
       case 'lv': { const t = ent(ev.id); if (!t) break; ring(t, 2.5, '#ffe27a', 0.6); burst(t, '#ffe27a', 24, 60); floatAt(t, 'Niveau ' + ev.lv + ' !', '#ffe27a', true); if (t === me) { sys('Niveau ' + ev.lv + ' atteint ! +3 points de caractéristiques à répartir (page personnage).'); } else say(t.name + ' passe niveau ' + ev.lv + ' !', '#9fe0ff'); break; }
       case 'die': if (ev.id === myId) { sys((ev.by ? ev.by + ' t\'a vaincu… ' : 'Vous êtes mort… ') + '-' + ev.loss + ' XP'); if (ev.drop) sys('Ton sac (' + ev.drop + ' objet' + (ev.drop > 1 ? 's' : '') + ') est resté sur ton corps : 3 minutes pour le récupérer avant qu\'un autre ne le pille !'); } break;
       case 'looted': if (ev.id === myId) { sys(ev.own ? 'Tu as récupéré ' + ev.n + ' objet' + (ev.n > 1 ? 's' : '') + ' sur ton corps.' : 'Tu as pillé ' + ev.n + ' objet' + (ev.n > 1 ? 's' : '') + ' sur le corps de ' + ev.of + '.'); floatAt(me, '+' + ev.n + ' objet' + (ev.n > 1 ? 's' : ''), '#ffe27a'); } break;
       case 'rs': { const t = ent(ev.id); if (t) ring(t, 1.8, '#8fd4ff', 0.5); if (ev.id === myId) sys('Retour au Bourg d\'Argel.'); break; }
-      case 'tp': if (ev.dash) { const t = ent(ev.id); if (t) burst(t, '#ffd060', 10, 10); } if (ev.id === myId) { me.x = ev.x; me.y = ev.y; me.z = W.hAt(me.x, me.y); } else { const o = others.get(ev.id); if (o) { o.x = o.tx = ev.x; o.y = o.ty = ev.y; } } break;
+      case 'tp': if (ev.dash) { const t = ent(ev.id); if (t) burst(t, '#ffd060', 10, 10); } if (ev.id === myId) { me.x = ev.x; me.y = ev.y; me.z = W.hAt(me.x, me.y); } else { const o = others.get(ev.id); if (o) { o.x = o.tx = o.fx = ev.x; o.y = o.ty = o.fy = ev.y; } } break;
       case 'ch': if (ev.s) sys(ev.t); else if (!ignored.has(String(ev.n).toLowerCase())) say(ev.n + ': ' + ev.t, ev.id === myId ? '#b8f0a0' : '#ece6f4'); break;
       case 'ab': { const t = ent(ev.id); if (t) abilityFx(t, ev, mobs[ev.m] || (ev.pv ? ent(ev.pv) : null)); break; }
       case 'ml': if (ev.id === myId) {
@@ -581,7 +582,7 @@
       case 'qp': if (ev.id === myId) { const Q = C.QUESTS[ev.q], mb = mobs[ev.m] || me; setTimeout(() => floatAt(mb, ev.item ? '+1 ' + Q.item : Q.short + ' ' + ev.n + '/' + Q.n, '#ffe9b0'), ev.item ? 1250 : 1100); } break;
       case 'qc': if (ev.id === myId) { const Q = C.QUESTS[ev.q]; setTimeout(() => { floatAt(me, 'Objectif accompli !', '#9cf07a', true); ring(me, 2, '#9cf07a', 0.5); }, 1400); sys('Objectif accompli ! Retourne voir ' + C.NPCS[Q.giver].name + '.'); } break;
       case 'qr': if (ev.id === myId) { const Q = C.QUESTS[ev.q]; sys('Quête terminée : ' + Q.title + ' (+' + ev.xp + ' XP, +' + ev.g + ' PO' + (ev.pot ? ', +' + ev.pot + ' potions' : '') + ')'); floatAt(me, 'Quête terminée !', '#ffe27a', true); burst(me, '#ffe27a', 20, 50); ring(me, 2.4, '#ffe27a', 0.6); } break;
-      case 'mr': { const mb = mobs[ev.m]; if (mb) { mb.x = mb.tx; mb.y = mb.ty; ring(mb, 1, ART.slimeLight[mb.type], 0.4); } break; }
+      case 'mr': { const mb = mobs[ev.m]; if (mb) { mb.x = mb.fx = mb.tx; mb.y = mb.fy = mb.ty; ring(mb, 1, ART.slimeLight[mb.type], 0.4); } break; }
     }
   }
 
@@ -614,7 +615,7 @@
       }
     }
     if (input.pot) { input.pot = false; if (me.potCd <= 0) { if (me.potions <= 0) floatAt(me, 'Plus de potion', '#ff8ac0'); else if (me.hp >= me.maxhp) floatAt(me, 'Vie pleine', '#8cf07a'); else { me.potCd = 0.9; link.send({ t: 'pot' }); } } }
-    me.anim = me.moving ? me.anim + dt * 8 : 0; me.z += (W.hAt(me.x, me.y) - me.z) * Math.min(1, dt * 15);
+    me.anim = me.moving ? me.anim + dt * 13 * (me.speed || 1) : 0; me.z += (W.hAt(me.x, me.y) - me.z) * Math.min(1, dt * 15);
     sendT -= dt;
     const st = me.x.toFixed(2) + me.y.toFixed(2) + me.face + me.flip + me.moving;
     if (sendT <= 0 && st !== me.sent) { sendT = 0.1; me.sent = st; link.send({ t: 'mv', x: +me.x.toFixed(2), y: +me.y.toFixed(2), f: FACES.indexOf(me.face), fl: me.flip ? 1 : 0, mv: me.moving ? 1 : 0 }); }
@@ -652,11 +653,11 @@
       f.x += f.vx * dt + Math.sin(time * 2 + f.ph) * 0.2; f.y += f.vy * dt + Math.sin(time * 3.1 + f.ph) * 0.15;
     }
     for (const o of others.values()) {
-      const px = o.x, py = o.y; o.x += (o.tx - o.x) * Math.min(1, dt * 10); o.y += (o.ty - o.y) * Math.min(1, dt * 10);
-      o.slash -= dt; o.atkT -= dt; o.spin -= dt; o.hitFlash -= dt; o.anim = o.moving ? o.anim + dt * 8 : 0; o.z += (W.hAt(o.x, o.y) - o.z) * Math.min(1, dt * 15); void px; void py;
+      const px = o.x, py = o.y, uo = o.t0 != null ? Math.min(1, (time - o.t0) / snapDt) : 1; o.x = (o.fx ?? o.tx) + (o.tx - (o.fx ?? o.tx)) * uo; o.y = (o.fy ?? o.ty) + (o.ty - (o.fy ?? o.ty)) * uo;
+      o.slash -= dt; o.atkT -= dt; o.spin -= dt; o.hitFlash -= dt; o.anim = o.moving ? o.anim + dt * 13 : 0; o.z += (W.hAt(o.x, o.y) - o.z) * Math.min(1, dt * 15); void px; void py;
     }
     for (const m of mobs) {
-      const dx = m.tx - m.x; m.x += (m.tx - m.x) * Math.min(1, dt * 8); m.y += (m.ty - m.y) * Math.min(1, dt * 8);
+      const dx = m.tx - m.x, um = m.t0 != null ? Math.min(1, (time - m.t0) / snapDt) : 1; m.x = (m.fx ?? m.tx) + (m.tx - (m.fx ?? m.tx)) * um; m.y = (m.fy ?? m.ty) + (m.ty - (m.fy ?? m.ty)) * um;
       if (Math.abs(dx) > 0.01) m.flip = (dx - (m.ty - m.y)) < 0;
       m.hitFlash -= dt; m.lunge -= dt; m.z += (W.hAt(m.x, m.y) - m.z) * Math.min(1, dt * 12);
     }
@@ -712,8 +713,11 @@
       if (e.scarf === 2 && ((time * 4 + k) % 5) < 0.4) { g.fillStyle = '#ffffff'; g.fillRect(x, y - 1, 1, 1); }
     }
   }
-  function frameOf(e, set) { set = set || e.set; const f = Math.floor(e.anim) % 4;
-    if (e.atkT > 0 && set.atk) { const ph = e.atkT > ATK_STRIKE ? 0 : 1; return e.face === 'side' ? (e.flip ? set.atk.sideL : set.atk.side)[ph] : set.atk[e.face][ph]; } if (!e.moving && set.blinkF && ((time + (e.bph || e.x)) % 3.4) < 0.14) { if (e.face === 'front') return set.blinkF; if (e.face === 'side') return e.flip ? set.blinkSL : set.blinkS; } if (e.face === 'side') return (e.flip ? set.sideL : set.side)[f]; return set[e.face][f]; }
+  function frameOf(e, set) { set = set || e.set; const f = Math.floor(e.anim) % set.front.length;
+    if (e.atkT > 0 && set.atk) { const ph = e.atkT > ATK_STRIKE ? 0 : e.atkT > ATK_RECOVER ? 1 : 2; return e.face === 'side' ? (e.flip ? set.atk.sideL : set.atk.side)[ph] : set.atk[e.face][ph]; } if (!e.moving && set.blinkF && ((time + (e.bph || e.x)) % 3.4) < 0.14) { if (e.face === 'front') return set.blinkF; if (e.face === 'side') return e.flip ? set.blinkSL : set.blinkS; } if (e.face === 'side') return (e.flip ? set.sideL : set.side)[f]; return set[e.face][f]; }
+  // silhouette blanche d'une image (flash quand on est touché), mise en cache
+  const WHITE = new WeakMap();
+  function whiteOf(img) { let c = WHITE.get(img); if (c) return c; c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const x = c.getContext('2d'); x.drawImage(img, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#ffffff'; x.fillRect(0, 0, c.width, c.height); WHITE.set(img, c); return c; }
   function drawEntity(e, ox, oy) {
     const fine = e.kind === 'char' || e.kind === 'npc' || e.kind === 'mob', snap = v => fine ? Math.round(v * RQ) / RQ : Math.round(v);
     const sx = snap(ox + (e.x - e.y) * 16), sy = snap(oy + (e.x + e.y) * 8 - e.z * 8);
@@ -760,9 +764,9 @@
     if (e.dead) { g.globalAlpha = 0.45; g.drawImage(cs.front[0], dx0, dy0, dw, dh); g.globalAlpha = 1; labels.push({ x: sx, y: sy - 34 * ck, t: e.name, c: '#a8a8b8' }); return; }
     g.drawImage(SHADOW, sx - 7 * ck, sy - 3, 14 * ck, 5);
     const scarf = e.kind !== 'npc';
-    const bob = e.moving && Math.floor(e.anim) % 2 === 1 ? -1 : 0;
+    const bob = e.moving && Math.floor(e.anim) % 4 === 2 ? -p : 0;
     if (e === me && me.stealth) g.globalAlpha = 0.45;
-    if (!(e.hitFlash > 0 && Math.floor(time * 30) % 2)) g.drawImage(frameOf(e, cs), dx0, dy0 + bob, dw, dh);
+    { const im = frameOf(e, cs); g.drawImage(im, dx0, dy0 + bob, dw, dh); if (e.hitFlash > 0) { g.globalAlpha = Math.min(1, e.hitFlash / 0.18) * 0.7; g.drawImage(whiteOf(im), dx0, dy0 + bob, dw, dh); g.globalAlpha = 1; } }
     g.globalAlpha = 1;
     if (e === me && me.pburn) for (let k = 0; k < 3; k++) { const ph = (time * 2.4 + k * 0.33) % 1; g.fillStyle = ph < 0.5 ? '#ffd060' : '#ff7a3a'; g.fillRect(Math.round(sx - 4 * ck + k * 4 * ck), Math.round(sy - 6 * ck - ph * 12), 1, 2); }
     if (e === me && me.pslow && Math.floor(time * 5) % 2) { g.fillStyle = '#a8dcff'; g.fillRect(Math.round(sx - 6 * ck), Math.round(sy - 4), 1, 1); g.fillRect(Math.round(sx + 6 * ck), Math.round(sy - 6), 1, 1); }
@@ -778,25 +782,26 @@
   }
   function drawMob(m, sx, sy) {
     const sc = m.scale; let lx = 0, ly = 0;
-    if (m.lunge > 0 && mode === 'play') { const a = screenAng(m, me); lx = Math.round(Math.cos(a) * 3); ly = Math.round(Math.sin(a) * 2); }
+    if (m.lunge > 0 && mode === 'play') { const a = screenAng(m, me), k = Math.sin((1 - m.lunge / 0.15) * Math.PI); lx = Math.round(Math.cos(a) * 3 * k); ly = Math.round(Math.sin(a) * 2 * k); }
     g.drawImage(SHADOW, sx - 7 * sc, sy - 3 * sc, 14 * sc, 5 * sc);
-    const blink = m.hitFlash > 0 && Math.floor(time * 30) % 2;
+    const blink = false, fl = m.hitFlash > 0 ? Math.min(1, m.hitFlash / 0.15) * 0.75 : 0;
+    const dImg = (im, ...a) => { g.drawImage(im, ...a); if (fl) { g.globalAlpha = fl; g.drawImage(whiteOf(im), ...a); g.globalAlpha = 1; } };
     let top;
     if (ART.mobs[m.type]) {
       // bestiaire : 2 images (marche ou battement d'ailes), regard vers la cible ; les volants flottent
       const fl = ART.floaters[m.type], fr = Math.floor(time * (fl ? 6 : m.moving ? 7 : 1.5) + m.phase) % 2, img = ART.mobs[m.type][fr], sc2 = m.scale || 1;
       const w = Math.round(img.width * sc2), h = Math.round(img.height * sc2), bob = fl ? Math.round(Math.sin(time * 3 + m.phase) * 1.5) - 3 : 0;
-      if (!blink) { if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); g.drawImage(img, -(w >> 1), sy - h + 1 + bob + ly, w, h); g.restore(); } else g.drawImage(img, sx - (w >> 1) + lx, sy - h + 1 + bob + ly, w, h); }
+      if (!blink) { if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); dImg(img, -(w >> 1), sy - h + 1 + bob + ly, w, h); g.restore(); } else dImg(img, sx - (w >> 1) + lx, sy - h + 1 + bob + ly, w, h); }
       top = sy - h + bob;
     } else if (m.type === 'champi') {
       const img = ART.champi[m.moving ? Math.floor(time * 6) % 2 : 0], bob = m.moving ? Math.abs(Math.sin(time * 9 + m.phase)) * -1.5 | 0 : 0;
-      if (!blink) { if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); g.drawImage(img, -9, sy - 19 + bob + ly); g.restore(); } else g.drawImage(img, sx - 9 + lx, sy - 19 + bob + ly); }
+      if (!blink) { if (m.flip) { g.save(); g.translate(sx + lx, 0); g.scale(-1, 1); dImg(img, -9, sy - 19 + bob + ly); g.restore(); } else dImg(img, sx - 9 + lx, sy - 19 + bob + ly); }
       top = sy - 20;
     } else {
       const img = ART[m.type], hop = m.moving ? Math.abs(Math.sin(time * 7 + m.phase)) : 0, sq = 1 + Math.sin(time * 6 + m.phase) * 0.08 * (m.moving || m.aggro ? 1.6 : 1) + hop * 0.08;
       ly -= Math.round(hop * 3 * sc);
       const w = Math.round(16 * sc * (2 - sq)), h = Math.round(14 * sc * sq);
-      if (!blink) g.drawImage(img, sx - (w >> 1) + lx, sy - h + 2 + ly, w, h);
+      if (!blink) dImg(img, sx - (w >> 1) + lx, sy - h + 2 + ly, w, h);
       if (m.type === 'boss') g.drawImage(ART.crown, sx - 9 + lx, sy - h - 8 + ly, 18, 12);
       top = sy - h - (m.type === 'boss' ? 8 : 0);
     }
@@ -810,7 +815,7 @@
     labels.length = 0;
     g.setTransform(RQ, 0, 0, RQ, 0, 0); g.drawImage(BACKDROP, 0, 0);
     // (reflets de nuages sur la mer retirés : coûteux sur mobile)
-    const shx = shake > 0 ? Math.round((Math.random() - .5) * 3) : 0, shy = shake > 0 ? Math.round((Math.random() - .5) * 3) : 0;
+    const shx = shake > 0 ? Math.round(Math.sin(time * 55) * shake * 7) : 0, shy = shake > 0 ? Math.round(Math.cos(time * 47) * shake * 5) : 0;
     const fx = VW / 2 - camX + shx, fy = VH / 2 - camY + shy, ox = Math.floor(fx), oy = Math.floor(fy); lastOX = ox; lastOY = oy;
     SUBX = Math.round((fx - ox) * RQ); SUBY = Math.round((fy - oy) * RQ); g.setTransform(RQ, 0, 0, RQ, SUBX, SUBY); g.imageSmoothingEnabled = false;
     for (const b of DYN) b.length = 0;
@@ -1035,7 +1040,7 @@
   function refreshLook() { const st = C.START[me.cls] || C.START[0], F = C.FAMS[st[1]]; $('lvc').textContent = F.name; $('clsdesc').textContent = 'Pas de classe : ton arme définit tes attaques. Attaque « ' + F.basic.name + ' », puis ' + F.tech.map(a => a.name).join(', ') + ' en gagnant de la maîtrise. Tu peux changer d\'arme à tout moment.'; LOOK_LABELS.forEach((l, i) => { $('lv' + i).textContent = LOOK_NAMES[i][look[i]]; }); me.set = ARTAPI.charSet(look, me.gear || C.gearStr({ weapon: [st[0], 0], chest: [9, 0] })); }
   function drawPreview() {
     if (!me.set) return; pctx.clearRect(0, 0, preview.width, preview.height);
-    const dirs = ['front', 'side', 'back', 'side'], k = Math.floor(time / 1.2) % 4, fr = Math.floor(time * 6) % 4;
+    const dirs = ['front', 'side', 'back', 'side'], k = Math.floor(time / 1.2) % 4, fr = Math.floor(time * 10) % 8;
     const img = dirs[k] === 'side' ? (k === 3 ? me.set.sideL : me.set.side)[fr] : me.set[dirs[k]][fr];
     pctx.fillStyle = 'rgba(24,16,48,.3)'; pctx.fillRect(20, 59, 24, 4);
     pctx.drawImage(img, 3, 6);

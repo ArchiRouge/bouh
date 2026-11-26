@@ -227,14 +227,14 @@
     const L = C.cleanLook(look), G = C.parseGear(gear), GE = {};
     for (const sl of Object.keys(G)) { const it = C.ITEMS[G[sl][0]]; if (it) GE[sl] = { icon: it.icon, c: it.c, rar: G[sl][1], fx: it.fx }; }
     const pc = (d, fr, bl, pose) => sprCanvas(SPR.paint(L, GE, d, fr, bl, pose));
-    const f = [0, 1, 2, 3].map(fr => pc('front', fr)), b = [0, 1, 2, 3].map(fr => pc('back', fr)), sd = [0, 1, 2, 3].map(fr => pc('side', fr));
+    const F8 = [0, 1, 2, 3, 4, 5, 6, 7], f = F8.map(fr => pc('front', fr)), b = F8.map(fr => pc('back', fr)), sd = F8.map(fr => pc('side', fr));
     const bs = pc('side', 0, true);
     const wp = G.weapon ? G.weapon[1] : -1;
     s = { front: f, back: b, side: sd, sideL: sd.map(flip), blinkF: pc('front', 0, true), blinkS: bs, blinkSL: flip(bs), glint: GE.chest && GE.chest.fx === 'gm' ? '#ffffff' : wp >= 3 ? (wp === 4 ? '#ffb060' : '#d8a8ff') : null, gm: !!(GE.chest && GE.chest.fx === 'gm'),
       w: SPR.W, h: SPR.H, cx: SPR.CX, foot: SPR.FOOT_Y };
-    // attaque : [arme armée, frappe] ; de dos l'arme reste dans le dos (on garde la pose de repos)
-    const af = [pc('front', 0, false, 1), pc('front', 0, false, 2)], as = [pc('side', 0, false, 1), pc('side', 0, false, 2)];
-    s.atk = { front: af, back: [b[0], b[0]], side: as, sideL: as.map(flip) };
+    // attaque : [arme armée, frappe, retour] ; de dos l'arme reste dans le dos (on garde la pose de repos)
+    const af = [1, 2, 3].map(q => pc('front', 0, false, q)), as = [1, 2, 3].map(q => pc('side', 0, false, q));
+    s.atk = { front: af, back: [b[0], b[0], b[0]], side: as, sideL: as.map(flip) };
     s.hd = s; // (ancien jeu HD : les nouveaux sprites ont déjà tout le détail)
     if (charCache.size > 300) charCache.clear();
     charCache.set(key, s); return s;
