@@ -139,6 +139,7 @@ Combat : `hm`, `km`, `mr`, `hp`, `die`, `rs`, `sw`, `ab`, `heal`, `zone`, `imm`,
 - **Une île** : une entrée dans `ISLES` (thème, monstres, ressources, arbres), sa palette dans `assets.js` (`ISLE_PAL`)
   et son ambiance dans `game/setup.js` (`ZONE_LOOK`, `THEME_LOOK`).
 - **Une technique** : dans `FAMS` (`content.js`), et ses deux paliers dans `MS`.
+- Tout changement visible par un joueur : mettre à jour le [guide du joueur](guide-du-joueur.md).
 - Après tout changement : `npm test`, puis `npm run build:preview` pour l'aperçu ; pour l'app iOS, `npx cap sync ios`.
 
 ## Commandes

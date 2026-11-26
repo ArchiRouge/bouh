@@ -133,6 +133,9 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - Measure before/after with a CPU-throttled headless run; headless rAF timestamps snap to 16.7 ms, so judge movement by time, not per frame.
 
 ## Rules
+- Keep the player guide up to date (`docs/guide-du-joueur.md` links to it): any change a player can notice (rules, values, islands,
+  bosses, controls) updates its section in the same piece of work, with numbers taken from the code. No docs tool → list it under
+  « À reporter » in that file.
 - Player progress must survive updates: never rename or remove fields of `saveData()` in `client/core.js`; new fields need a default in `addPlayer`.
 - After any change in `client/`, run `npx cap sync ios` before rebuilding.
 - Load order in `index.html` matters: `content.js` before `core.js`; `persist.js` must stay last; it loads the client files `client/game/*.js` itself, in order (`GAME_FILES`).

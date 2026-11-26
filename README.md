@@ -138,4 +138,6 @@ Apple exige, pour une app avec du contenu généré par les joueurs (tchat) :
 
 Comptes (Sign in with Apple), dessins propres aux boss de donjon, nouvelles îles, quêtes du bourg, emotes, sons et musique.
 
+Pour apprendre à jouer : le [guide du joueur](docs/guide-du-joueur.md).
+
 Pour contribuer au code : lire [docs/architecture.md](docs/architecture.md), puis `npm test`.
