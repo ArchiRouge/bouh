@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><title>Maquette donjons</title>
+<style>
+body{margin:0;background:#120e22;color:#f4ead8;font:15px/1.35 Georgia,serif}
+canvas{display:block;image-rendering:pixelated}
+</style></head><body>
+<canvas id="c"></canvas>
+<script src="../../../client/core.js"></script>
+<script src="../../../client/sprites.js"></script>
+<script src="../../../client/assets.js"></script>
+<script>
+(() => {
+const C0 = window.EtheriaCore, A = window.EtheriaArt, SPR = window.EtheriaSprites, C = Object.assign({}, C0, { hash: (x, y, s) => Math.floor(C0.hash(x, y, s) * 1e6) });
+const WW = 1260, cv = document.getElementById('c'), g = cv.getContext('2d');
+cv.width = WW; cv.height = 4200; g.imageSmoothingEnabled = false;
+const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const css = c => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16 - 0.5);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+/* ---------- raretés de donjon (couleurs des objets du jeu) ---------- */
+const TIERS = [
+  { name: 'Commun', col: '#ece8f4', p: '45 %', n: 5, lvl: '+0', elite: 0, theme: 'Caveau', light: 1.0, beam: 40 },
+  { name: 'Inhabituel', col: '#5ee870', p: '28 %', n: 7, lvl: '+1', elite: 1, theme: 'Racines', light: 0.9, beam: 60 },
+  { name: 'Rare', col: '#5aa8ff', p: '17 %', n: 9, lvl: '+2', elite: 2, theme: 'Grotte de cristal', light: 0.8, beam: 85 },
+  { name: 'Épique', col: '#c47cff', p: '8 %', n: 11, lvl: '+3', elite: 4, theme: 'Catacombes d\'Éther', light: 0.7, beam: 115 },
+  { name: 'Légendaire', col: '#ffb43a', p: '2 %', n: 13, lvl: '+5', elite: 6, theme: 'Salle dorée', light: 0.62, beam: 150 }
+];
+const MYTH = '#ff4a7a';
+// pierre de chaque thème (ombres violettes, lumières crème)
+const THEME = [
+  ['#1e1a2c', '#2e293e', '#423b54', '#5a526c', '#766e88', '#968ea6'],
+  ['#18201e', '#24302a', '#334436', '#465a44', '#5e7454', '#7e9268'],
+  ['#141a30', '#1e2844', '#2a3a5c', '#3a5076', '#506a92', '#7090b0'],
+  ['#1a1230', '#271a44', '#36265a', '#483474', '#5e4890', '#7c66ac'],
+  ['#241a18', '#36261e', '#4c3626', '#664a30', '#84643c', '#a8864e']
+].map(a => a.map(hex));
+const ramp = (pal, v, x, y) => pal[clamp(Math.round(clamp(v, 0, 1) * (pal.length - 1) + BAY[((y & 3) << 2) | (x & 3)] * 0.6), 0, pal.length - 1)];
+const tierRamp = h => SPR.ramp5(h);
+
+/* ---------- petit tampon de pixels ---------- */
+class Pix {
+  constructor(w, h) { this.w = w; this.h = h; this.c = document.createElement('canvas'); this.c.width = w; this.c.height = h; this.x = this.c.getContext('2d'); this.im = this.x.createImageData(w, h); this.d = this.im.data; }
+  set(x, y, c, a) { x |= 0; y |= 0; if (x < 0 || y < 0 || x >= this.w || y >= this.h || !c) return; const k = (y * this.w + x) * 4; this.d[k] = c[0]; this.d[k + 1] = c[1]; this.d[k + 2] = c[2]; this.d[k + 3] = a == null ? 255 : a; }
+  a(x, y) { return x < 0 || y < 0 || x >= this.w || y >= this.h ? 0 : this.d[(y * this.w + x) * 4 + 3]; }
+  outline(tint) { const add = []; for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) { if (this.a(x, y)) continue; for (const [a, b] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) if (this.a(x + a, y + b) > 120) { add.push([x, y]); break; } } for (const [x, y] of add) this.set(x, y, tint || [40, 22, 52]); return this; }
+  done() { this.x.putImageData(this.im, 0, 0); return this.c; }
+}
+const inDia = (x, y) => { const sx = x + 0.5 - 16, sy = y + 0.5 - 8; return Math.abs(sx) / 16 + Math.abs(sy) / 8 <= 1; };
+
+/* ---------- tuiles du donjon ---------- */
+function paintFloor(pal, v) {
+  const P = new Pix(32, 16), r = C.mulberry32(v * 97 + 5);
+  const crack = r() < 0.5;
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 32; x++) {
+    if (!inDia(x, y)) continue;
+    const sx = x - 16 + 0.5, sy = y + 0.5, du = (sx / 16 + sy / 8) / 2, dv = (sy / 8 - sx / 16) / 2;
+    const su = (du * 2) % 1, sv = (dv * 2) % 1, seam = su < 0.07 || sv < 0.07;
+    const fl = Math.floor(du * 2) + Math.floor(dv * 2) * 2, sh = [0.55, 0.45, 0.5, 0.4][fl & 3] + (C.hash(v, fl) % 10) / 60;
+    let t = seam ? 0.3 : 0.2 + sh + (su > 0.9 || sv > 0.9 ? -0.12 : su < 0.2 || sv < 0.2 ? 0.1 : 0);
+    if (crack && Math.abs(du - dv * 0.6 - 0.3) < 0.025 && du > 0.2 && du < 0.7) t = 0.3;
+    P.set(x, y, mix(ramp(pal, t, x, y), [236, 220, 200], 0.12));
+  }
+  return P.done();
+}
+const WH = 22;
+function paintWall(pal, tier, v, wh) {
+  const WH = wh || 22, P = new Pix(32, 16 + WH), acc = tierRamp(TIERS[tier].col);
+  for (let y = 0; y < 16 + WH; y++) for (let x = 0; x < 32; x++) {
+    const top = inDia(x, y);
+    if (top) { // dessus du mur : sombre, bord avant éclairé
+      const sy = y + 0.5 - 8, sx = x + 0.5 - 16, e = Math.abs(sx) / 16 + Math.abs(sy) / 8;
+      P.set(x, y, e > 0.8 && sy > 0 ? pal[3] : ramp(pal, 0.04 + (C.hash(x >> 2, y >> 1) % 4) / 40, x, y));
+      continue;
+    }
+    // faces : gauche (x < 16) et droite
+    const yy = y - WH;
+    const left = x < 16;
+    const yTop = left ? 8 + (x + 0.5) / 2 : 8 + (32 - x - 0.5) / 2; // bord supérieur de la face (sous le dessus)
+    if (y < yTop || y > yTop + WH) continue;
+    const fy = y - yTop, row = Math.floor(fy / 5), bx = Math.floor((left ? x : 32 - x) / 6 + (row % 2) * 0.5);
+    const mortar = fy % 5 < 1 || ((left ? x : 32 - x) + (row % 2) * 3) % 6 < 1;
+    let t = left ? 0.5 : 0.3; t += ((C.hash(bx, row + v * 7) % 5) - 2) / 30; if (mortar) t -= 0.22; if (fy > WH - 3) t -= 0.12;
+    P.set(x, y, ramp(pal, t, x, y));
+    void yy;
+  }
+  // rune de rareté sur certaines faces
+  if (v % 3 === 0 && tier >= 2 && WH > 10) for (const [x, y] of [[23, 22], [24, 21], [25, 22], [24, 23], [24, 24]]) P.set(x, y, acc[3]);
+  P.outline([20, 12, 34]);
+  return P.done();
+}
+function paintTorch(f) {
+  const P = new Pix(7, 13), fl = [hex('#a0301a'), hex('#ff7a2a'), hex('#ffc048'), hex('#fff4c0')];
+  for (let y = 8; y < 13; y++) P.set(3, y, hex('#4a2c1c')); P.set(2, 8, hex('#6a4028')); P.set(4, 8, hex('#6a4028'));
+  const h = f ? [[3, 1], [2, 2], [3, 2], [4, 3], [2, 3], [3, 3], [2, 4], [3, 4], [4, 4], [2, 5], [3, 5], [4, 5], [3, 6], [3, 7]] : [[3, 0], [3, 1], [4, 2], [3, 2], [2, 3], [3, 3], [4, 3], [2, 4], [3, 4], [4, 4], [2, 5], [3, 5], [4, 5], [3, 6], [3, 7]];
+  for (const [x, y] of h) P.set(x, y, fl[y < 2 ? 1 : y > 5 ? 0 : 2]); P.set(3, 4, fl[3]); P.set(3, 5, fl[3]);
+  return P.done();
+}
+function paintSpikes(up, pal) {
+  const P = new Pix(32, 16);
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 32; x++) if (inDia(x, y)) { const sx = x - 16 + 0.5, sy = y - 8 + 0.5; if (Math.abs(sx) / 16 + Math.abs(sy) / 8 < 0.7) P.set(x, y, (x + y) % 4 === 0 ? pal[0] : pal[1]); }
+  if (up) for (const [cx, cy] of [[10, 8], [16, 5], [22, 8], [16, 11], [13, 8], [19, 8]]) for (let k = 0; k < 6; k++) { P.set(cx, cy - k, hex(k > 3 ? '#e8ecf4' : '#9aa0b8')); if (k < 2) P.set(cx + 1, cy - k, hex('#5a6078')); }
+  return P.done();
+}
+function paintCrystal(col) {
+  const P = new Pix(9, 16), r = tierRamp(col);
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 9; x++) { const w = y < 8 ? y * 0.55 : (16 - y) * 0.3; if (Math.abs(x - 4) <= w) P.set(x, y, x < 4 ? r[3] : x === 4 ? r[4] : r[1]); }
+  P.set(3, 4, [255, 255, 255]); return P.outline().done();
+}
+function paintChest(tier, open) {
+  const P = new Pix(18, 15), w = ['#3a2014', '#5e3820', '#8a5630', '#b07a44', '#d8a868'].map(hex), tr = tierRamp(TIERS[tier].col);
+  for (let y = open ? 6 : 3; y < 14; y++) for (let x = 1; x < 17; x++) P.set(x, y, y === (open ? 6 : 3) ? w[4] : x < 4 ? w[3] : x > 14 ? w[1] : w[2]);
+  for (let x = 1; x < 17; x++) { P.set(x, open ? 8 : 7, tr[2]); P.set(x, 13, w[0]); }
+  for (let y = 3; y < 14; y++) { P.set(1, y, tr[1]); P.set(16, y, tr[1]); }
+  if (open) for (let x = 3; x < 15; x++) { P.set(x, 7, hex('#fff6c0')); P.set(x, 1, w[3]); P.set(x, 2, w[2]); }
+  else { P.set(8, 6, tr[4]); P.set(9, 6, tr[3]); P.set(8, 8, tr[0]); P.set(9, 8, tr[0]); }
+  return P.outline().done();
+}
+
+/* ---------- l'entrée au centre de l'île ---------- */
+const STONE = ['#3c3a5c', '#504e70', '#666486', '#7e7c9c', '#9a98b6', '#c0bdd6'].map(hex);
+function paintEntrance(tier, f) {
+  const T = TIERS[tier], tr = tierRamp(T.col), W = 72, H = 84, P = new Pix(W, H), cx = 36, base = 62;
+  const gold = tierRamp('#ffd04a');
+  // anneau de lueur au sol
+  for (let y = base - 14; y < base + 22; y++) for (let x = 0; x < W; x++) { const e = Math.abs(x + 0.5 - cx) / 35 + Math.abs(y + 0.5 - base - 4) / 17.5; if (e > 0.86 && e <= 1 && (x + y + f) % 3 !== 0) P.set(x, y, tr[e > 0.93 ? 1 : 2], 200); }
+  // plateforme losange surélevée (4 px)
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const sx = x + 0.5 - cx, syT = y + 0.5 - (base - 4), eT = Math.abs(sx) / 28 + Math.abs(syT) / 14;
+    if (eT <= 1) { P.set(x, y, ramp(STONE, 0.55 + (Math.floor((sx / 28 + syT / 14) * 3) + Math.floor((syT / 14 - sx / 28) * 3)) % 2 * 0.15 - (eT > 0.9 ? 0.2 : 0), x, y)); continue; }
+    const syB = y + 0.5 - base, eB = Math.abs(sx) / 28 + Math.abs(syB) / 14;
+    if (eB <= 1 && syB > -2 && y > base - 4 + (14 * (1 - Math.abs(sx) / 28)) - 0.5) P.set(x, y, sx < 0 ? STONE[2] : STONE[1]);
+  }
+  // escalier qui descend dans le noir
+  for (let k = 0; k < 5; k++) for (let x = cx - 11 + k; x <= cx + 11 - k; x++) { const y = base - 6 - k * 2; P.set(x, y, k < 2 ? STONE[3 - k] : [24 - k * 3, 16 - k * 2, 40 - k * 4]); P.set(x, y + 1, k < 2 ? STONE[1] : [14, 8, 26]); }
+  // tourbillon de la couleur du donjon dans l'ouverture
+  for (let y = base - 34; y < base - 14; y++) for (let x = cx - 11; x <= cx + 11; x++) {
+    const nx = (x + 0.5 - cx) / 11, ny = (y + 0.5 - (base - 22)) / 12; if (nx * nx + ny * ny > 1 && y < base - 22) continue; if (Math.abs(nx) > 1) continue;
+    const a = Math.atan2(ny, nx), d = Math.hypot(nx, ny), sw = Math.sin(a * 3 + d * 8 - f * Math.PI / 2);
+    P.set(x, y, sw > 0.35 ? tr[3] : sw > -0.3 ? tr[1] : [18, 10, 34]);
+  }
+  // linteau + piliers
+  const pil = (px) => { for (let y = base - 40; y < base - 6; y++) for (let x = px - 3; x <= px + 3; x++) { const edge = x === px - 3 || x === px + 3; P.set(x, y, edge ? STONE[0] : x < px ? STONE[4] : x === px ? STONE[3] : STONE[2]); if ((y - base) % 7 === 0) P.set(x, y, STONE[1]); } for (let x = px - 4; x <= px + 4; x++) { P.set(x, base - 41, STONE[4]); P.set(x, base - 40, STONE[2]); P.set(x, base - 7, STONE[2]); } };
+  pil(cx - 15); pil(cx + 15);
+  for (let x = cx - 18; x <= cx + 18; x++) { P.set(x, base - 44, STONE[5]); P.set(x, base - 43, STONE[4]); P.set(x, base - 42, STONE[3]); P.set(x, base - 41, STONE[2]); }
+  // runes lumineuses sur les piliers
+  for (const px of [cx - 15, cx + 15]) for (let k = 0; k < 4; k++) P.set(px, base - 34 + k * 7, tr[4 - (k + f) % 2]);
+  // garnitures dorées au rang légendaire
+  if (tier === 4) { for (let x = cx - 18; x <= cx + 18; x += 2) P.set(x, base - 44, gold[3]); for (const px of [cx - 15, cx + 15]) for (let y = base - 40; y < base - 6; y += 3) { P.set(px - 3, y, gold[2]); P.set(px + 3, y, gold[1]); } }
+  if (tier >= 3) for (const px of [cx - 15, cx + 15]) { P.set(px - 4, base - 46, STONE[3]); P.set(px + 4, base - 46, STONE[3]); }
+  // gemme clé de voûte
+  for (const [x, y, c] of [[cx, base - 49, 4], [cx - 1, base - 48, 3], [cx, base - 48, 4], [cx + 1, base - 48, 2], [cx - 2, base - 47, 3], [cx - 1, base - 47, 3], [cx, base - 47, 2], [cx + 1, base - 47, 1], [cx + 2, base - 47, 1], [cx - 1, base - 46, 2], [cx, base - 46, 1], [cx + 1, base - 46, 1], [cx, base - 45, 0]]) P.set(x, y, tr[c]);
+  P.outline([30, 18, 46]);
+  return P.done();
+}
+// faisceau visible de loin (taille selon la rareté)
+function beam(x, yTop, yBot, col, w, t) {
+  const c = hex(col);
+  for (let y = yTop; y < yBot; y += 4) {
+    const k = (y - yTop) / (yBot - yTop), a = 0.08 + 0.3 * k;
+    g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${a})`; g.fillRect(x - w / 2, y, w, 4);
+    g.fillStyle = `rgba(255,255,255,${a * 0.6})`; g.fillRect(x - w / 6, y, w / 3, 4);
+  }
+  const r = C.mulberry32(t * 31 + 7);
+  for (let i = 0; i < 14; i++) { const px = x - w + r() * w * 2, py = yTop + r() * (yBot - yTop); g.fillStyle = col; g.fillRect(Math.round(px / 4) * 4, Math.round(py / 4) * 4, 4, 4); }
+}
+
+/* ---------- labyrinthe (même algorithme que le jeu utiliserait) ---------- */
+function maze(n, seed, loops) {
+  const r = C.mulberry32(seed), N = 3 * n + 1, t = Array.from({ length: N }, () => new Uint8Array(N).fill(1));
+  const open = (cx, cy) => { for (let y = 0; y < 2; y++) for (let x = 0; x < 2; x++) t[3 * cy + 1 + y][3 * cx + 1 + x] = 0; };
+  const link = (ax, ay, bx, by) => { if (bx !== ax) { const wx = 3 * Math.max(ax, bx); for (let k = 1; k <= 2; k++) t[3 * ay + k][wx] = 0; } else { const wy = 3 * Math.max(ay, by); for (let k = 1; k <= 2; k++) t[wy][3 * ax + k] = 0; } };
+  const seen = new Uint8Array(n * n), start = [n >> 1, n - 1], st = [start]; seen[start[1] * n + start[0]] = 1; open(...start);
+  const adj = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  while (st.length) {
+    const [cx, cy] = st[st.length - 1], nb = adj.map(([a, b]) => [cx + a, cy + b]).filter(([x, y]) => x >= 0 && y >= 0 && x < n && y < n && !seen[y * n + x]);
+    if (!nb.length) { st.pop(); continue; }
+    const [nx, ny] = nb[Math.floor(r() * nb.length)]; seen[ny * n + nx] = 1; open(nx, ny); link(cx, cy, nx, ny); st.push([nx, ny]);
+  }
+  for (let cy = 0; cy < n; cy++) for (let cx = 0; cx < n; cx++) for (const [a, b] of [[1, 0], [0, 1]]) if (cx + a < n && cy + b < n && r() < loops) link(cx, cy, cx + a, cy + b);
+  // distances depuis l'entrée ; boss = cellule la plus lointaine, salle 2×2
+  const dist = new Int32Array(n * n).fill(-1), q = [start]; dist[start[1] * n + start[0]] = 0;
+  while (q.length) { const [cx, cy] = q.shift(); for (const [a, b] of adj) { const x = cx + a, y = cy + b; if (x < 0 || y < 0 || x >= n || y >= n || dist[y * n + x] >= 0) continue; const wx = a ? 3 * Math.max(cx, x) : 3 * cx + 1, wy = b ? 3 * Math.max(cy, y) : 3 * cy + 1; if (t[wy][wx]) continue; dist[y * n + x] = dist[cy * n + cx] + 1; q.push([x, y]); } }
+  let boss = start, bd = -1; for (let i = 0; i < n * n; i++) if (dist[i] > bd) { bd = dist[i]; boss = [i % n, (i / n) | 0]; }
+  const bx = clamp(boss[0], 0, n - 2), by = clamp(boss[1], 0, n - 2);
+  for (let y = 3 * by + 1; y <= 3 * by + 5; y++) for (let x = 3 * bx + 1; x <= 3 * bx + 5; x++) t[y][x] = 0;
+  const ends = []; for (let cy = 0; cy < n; cy++) for (let cx = 0; cx < n; cx++) { let k = 0; for (const [a, b] of adj) { const x = cx + a, y = cy + b; if (x < 0 || y < 0 || x >= n || y >= n) continue; const wx = a ? 3 * Math.max(cx, x) : 3 * cx + 1, wy = b ? 3 * Math.max(cy, y) : 3 * cy + 1; if (!t[wy][wx]) k++; } if (k === 1 && !(cx === start[0] && cy === start[1])) ends.push([cx, cy]); }
+  return { t, N, n, start, boss: [bx, by], bd, ends, dist };
+}
+
+/* ---------- textes ---------- */
+function title(y, txt, sub) {
+  g.fillStyle = '#f2c94c'; g.font = 'bold 30px Georgia, serif'; g.fillText(txt, 40, y);
+  if (sub) { g.fillStyle = '#c8bcdc'; g.font = 'italic 17px Georgia, serif'; g.fillText(sub, 40, y + 28); }
+}
+function label(x, y, txt, col, size, align, bold) { g.font = `${bold ? 'bold ' : ''}${size || 15}px Georgia, serif`; g.textAlign = align || 'center'; g.fillStyle = col || '#f4ead8'; g.fillText(txt, x, y); g.textAlign = 'left'; }
+function panel(x, y, w, h) { g.fillStyle = '#1c1636'; g.fillRect(x, y, w, h); g.strokeStyle = '#f4ead8'; g.globalAlpha = 0.5; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, w - 2, h - 2); g.globalAlpha = 1; }
+
+/* ---------- rendu d'une scène de donjon en 2.5D, monde ×4, perso ×3 ---------- */
+const S = 4, CP = 3;
+function scene(ox, oy, vw, vh, M, tier, cam, ents, lights, opts) {
+  const pal = THEME[tier], floors = [0, 1, 2, 3].map(v => paintFloor(pal, v + tier * 4)), walls = [0, 1, 2].map(v => paintWall(pal, tier, v)), cut = paintWall(pal, tier, 1, 6);
+  const spikesUp = paintSpikes(true, pal), spikesDn = paintSpikes(false, pal);
+  const L = document.createElement('canvas'); L.width = vw; L.height = vh; const q = L.getContext('2d'); q.imageSmoothingEnabled = false;
+  q.fillStyle = '#07040e'; q.fillRect(0, 0, vw, vh);
+  const iso = (x, y) => [((x - y) * 16 - cam[0]) * S + vw / 2, ((x + y) * 8 - cam[1]) * S + vh / 2];
+  const N = M.N, items = [];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const [sx, sy] = iso(x, y); if (sx < -200 || sx > vw + 200 || sy < -260 || sy > vh + 200) continue;
+    if (!M.t[y][x]) { q.drawImage(floors[C.hash(x, y) % 4], sx - 16 * S, sy, 32 * S, 16 * S); if (opts.spikes && opts.spikes.some(([a, b]) => a === x && b === y)) q.drawImage(opts.spikesUp ? spikesUp : spikesDn, sx - 16 * S, sy, 32 * S, 16 * S); }
+    else if (opts.cut && x + y > opts.cut[0] + opts.cut[1] && Math.abs(x - opts.cut[0]) + Math.abs(y - opts.cut[1]) < 7) items.push({ k: x + y + 1, f: () => q.drawImage(cut, sx - 16 * S, sy - 6 * S, 32 * S, 22 * S) });
+    else items.push({ k: x + y + 1, f: () => q.drawImage(walls[C.hash(y, x) % 3], sx - 16 * S, sy - WH * S, 32 * S, (16 + WH) * S) });
+  }
+  for (const e of ents) { const [sx, sy] = iso(e.x, e.y); items.push({ k: e.x + e.y + 0.01, f: () => e.draw(q, sx, sy + 8 * S) }); }
+  items.sort((a, b) => a.k - b.k).forEach(it => it.f());
+  // obscurité par blocs de pixels du monde, en bandes tramées (lumière du héros, torches, cristaux)
+  const im = q.getImageData(0, 0, vw, vh), d = im.data, Ls = lights.map(l => { const [sx, sy] = iso(l.x, l.y); return { sx, sy: sy + 8 * S - (l.h || 0) * S, r: l.r * S, k: l.k, c: hex(l.c) }; });
+  for (let by = 0; by < vh; by += S) for (let bx = 0; bx < vw; bx += S) {
+    let lv = opts.amb || 0.1, tc = [0, 0, 0];
+    for (const l of Ls) { const dd = Math.hypot((bx - l.sx), (by - l.sy) * 1.6) / l.r; if (dd < 1) { const v = (1 - dd) * l.k; lv += v; tc = mix(tc, l.c, Math.min(1, v * 0.5)); } }
+    const qv = clamp(Math.floor(lv * 5 + BAY[(((by / S) & 3) << 2) | ((bx / S) & 3)] * 0.9 + 0.5) / 5, 0.08, 1.15);
+    for (let y = by; y < by + S && y < vh; y++) for (let x = bx; x < bx + S && x < vw; x++) { const k = (y * vw + x) * 4; for (let c = 0; c < 3; c++) d[k + c] = clamp(d[k + c] * qv + tc[c] * 0.12 * qv, 0, 255); }
+  }
+  q.putImageData(im, 0, 0);
+  g.drawImage(L, ox, oy);
+  return iso;
+}
+function sprite(img, sc, fx, fy, aura) {
+  return (q, sx, sy) => {
+    if (aura) { const c = hex(aura); for (let k = 3; k > 0; k--) { q.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},${0.12 * k})`; q.beginPath(); q.ellipse(sx, sy - 2 * S, (img.width * sc) / 2 + k * 6, 10 + k * 3, 0, 0, 7); q.fill(); } }
+    q.fillStyle = 'rgba(8,4,16,.45)'; q.beginPath(); q.ellipse(sx, sy, img.width * sc * 0.32, 4 * S * 0.8, 0, 0, 7); q.fill();
+    q.drawImage(img, Math.round(sx - fx * sc), Math.round(sy - fy * sc), img.width * sc, img.height * sc);
+  };
+}
+
+/* ---------- chargement de l'art du jeu ---------- */
+const W = C.buildWorld(C.SEED), ART = A.buildAll(W);
+const GM = C.gearStr({ head: [33, 4], chest: [34, 4], legs: [35, 4], feet: [36, 4], weapon: [39, 4] });
+const hero = A.charSet([1, 6, 2, 1, 0], GM);
+const mob = (k, fr) => k === 'boss' || k === 'slime' || k === 'ember' || k === 'frost' ? ART[k] : ART.mobs[k][fr || 0];
+
+let Y = 0;
+g.fillStyle = '#120e22'; g.fillRect(0, 0, WW, cv.height);
+/* ===== en-tête ===== */
+g.fillStyle = '#f4ead8'; g.font = 'bold 40px Georgia, serif'; g.fillText('Pixels Worlds — Donjons', 40, 62);
+g.fillStyle = '#c8bcdc'; g.font = 'italic 18px Georgia, serif'; g.fillText('Maquette v10 · un donjon au centre de chaque île du Pont d\'Éther · rareté tirée à chaque arrivée · PvP et sac perdu comme sur les îles', 40, 94);
+Y = 130;
+
+/* ===== 1. Entrées ===== */
+title(Y + 30, '1. L\'entrée, au centre de l\'île', 'La couleur dit la rareté, de près comme de loin : faisceau plus haut, piliers plus riches. Même code couleur que les objets.');
+Y += 80; panel(20, Y, WW - 40, 640);
+const ent = []; for (let t = 0; t < 5; t++) ent.push(paintEntrance(t, 1));
+for (let t = 0; t < 5; t++) {
+  const cx = 40 + 118 + t * 236, base = Y + 400, T = TIERS[t];
+  // sol d'herbe de l'île autour
+  for (let k = 0; k < 3; k++) { g.fillStyle = ['#2f5a3c', '#3a6a44', '#467a4c'][k]; g.beginPath(); g.ellipse(cx, base + 10, 112 - k * 20, 44 - k * 8, 0, 0, 7); g.fill(); }
+  beam(cx, base - 250 - T.beam * 0.9, base - 128, T.col, 22 + t * 6, t);
+  g.drawImage(ent[t], cx - 36 * 3, base - 62 * 3 + 20, 72 * 3, 84 * 3);
+  label(cx, base + 124, T.name, T.col, 24, 'center', true);
+  label(cx, base + 148, T.p + ' des arrivées', '#c8bcdc', 15);
+  label(cx, base + 172, `${T.n}×${T.n} salles · monstres ${T.lvl}`, '#f4ead8', 15);
+  label(cx, base + 194, T.elite ? `${T.elite} élite${T.elite > 1 ? 's' : ''}${t >= 2 ? ' · pièges' : ''}` : 'aucun élite', '#f4ead8', 15);
+  label(cx, base + 216, '« ' + T.theme + ' »', '#c8bcdc', 15);
+}
+Y += 680;
+
+/* ===== 2. Dans le donjon ===== */
+title(Y + 30, '2. Dans le labyrinthe', 'Donjon Épique « Catacombes d\'Éther » : couloirs de 2 cases, torches, la lumière du héros perce le noir. Plus le donjon est rare, plus il fait sombre.');
+Y += 76;
+const ME = maze(11, 4242, 0.08), T3 = 3;
+// cadrer un carrefour près de l'entrée
+const st = ME.start, nOpen = (cx, cy) => [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([a, b]) => { const x = cx + a, y = cy + b; if (x < 0 || y < 0 || x >= ME.n || y >= ME.n) return false; const wx = a ? 3 * Math.max(cx, x) : 3 * cx + 1, wy = b ? 3 * Math.max(cy, y) : 3 * cy + 1; return !ME.t[wy][wx]; });
+let jc = st; for (let i = 0; i < ME.n * ME.n; i++) { const cx = i % ME.n, cy = (i / ME.n) | 0, d = ME.dist[i]; if (d >= 2 && d <= 30 && nOpen(cx, cy).length >= 3 && cx > 0 && cx < ME.n - 1) { jc = [cx, cy]; break; } }
+const hx = 3 * jc[0] + 2, hy = 3 * jc[1] + 2, nbC = nOpen(jc[0], jc[1]).map(([a, b]) => [hx + a * 3, hy + b * 3]);
+const cam = [(hx - hy) * 16, (hx + hy) * 8];
+const VW = WW - 40, VH = 620;
+// emplacements de torches : murs face au couloir
+const torches = [];
+for (let y = 0; y < ME.N; y++) for (let x = 0; x < ME.N; x++) if (ME.t[y][x] && C.hash(x * 7, y * 3) % 6 === 0 && y + 1 < ME.N && !ME.t[y + 1][x] && Math.abs(x - hx) + Math.abs(y - hy) < 16 && x + y < hx + hy - 1) torches.push([x, y]);
+const ents = [], lights = [{ x: hx, y: hy, r: 150, k: 1.3, c: '#fff0d0', h: 20 }];
+for (const [x, y] of torches) { ents.push({ x: x + 0.5, y: y + 1.02, draw: (q, sx, sy) => q.drawImage(paintTorch(x % 2), sx - 3 * S + 6 * S, sy - 30 * S, 7 * S, 13 * S) }); lights.push({ x: x + 0.9, y: y + 1.1, r: 55, k: 0.9, c: '#ff9a40', h: 26 }); }
+const heroImg = hero.side[2];
+ents.push({ x: hx, y: hy, draw: sprite(heroImg, CP, hero.cx, hero.foot) });
+// monstres : spectre élite (aura violette), chauves-souris, feu follet
+const kinds = [['spectre', 2, TIERS[3].col], ['chauvesouris', 1], ['golem', 1.2], ['chauvesouris', 1]], foes = nbC.map(([x, y], i) => [x + (i ? 0.4 : -0.3), y + (i ? -0.5 : 0.4), ...kinds[i % 4]]);
+for (const [x, y, k, sc, au] of foes) { const im = mob(k, 0); ents.push({ x, y, draw: sprite(im, S * sc, im.width / 2, im.height - 1, au) }); }
+// cristaux de rareté et coffre de cul-de-sac
+const cr = paintCrystal(TIERS[3].col);
+for (const [x, y] of nbC.slice(0, 2).map(([x, y]) => [x + (x - hx) * 0.4 + 0.6, y + (y - hy) * 0.4 + 0.6])) { ents.push({ x, y, draw: sprite(cr, S, 4.5, 15) }); lights.push({ x, y, r: 34, k: 0.7, c: TIERS[3].col, h: 8 }); }
+const spikes = nbC.length > 1 ? [[Math.floor((hx + nbC[1][0]) / 2), Math.floor((hy + nbC[1][1]) / 2)], [Math.floor((hx + nbC[1][0]) / 2) - (nbC[1][1] !== hy ? 1 : 0), Math.floor((hy + nbC[1][1]) / 2) - (nbC[1][0] !== hx ? 1 : 0)]].filter(([x, y]) => !ME.t[y][x]) : [];
+scene(20, Y, VW, VH, ME, T3, cam, ents, lights, { amb: 0.3, spikes, spikesUp: true, cut: [hx, hy] });
+// interface par-dessus : nom du donjon, mini-carte révélée, pièges
+g.fillStyle = 'rgba(18,12,40,.88)'; g.fillRect(20 + VW / 2 - 230, Y + 14, 460, 58); g.strokeStyle = TIERS[3].col; g.strokeRect(20 + VW / 2 - 230 + .5, Y + 14.5, 460, 58);
+label(20 + VW / 2, Y + 40, 'Catacombes d\'Éther', TIERS[3].col, 22, 'center', true);
+label(20 + VW / 2, Y + 63, 'Donjon Épique · monstres niv. 22 · boss : ???', '#c8bcdc', 14);
+// mini-carte : seules les cases visitées sont dessinées
+const mm = 6, mx0 = 20 + VW - ME.N * mm - 26, my0 = Y + 26;
+g.fillStyle = 'rgba(10,6,24,.85)'; g.fillRect(mx0 - 8, my0 - 8, ME.N * mm + 16, ME.N * mm + 16); g.strokeStyle = '#f4ead8'; g.globalAlpha = .6; g.strokeRect(mx0 - 7.5, my0 - 7.5, ME.N * mm + 15, ME.N * mm + 15); g.globalAlpha = 1;
+for (let y = 0; y < ME.N; y++) for (let x = 0; x < ME.N; x++) { const c = Math.floor(x / 3), r = Math.floor(y / 3), dd = ME.dist[Math.min(ME.n - 1, r) * ME.n + Math.min(ME.n - 1, c)]; if (dd < 0 || (Math.abs(c - jc[0]) + Math.abs(r - jc[1]) > 3 && Math.abs(c - st[0]) + Math.abs(r - st[1]) > 2 && !(c === jc[0] || r === jc[1]) )) continue; g.fillStyle = ME.t[y][x] ? '#3a2a5c' : '#9a88c8'; g.fillRect(mx0 + x * mm, my0 + y * mm, mm, mm); }
+g.fillStyle = '#ffffff'; g.fillRect(mx0 + hx * mm - 4, my0 + hy * mm - 4, mm + 2, mm + 2); g.fillStyle = '#c47cff'; g.fillRect(mx0 + (3 * st[0] + 1) * mm, my0 + (3 * st[1] + 2) * mm, mm * 2, mm);
+label(mx0 + ME.N * mm / 2, my0 + ME.N * mm + 26, 'mini-carte : se révèle en explorant', '#c8bcdc', 13);
+// annotations
+const note = (x, y, t) => { g.font = '15px Georgia, serif'; const w = g.measureText(t).width + 18; g.fillStyle = 'rgba(18,12,40,.85)'; g.fillRect(x, y, w, 26); g.fillStyle = '#f4ead8'; g.fillText(t, x + 9, y + 18); };
+note(40, Y + VH - 120, 'Élite : aura de la couleur du donjon, PV ×3, butin assuré');
+note(40, Y + VH - 86, 'Pièges à pointes (Rare et plus) : sortent par intervalles');
+note(40, Y + VH - 52, 'Cristaux : éclairent les carrefours et guident vers le boss');
+Y += VH + 40;
+
+/* ===== 3. Plans ===== */
+title(Y + 30, '3. Plans des labyrinthes', 'Taille, impasses et pièges croissent avec la rareté. Entrée en bas (portail de sortie), boss tout au fond, dans une grande salle.');
+Y += 80; panel(20, Y, WW - 40, 500);
+const plans = [[0, 5, 0.1], [2, 9, 0.08], [4, 13, 0.04]];
+plans.forEach(([t, n, lo], i) => {
+  const M = maze(n, 77 + i * 13, lo), box = 360, cell = Math.floor(box / M.N), ox = 60 + i * 400 + (box - cell * M.N) / 2, oy = Y + 50 + (box - cell * M.N) / 2, T = TIERS[t], th = THEME[t];
+  for (let y = 0; y < M.N; y++) for (let x = 0; x < M.N; x++) { g.fillStyle = M.t[y][x] ? css(th[1]) : css(th[4]); g.fillRect(ox + x * cell, oy + y * cell, cell, cell); }
+  g.strokeStyle = T.col; g.lineWidth = 3; g.strokeRect(ox - 2, oy - 2, cell * M.N + 4, cell * M.N + 4);
+  // entrée, boss, élites (culs-de-sac les plus lointains), pièges
+  const cc = (cx, cy, dx, dy) => [ox + (3 * cx + 1 + (dx || 0)) * cell, oy + (3 * cy + 1 + (dy || 0)) * cell];
+  let [px, py] = cc(M.start[0], M.start[1]); g.fillStyle = '#7af0ff'; g.fillRect(px, py, cell * 2, cell * 2);
+  [px, py] = cc(M.boss[0], M.boss[1]); g.fillStyle = 'rgba(255,74,122,.55)'; g.fillRect(px, py, cell * 5, cell * 5); g.fillStyle = '#ff4a7a'; g.fillRect(px + cell * 1.5, py + cell * 1.5, cell * 2, cell * 2);
+  const el = M.ends.slice().sort((a, b) => M.dist[b[1] * M.n + b[0]] - M.dist[a[1] * M.n + a[0]]).slice(0, T.elite);
+  for (const [ex, ey] of el) { [px, py] = cc(ex, ey); g.fillStyle = T.col; g.beginPath(); g.arc(px + cell, py + cell, cell * 0.8, 0, 7); g.fill(); }
+  if (t >= 2) { const r = C.mulberry32(i + 9); for (let k = 0; k < n; k++) { const x = 1 + Math.floor(r() * (M.N - 2)), y = 1 + Math.floor(r() * (M.N - 2)); if (!M.t[y][x]) { g.fillStyle = '#e8ecf4'; g.fillRect(ox + x * cell + cell / 4, oy + y * cell + cell / 4, cell / 2, cell / 2); } } }
+  label(60 + i * 400 + box / 2, Y + 448, `${T.name} · ${n}×${n} salles`, T.col, 20, 'center', true);
+  label(60 + i * 400 + box / 2, Y + 472, `${M.ends.length} impasse${M.ends.length > 1 ? 's' : ''} · ~${[3, 8, 18][i]} min`, '#c8bcdc', 15);
+});
+Y += 520;
+// légende
+const leg = [['#7af0ff', 'entrée / sortie'], ['#ff4a7a', 'salle du boss'], [TIERS[2].col, 'élite (couleur du donjon)'], ['#e8ecf4', 'piège']];
+leg.forEach(([c, t], i) => { g.fillStyle = c; g.fillRect(60 + i * 290, Y + 4, 16, 16); label(84 + i * 290, Y + 18, t, '#f4ead8', 15, 'left'); });
+Y += 50;
+
+/* ===== 4. Salle du boss ===== */
+title(Y + 30, '4. La salle du boss', 'La porte se scelle derrière toi. Barre de vie du boss en haut, cadre à sa rareté. Après sa chute : coffre final + portail de sortie.');
+Y += 76;
+const MB = { N: 9, t: Array.from({ length: 9 }, (_, y) => Uint8Array.from({ length: 9 }, (_, x) => x === 0 || y === 0 || x === 8 || y === 8 ? 1 : 0)) };
+MB.t[8][4] = 0;
+const bossImg = mob('esprit', 0), BH = 470, bents = [], blights = [{ x: 3.4, y: 6.4, r: 110, k: 1.1, c: '#fff0d0', h: 20 }, { x: 4.6, y: 3.2, r: 120, k: 1.0, c: '#7ad8ff', h: 30 }];
+for (const [x, y] of [[2, 0], [6, 0], [0, 3], [0, 6]]) { bents.push({ x: x + 0.5, y: y + 1.02, draw: (q, sx, sy) => q.drawImage(paintTorch(x % 2), sx + 3 * S, sy - 30 * S, 7 * S, 13 * S) }); blights.push({ x: x + 0.9, y: y + 1.1, r: 55, k: 0.9, c: '#ff9a40', h: 26 }); }
+bents.push({ x: 4.6, y: 3.2, draw: sprite(bossImg, S * 3.2, bossImg.width / 2, bossImg.height - 1, TIERS[4].col) });
+bents.push({ x: 3.4, y: 6.4, draw: sprite(hero.back[0], CP, hero.cx, hero.foot) });
+const crG = paintCrystal(TIERS[4].col); for (const [x, y] of [[1.6, 1.6], [7.4, 1.6], [1.6, 7.4], [7.4, 7.4]]) { bents.push({ x, y, draw: sprite(crG, S, 4.5, 15) }); blights.push({ x, y, r: 34, k: 0.6, c: TIERS[4].col, h: 8 }); }
+scene(20, Y, VW, BH, MB, 4, [0, 8.4 * 8 - 22], bents, blights, { amb: 0.14, cut: [3.4, 6.4] });
+// barre de vie du boss
+const bw = 560, bx0 = 20 + VW / 2 - bw / 2, by0 = Y + 22;
+g.fillStyle = 'rgba(18,12,40,.9)'; g.fillRect(bx0 - 12, by0 - 8, bw + 24, 66); g.strokeStyle = TIERS[4].col; g.lineWidth = 2; g.strokeRect(bx0 - 11, by0 - 7, bw + 22, 64);
+label(20 + VW / 2, by0 + 16, 'Liche de Givre — Boss Légendaire', TIERS[4].col, 20, 'center', true);
+g.fillStyle = '#2a1830'; g.fillRect(bx0, by0 + 28, bw, 16); g.fillStyle = '#e0405a'; g.fillRect(bx0, by0 + 28, bw * 0.64, 16); g.fillStyle = '#ff8a9a'; g.fillRect(bx0, by0 + 28, bw * 0.64, 4);
+note(40, Y + BH - 50, 'Le boss garde le niveau du donjon : il faut une vraie préparation au-delà d\'Épique');
+Y += BH + 40;
+
+/* ===== 5. Boss ===== */
+title(Y + 30, '5. Les boss et leur rareté', 'Tiré en entrant : en général la rareté du donjon, parfois un cran au-dessus (12 %). Le boss mythique est très rare.');
+Y += 80; panel(20, Y, WW - 40, 700);
+const BOSSES = [
+  ['Roi Gelée', 'boss', 0, '#e8f4d8', 'Couronne gluante'],
+  ['Souche ancestrale', 'souche', 0, '', 'Bâton noueux'],
+  ['Grand Loup des brumes', 'loup', 1, '', 'Cape de brume'],
+  ['Reine des abeilles', 'abeille', 1, '', 'Dard d\'or'],
+  ['Golem de cristal ancien', 'golem', 2, '', 'Poings de quartz'],
+  ['Salamandre-reine', 'salamandre', 3, '', 'Écailles de braise'],
+  ['Spectre couronné', 'spectre', 3, '', 'Linceul d\'ombre'],
+  ['Colosse de magma', 'magma', 4, '', 'Cœur de lave'],
+  ['Liche de Givre', 'esprit', 4, '', 'Sceptre glacial'],
+  ['Le Dévoreur d\'Éther', 'spectre', 5, '', 'Couronne du Dévoreur']
+];
+BOSSES.forEach(([nm, k, t, , drop], i) => {
+  const col = i % 5, row = (i / 5) | 0, cx = 40 + 118 + col * 236, by = Y + 40 + row * 330;
+  const cc = t === 5 ? MYTH : TIERS[t].col, rr = tierRamp(cc);
+  // cadre
+  g.fillStyle = css(mix(rr[0], [18, 12, 34], 0.5)); g.fillRect(cx - 104, by, 208, 300); g.strokeStyle = cc; g.lineWidth = t >= 4 ? 4 : 2; g.strokeRect(cx - 103, by + 1, 206, 298);
+  if (t === 5) { const pr = ['#ff4a7a', '#ffb43a', '#5ee870', '#5aa8ff', '#c47cff']; for (let s = 0; s < 52; s++) { g.fillStyle = pr[s % 5]; g.fillRect(cx - 104 + s * 4, by, 4, 4); g.fillRect(cx + 100 - s * 4, by + 296, 4, 4); } }
+  // halo
+  for (let r = 4; r > 0; r--) { g.fillStyle = css(rr[2]); g.globalAlpha = 0.07 * r; g.beginPath(); g.ellipse(cx, by + 170, 40 + r * 14, 18 + r * 5, 0, 0, 7); g.fill(); }
+  g.globalAlpha = 1;
+  const im = mob(k, 0), sc = Math.max(2, Math.floor(130 / Math.max(im.width, im.height))) * (t === 5 ? 1 : 1);
+  let draw = im;
+  if (t === 5) { // le Dévoreur : spectre recoloré en prisme
+    const P = document.createElement('canvas'); P.width = im.width; P.height = im.height; const q = P.getContext('2d'); q.drawImage(im, 0, 0); const d = q.getImageData(0, 0, P.width, P.height); const pr = tierRamp(MYTH);
+    for (let i2 = 0; i2 < d.data.length; i2 += 4) { if (!d.data[i2 + 3]) continue; const l = (d.data[i2] + d.data[i2 + 1] + d.data[i2 + 2]) / 765, c = pr[clamp(Math.round(l * 5), 0, 4)]; if (l > 0.08) { d.data[i2] = c[0]; d.data[i2 + 1] = c[1]; d.data[i2 + 2] = c[2]; } }
+    q.putImageData(d, 0, 0); draw = P;
+  }
+  g.drawImage(draw, Math.round(cx - im.width * sc / 2), Math.round(by + 180 - im.height * sc), im.width * sc, im.height * sc);
+  const crw = ART.crown; g.drawImage(crw, Math.round(cx - crw.width * 2), Math.round(by + 180 - im.height * sc - crw.height * 4 + 6), crw.width * 4, crw.height * 4);
+  label(cx, by + 212, nm, '#f4ead8', 16, 'center', true);
+  label(cx, by + 236, t === 5 ? 'MYTHIQUE' : TIERS[t].name.toUpperCase(), cc, 15, 'center', true);
+  label(cx, by + 262, 'Butin : ' + drop, '#c8bcdc', 14);
+  label(cx, by + 284, t === 5 ? '100 % · unique, visible' : ['5 %', '6 %', '7 %', '9 %', '12 %'][t] + ' de chances', '#c8bcdc', 13);
+});
+Y += 720;
+
+/* ===== 6. Probabilités ===== */
+title(Y + 30, '6. Chances du boss mythique et récompenses');
+Y += 50; panel(20, Y, WW - 40, 330);
+const cols = ['Donjon', 'Boss du même rang', 'Boss un rang au-dessus', 'Boss mythique', 'Coffre final'];
+const rows = [
+  ['Commun', '88 %', '12 %', '1 sur 1 000', 'or, 1 objet Commun+'],
+  ['Inhabituel', '88 %', '12 %', '1 sur 500', 'or, Éther, 1 objet Inhabituel+'],
+  ['Rare', '88 %', '12 %', '1 sur 250', 'or, Éther, 2 objets Rare+'],
+  ['Épique', '88 %', '12 %', '1 sur 120', 'or, Éther, 2 objets Épique+'],
+  ['Légendaire', '97 %', '—', '1 sur 40', 'or, Éther, 3 objets Épique+, 1 % Unique']
+];
+const cx0 = [50, 230, 450, 700, 900];
+cols.forEach((c, i) => label(cx0[i], Y + 40, c, '#f2c94c', 16, 'left', true));
+rows.forEach((r, j) => r.forEach((c, i) => label(cx0[i], Y + 80 + j * 38, c, i === 0 ? TIERS[j].col : '#f4ead8', 16, 'left', i === 0)));
+label(50, Y + 300, 'Titres : vaincre un boss Légendaire donne « Fléau de <boss> » ; le boss mythique donne le titre doré « Dévoreur d\'Éther » (affiché sous le nom).', '#c8bcdc', 15, 'left');
+Y += 350;
+
+window.__H = Y;
+})();
+</script></body></html>
