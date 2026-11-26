@@ -65,7 +65,7 @@ Au lancement : **2 îles** (Givrée et Braises) + les îles éphémères, puis l
 - `core.js` : `ISLES`, `buildIsle`, `findBridge` (pont posé sur une rive basse), `rollIsle`, messages `cross` et `chest`,
   champs de sauvegarde `isle`, `isles`, `arr` ; monstres au niveau du héros ; effets `slow` / `burn`.
 - `assets.js` : palettes de terrain par île, sapins et chênes givrés, gelée de givre, planches de pont, arches animées, coffre.
-- `game.js` : île lue dans la sauvegarde au démarrage, poteaux à lanternes et arches dans le décor, invites
+- `client/game/` (anciennement `game.js`) : île lue dans la sauvegarde au démarrage, poteaux à lanternes et arches dans le décor, invites
   « Traverser » / « Rentrer » / « Ouvrir le coffre », fondu de traversée, reprise automatique sur la nouvelle île.
 
 ## Étapes après validation

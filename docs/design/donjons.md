@@ -133,7 +133,7 @@ Données : `DG_BOSSES[].sk` dans `content.js` ; moteur : `Sim.bossSkill` ; évé
   entrée `W.gate` posée au centre des îles par `buildIsle`, messages `dgIn` / `dgOut` / `tt`, événements `travel` (via `dg` / `dgout`), `ttl`, `dgdone`.
 - Sauvegarde : `dg` (donjon de l'arrivée en cours, `done` quand il est fini ou abandonné), `ttl` (titres, bits), `tt` (titre affiché, -1 aucun) ;
   `arr: 2` = réapparaître devant l'entrée en sortant du donjon.
-- `assets.js` : pierre par rareté (`DG_STONE`), torche, cristal, pointes, entrée (`dungeonArt`). `game.js` : obscurité en bandes tramées (`darkness`),
+- `assets.js` : pierre par rareté (`DG_STONE`), torche, cristal, pointes, entrée (`dungeonArt`). `client/game/` : obscurité en bandes tramées (`darkness`),
   murs translucides devant le héros, faisceau de l'entrée, mini-carte révélée, barre du boss, titres.
 - Serveur : une simulation par donjon (`donjon:<graine>`), libérée 5 min après le départ du dernier joueur ; `dgdone` éteint l'entrée de l'île.
 

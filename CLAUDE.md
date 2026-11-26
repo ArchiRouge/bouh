@@ -41,7 +41,7 @@ and `@capacitor/preferences` is linked through Swift Package Manager (`ios/App/C
 - The game was renamed from "Etheria Online" to **Pixels Worlds**. Internal names (`etheria_*` storage keys, `EtheriaCore`, `EtheriaArt`, `ETHERIA_CONFIG`) were kept on purpose: renaming the storage keys would orphan existing saves. The in-game resource "Éther" is a game mechanic, not the old name.
 - The game saves every 5 s and when the app goes to the background, into localStorage keys `etheria_*`.
 - In the native app, `client/persist.js` mirrors every `etheria_*` key to native Preferences (UserDefaults, included in
-  iCloud/Finder backups) and restores them before `game.js` starts. That's what survives iOS purging WebView storage.
+  iCloud/Finder backups) and restores them before the game client (`client/game/`) starts. That's what survives iOS purging WebView storage.
 - Native writes are asynchronous and the native copy wins at startup: before any `location.reload()` (island travel), save then
   `await window.EtheriaPersist.flush()` (with a timeout), or the app could restart on an older save.
 - Data survives app updates (Xcode re-runs, TestFlight, App Store) as long as the bundle id (`appId`) is unchanged.
@@ -67,16 +67,16 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
   `window.ETHERIA_CONFIG = { server: 'wss://<app>.fly.dev/ws' };` and `npx cap sync ios`.
 
 ## Art & visible gear
-- Art direction « aquarelle 16 bits »: old-school Zelda readability (clean tiles, clear silhouettes, plum-tinted outlines) + Gris-like harmonised pastel palettes with hue-shifted shadows (violet/teal) and cream lights + chibi heroes with visible gear. Each zone owns a colour, baked at paint time (grass tint, per-zone foliage sets `oak_2`/`oak_3`…) plus a cached per-zone grade that crossfades (`ZONE_LOOK`, `zoneGrade`): bourg warm dawn, prairies gold-jade, bois blue-violet mist + light shafts + fireflies, terres sauvages ember. UI: ink-indigo panels, thin cream borders, gold accents. All art is procedural in `client/assets.js`; atmosphere in `client/game.js`.
+- Art direction « aquarelle 16 bits »: old-school Zelda readability (clean tiles, clear silhouettes, plum-tinted outlines) + Gris-like harmonised pastel palettes with hue-shifted shadows (violet/teal) and cream lights + chibi heroes with visible gear. Each zone owns a colour, baked at paint time (grass tint, per-zone foliage sets `oak_2`/`oak_3`…) plus a cached per-zone grade that crossfades (`ZONE_LOOK`, `zoneGrade`): bourg warm dawn, prairies gold-jade, bois blue-violet mist + light shafts + fireflies, terres sauvages ember. UI: ink-indigo panels, thin cream borders, gold accents. All art is procedural in `client/assets.js`; atmosphere in `client/game/setup.js`.
 - Characters are hand-placed pixel art in the style of Realms of Pixel (validated by Archibald): `client/sprites.js` holds
   hand-drawn grids per direction (front / back / side, side-left = mirror) and per layer (hair styles, face, tunic, plate +
   pauldrons, legs, boots, hood / helm / crown, creation hats, sword / axe / staff / bow, cape for rare+ chest pieces).
   Digits 1–5 in a grid are tones of that layer's material, recoloured from the item colour (`ramp5`, `metal`); letters are
   fixed colours (skin, eyes, hair a–f, gold g/G/y/Y, leather, wood). Sprites are 58×57 (side margin for weapon swings), ~2.2 heads,
   feet at y = 55, centre x = 28.5. Walk cycle: 8 frames (`W8` in `sprites.js`: leg lift 1-2-1, arm and weapon sway; 1 sprite-pixel bob at the passing frames). Attack poses (`paint(..., pose)` 1 = wind-up, 2 = strike, 3 = recover, `set.atk`, timings `ATK_T`/`ATK_STRIKE`/`ATK_RECOVER`) rotate the weapon around the hand
-  with RotSprite (Scale2x ×2, nearest rotation, resample) — keeps blades clean; angles in `SWING` / `SWING_SIDE`. `e.atkT` drives them in `game.js`.
+  with RotSprite (Scale2x ×2, nearest rotation, resample) — keeps blades clean; angles in `SWING` / `SWING_SIDE`. `e.atkT` drives them in `game/scene.js` and `game/render.js`.
   `sprites.js` has no DOM dependency (paints into an RGBA array), so it can be tested in Node; `assets.js` `charSet` caches canvases.
-- In the world a character pixel is always 3 screen pixels (`charP()` in `game.js`), whatever the camera distance, so the hero stays readable.
+- In the world a character pixel is always 3 screen pixels (`charP()` in `game/render.js`), whatever the camera distance, so the hero stays readable.
   Don't scale sprites by non-integer screen factors. Draw new gear in the grids pixel by pixel; never go back to vector-then-downsample.
 - No classes: the equipped weapon's family (`FAMS` in `core.js`: sword, great, dagger, bow, staff, spear) gives the basic attack and
   techniques, unlocked by per-family mastery (`p.mast`, gained in combat). `kitOf(equip, mast, bar)` = basic attack + the 3 bar slots.
@@ -98,7 +98,7 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - `C.gearStr(equip)` encodes head/chest/legs/feet/weapon/offhand; it is sent as the 16th field of each player in `publicState`, so other players see your gear. New items need an `icon` the painter knows (hood/helm/crown, tunic/plate, pants, boots, sword/axe/staff/bow).
 
 ## Islands and bridges
-- `docs/design/voyage-entre-les-iles.md`. The world is one island at a time: `game.js` reads the island from the save (`isle`)
+- `docs/design/voyage-entre-les-iles.md`. The world is one island at a time: `game/setup.js` reads the island from the save (`isle`)
   before `C.buildWorld(C.SEED, isle)`. Crossing a bridge = `cross` message → `travel` event → save, mist fade, `location.reload()`,
   auto-continue (`sessionStorage.etheria_autoplay`). The home island's generation must stay identical (its bridge is added last).
 - Ether bridge (3 Éther, random: 90 % fixed island `givre`/`braise`, 10 % ephemeral `brume` with a seed and a chest), home bridge
@@ -129,7 +129,10 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 ## Rules
 - Player progress must survive updates: never rename or remove fields of `saveData()` in `client/core.js`; new fields need a default in `addPlayer`.
 - After any change in `client/`, run `npx cap sync ios` before rebuilding.
-- Load order in `index.html` matters: `content.js` before `core.js`; `persist.js` must stay last; it loads `game.js` itself.
+- Load order in `index.html` matters: `content.js` before `core.js`; `persist.js` must stay last; it loads the client files `client/game/*.js` itself, in order (`GAME_FILES`).
+- The client is 8 classic scripts in `client/game/` sharing one global scope (top-level `const`/`function` of a file are visible to the
+  next ones): setup → scene → input → net → update → render → hud → main. Keep that order in `persist.js` and `tools/build-preview.js`;
+  a file may only use, at load time, what earlier files declared (calls inside functions are fine).
 - Don't edit generated files under `ios/App/App/public/` — they are overwritten by sync.
 - Keep the game in French. `client/content.js` and `client/core.js` are shared by client and server (the server requires them from `client/`).
 - Never commit or print signing certificates, Apple credentials or tokens.

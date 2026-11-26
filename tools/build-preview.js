@@ -9,7 +9,9 @@ html = html.replace('<script src="seed-save.js"></script>', '');
 html = html.replace('<script src="config.js"></script>', '<script>window.ETHERIA_CONFIG = { server: null };</script>');
 for (const f of ['content.js', 'core.js', 'sprites.js', 'assets.js', 'steps.js'])
   html = html.replace(`<script src="${f}"></script>`, inline(f));
-html = html.replace('<script src="persist.js"></script>', inline('game.js')); // persist.js ne sert que dans l'app iOS
+// persist.js ne sert que dans l'app iOS : l'aperçu enchaîne directement les fichiers du jeu, dans le même ordre
+const GAME = ['setup', 'scene', 'input', 'net', 'update', 'render', 'hud', 'main'];
+html = html.replace('<script src="persist.js"></script>', GAME.map(f => inline('game/' + f + '.js')).join('\n'));
 fs.mkdirSync(path.join(__dirname, '..', 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, '..', 'dist', 'pixels-worlds-preview.html'), html);
 console.log('dist/pixels-worlds-preview.html', (html.length / 1024).toFixed(0) + ' Ko');

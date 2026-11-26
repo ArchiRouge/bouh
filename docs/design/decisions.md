@@ -19,7 +19,7 @@ Réponses au formulaire « Points en suspens ». Elles font foi pour la suite.
 | Emplacements Épaules et Mains | oui | à faire (maquette d'abord) |
 | Effet du rang 10 | oui : technique plus grande et dorée | codé |
 | Corps à la création | plus tard | — |
-| Découper game.js en modules | oui, au prochain moment calme | à faire |
+| Découper game.js en modules | oui, au prochain moment calme | fait : `client/game/`, 8 fichiers |
 | Multijoueur en ligne (Fly.io, ~5 $/mois) | pas encore | — |
 | Apple Developer (99 €/an) | pas encore | — |
 | Prochain chantier | dessins des boss | codé |

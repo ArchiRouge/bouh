@@ -17,12 +17,12 @@ Ton héros de l'alpha (Archi404, Guerrier niveau 8, Bottes du Néant et ensemble
 client/          le jeu (c'est aussi le dossier embarqué dans l'app iOS)
   index.html     écran de création du héros et canevas
   config.js      ← adresse du serveur à renseigner
-  persist.js     sauvegarde durable dans l'app iOS (charge game.js)
+  persist.js     sauvegarde durable dans l'app iOS (charge ensuite le jeu)
   content.js     contenu du jeu en données : monstres, objets, armes, quêtes, îles, donjons
   core.js        moteur : mondes et simulation, partagés avec le serveur
   sprites.js     héros et équipement porté, pixel art posé à la main
   assets.js      tout le reste de l'art, procédural
-  game.js        rendu, interface, contrôles tactiles, réseau
+  game/          le client en 8 fichiers : setup, scene, input, net, update, render, hud, main
   steps.js       vrais pas du téléphone (app iOS)
 server/          serveur multijoueur (Node + ws)
 tests/           tests du moteur (npm test)

@@ -11,13 +11,13 @@ content.js  (données)  ──►  core.js  (moteur : mondes + simulation)  ◄�
                                ▲
 sprites.js  (héros, pixel art) │
 assets.js   (tout le reste de l'art, procédural)
-game.js     (client : rendu, interface, entrées, réseau)  ── solo : fait tourner core.js dans la page
-persist.js  (app iOS : sauvegarde native, puis charge game.js)
+game/       (client en 8 fichiers : rendu, interface, entrées, réseau)  ── solo : fait tourner core.js dans la page
+persist.js  (app iOS : sauvegarde native, puis charge game/)
 steps.js    (app iOS : vrais pas du téléphone)
 ```
 
 - Le **moteur** (`core.js`) est autoritaire : il génère les mondes (`buildWorld`) et fait tourner la simulation (`Sim`).
-- En **solo**, `game.js` crée une `Sim` dans la page (`LocalLink`). **En ligne**, la même `Sim` tourne sur le serveur
+- En **solo**, le client crée une `Sim` dans la page (`LocalLink`). **En ligne**, la même `Sim` tourne sur le serveur
   (`WsLink`), à 10 Hz.
 - Le client n'envoie que des **intentions** (messages). Il reçoit, 10 fois par seconde, l'**état public**, son **état
   personnel** et des **événements**. Il ne décide jamais d'un résultat de combat ni d'un butin.
@@ -30,8 +30,8 @@ steps.js    (app iOS : vrais pas du téléphone)
 | `client/core.js` | Moteur partagé : hasard déterministe, génération du Bourg, des îles et des donjons, déplacements, simulation (`Sim` : combat, progression, voyage, sauvegarde). Réexporte tout `content.js` (`C.ITEMS`…). | `content.js` |
 | `client/sprites.js` | Héros et équipement porté, en pixel art posé à la main (grilles par direction et par couche) ; sans DOM, donc testable dans Node. | rien |
 | `client/assets.js` | Tout l'art procédural : terrain, palettes, arbres, maisons, monstres, icônes, ponts, donjons. Met en cache les sprites des héros. | `core.js`, `sprites.js` |
-| `client/game.js` | Client : canvas, caméra, rendu 2.5D, interface, entrées tactiles et clavier, réseau (solo ou WebSocket), sauvegarde dans le compte Claude. | tout ce qui précède |
-| `client/persist.js` | App iOS : recopie les clés `etheria_*` dans les préférences natives et les restaure avant de charger `game.js`. | Capacitor |
+| `client/game/*.js` | Client, en 8 fichiers (détail ci-dessous) : canvas, caméra, rendu 2.5D, interface, entrées tactiles et clavier, réseau (solo ou WebSocket), sauvegarde dans le compte Claude. | tout ce qui précède |
+| `client/persist.js` | App iOS : recopie les clés `etheria_*` dans les préférences natives et les restaure, puis charge `client/game/`. | Capacitor |
 | `client/steps.js` | App iOS : plugin natif `Pedometer` (CoreMotion). | Capacitor |
 | `client/config.js` | Adresse du serveur (`'auto'`, une adresse fixe ou `null`), drapeaux `founder` et `gm`. | rien |
 | `client/seed-save.js` | Progression de l'alpha d'Archibald, chargée seulement si l'appareil n'a aucune sauvegarde. | rien |
@@ -42,14 +42,25 @@ steps.js    (app iOS : vrais pas du téléphone)
 ### Ordre de chargement (`client/index.html`)
 
 `config.js`, `seed-save.js`, `content.js`, `core.js`, `sprites.js`, `assets.js`, `steps.js`, puis **`persist.js` en
-dernier** : c'est lui qui charge `game.js` une fois la sauvegarde native restaurée.
+dernier** : c'est lui qui charge les fichiers de `client/game/`, dans l'ordre, une fois la sauvegarde native restaurée.
 
-### Sections de `game.js`
+### Le client : `client/game/`
 
-Le fichier est un seul module (une fonction englobante) découpé en sections : canvases et échelle, ambiance par zone,
-police pixel, état, décor statique, effets, entrées, page personnage, réseau (`LocalLink`, `WsLink`, `onMsg`,
-`handleEvent`), mise à jour, rendu du monde, interface, menu de création, boucle, sauvegarde dans le compte Claude
-(`Cloud`). On s'y repère avec les titres `/* ---------- … ---------- */`.
+Huit scripts classiques, chargés dans cet ordre (`GAME_FILES` dans `persist.js`, même liste dans `tools/build-preview.js`).
+Ils partagent une seule portée globale : ce qu'un fichier déclare au premier niveau (`const`, `let`, `function`) sert aux fichiers
+suivants. Au chargement, un fichier ne peut utiliser que ce que les précédents ont déclaré ; dans une fonction appelée plus
+tard, tout est disponible.
+
+| Fichier | Contenu |
+|---|---|
+| `setup.js` | Île en cours (lue dans la sauvegarde) et monde, canvases et échelles (`S`, `SU`, `RQ`), ambiance par zone (`ZONE_LOOK`), obscurité des donjons, police pixel, état du jeu (`me`, `mobs`, `others`). |
+| `scene.js` | Décor statique trié par diagonale (`buildScene`), couleurs de la mini-carte, textes flottants, éclats, effets des armes et techniques. |
+| `input.js` | Tactile et clavier, page personnage, dialogues des PNJ, artisanat, marche réelle (Éther). |
+| `net.js` | `LocalLink` (solo) et `WsLink` (en ligne), `onMsg`, `handleEvent`. |
+| `update.js` | Mise à jour à chaque image : héros, monstres et joueurs interpolés, invites, caméra. |
+| `render.js` | Rendu du monde : tuiles, entités, héros (`drawChar`), monstres et boss (`drawMob`), lumières. |
+| `hud.js` | Interface sur le canevas : étiquettes, statut, mini-carte, boutons, barre du boss, invites, voiles. |
+| `main.js` | Menu de création, boucle principale, sauvegarde dans le compte Claude (`Cloud`), démarrage (`boot`). |
 
 ## Protocole
 
@@ -125,7 +136,7 @@ Combat : `hm`, `km`, `mr`, `hp`, `die`, `rs`, `sw`, `ab`, `heal`, `zone`, `imm`,
   d'une île ou d'un donjon et à `LOOT`.
 - **Un boss de donjon** : une entrée dans `DG_BOSSES` (dessin d'un monstre existant, rareté, objet propre, titre éventuel).
 - **Une île** : une entrée dans `ISLES` (thème, monstres, ressources, arbres), sa palette dans `assets.js` (`ISLE_PAL`)
-  et son ambiance dans `game.js` (`ZONE_LOOK`, `THEME_LOOK`).
+  et son ambiance dans `game/setup.js` (`ZONE_LOOK`, `THEME_LOOK`).
 - **Une technique** : dans `FAMS` (`content.js`), et ses deux paliers dans `MS`.
 - Après tout changement : `npm test`, puis `npm run build:preview` pour l'aperçu ; pour l'app iOS, `npx cap sync ios`.
 

@@ -4,7 +4,7 @@
    (UserDefaults, incluses dans les sauvegardes iCloud / Finder de l'iPhone), puis restaurée
    au démarrage AVANT le lancement du jeu. Les mises à jour de l'app (Xcode, TestFlight, App Store)
    gardent ces données tant que l'identifiant de l'app (appId) ne change pas.
-   Dans un navigateur, ce fichier se contente de charger game.js. */
+   Dans un navigateur, ce fichier se contente de charger le jeu (client/game/). */
 (function () {
   'use strict';
   const PREFIX = 'etheria_';
@@ -12,12 +12,18 @@
   const native = !!(Cap && Cap.isNativePlatform && Cap.isNativePlatform() && Cap.registerPlugin);
   const Prefs = native ? Cap.registerPlugin('Preferences') : null;
   let started = false;
+  // le client du jeu, dans l'ordre (scripts classiques : chaque fichier voit les déclarations des précédents)
+  const GAME_FILES = ['setup', 'scene', 'input', 'net', 'update', 'render', 'hud', 'main'].map(f => 'game/' + f + '.js');
+  window.ETHERIA_GAME_FILES = GAME_FILES;
   function start() {
     if (started) return;
     started = true;
-    const s = document.createElement('script');
-    s.src = 'game.js';
-    document.body.appendChild(s);
+    for (const f of GAME_FILES) {
+      const s = document.createElement('script');
+      s.src = f;
+      s.async = false; // exécutés dans l'ordre d'ajout
+      document.body.appendChild(s);
+    }
   }
   // flush() : attend que les sauvegardes en cours soient écrites dans la mémoire native (avant un rechargement, ex. voyage entre îles)
   const pending = new Set();
