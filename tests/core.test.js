@@ -124,9 +124,19 @@ test('donjons : boss, coffre et sorties atteignables pour chaque rareté', () =>
   for (let r = 0; r < C.DG.length; r++)
     for (let s = 1; s <= 40; s++) {
       const W = C.buildWorld(C.SEED, { k: 'donjon', s, r, b: 0, f: { k: 'givre' } }),
-        ok = reach(W, W.spawn.x, W.spawn.y),
         D = W.dg,
         boss = W.spawns[D.bossK];
+      // salle du boss fermée : les sceaux et leurs gardiens sont atteignables, le boss non
+      const shut = reach(W, W.spawn.x, W.spawn.y);
+      assert.equal(D.seals.length, C.DG[r].seals);
+      assert.ok(D.door.length > 0, `salle du boss sans porte (rareté ${r}, graine ${s})`);
+      for (const o of D.seals) {
+        assert.ok(shut(o.x - 0.5, o.y - 0.5), `sceau inaccessible (rareté ${r}, graine ${s})`);
+        assert.ok(W.spawns[o.g].elite, 'chaque sceau a un gardien élite');
+      }
+      assert.ok(!shut(boss.i + 0.5, boss.j + 0.5), `boss atteignable sans les sceaux (rareté ${r}, graine ${s})`);
+      D.shut.clear();
+      const ok = reach(W, W.spawn.x, W.spawn.y);
       for (const [name, o] of [
         ['coffre', W.chest],
         ['sortie', D.exit],
@@ -134,7 +144,7 @@ test('donjons : boss, coffre et sorties atteignables pour chaque rareté', () =>
         ['boss', { x: boss.i + 0.5, y: boss.j + 0.5 }]
       ])
         assert.ok(ok(o.x, o.y), `${name} inaccessible (rareté ${r}, graine ${s})`);
-      assert.equal(W.spawns.filter(o => o.elite).length, Math.min(C.DG[r].elite, W.spawns.filter(o => o.elite).length));
+      assert.ok(W.spawns.filter(o => o.elite).length <= C.DG[r].elite + C.DG[r].seals);
     }
 });
 
@@ -168,6 +178,38 @@ test("donjon : entrer, vaincre le boss, ouvrir le coffre, sortir ; l'entrée s'�
   const back = newSim(out.isle, out);
   assert.equal(back.sim.dg.done, 1);
   assert.ok(Math.hypot(back.p.x - back.W.gate.x, back.p.y - back.W.gate.y) < 2.5, "on ressort devant l'entrée");
+});
+
+test('donjon : les sceaux gardés ouvrent la salle du boss', () => {
+  const D0 = newSim({ k: 'donjon', s: 5, r: 2, b: 0, f: { k: 'givre' } }, { lvl: 19 }),
+    { sim, p, W } = D0,
+    D = W.dg,
+    door = D.door[0],
+    di = door % W.MW,
+    dj = (door / W.MW) | 0;
+  assert.ok(!W.walkable(di, dj), 'porte du boss fermée au départ');
+  D.seals.forEach((o, k) => {
+    p.x = o.x;
+    p.y = o.y;
+    sim.events.length = 0;
+    sim.sealMsg = -99; // le message n'est répété que toutes les 4 s
+    sim.step(0.05);
+    assert.ok(
+      sim.events.some(e => e.e === 'msg' && /gardien/.test(e.t)),
+      'sceau gardé : il faut vaincre le gardien'
+    );
+    const g = sim.mobs[o.g];
+    g.tagged.add('a');
+    sim.killMob(g);
+    p.dead = false;
+    p.x = o.x;
+    p.y = o.y;
+    sim.step(0.05);
+    assert.ok(sim.events.some(e => e.e === 'seal' && e.k === k));
+    assert.equal(sim.publicState().sl, (1 << (k + 1)) - 1);
+  });
+  assert.ok(sim.events.some(e => e.e === 'dgopen'));
+  assert.ok(W.walkable(di, dj), 'porte du boss ouverte une fois tous les sceaux activés');
 });
 
 test('contenu : chaque référence pointe vers quelque chose qui existe', () => {

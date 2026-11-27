@@ -23,6 +23,7 @@ const W = C.buildWorld(C.SEED, ISLE),
   PVP = W.isle !== 'bourg';
 const DGN = W.isle === 'donjon' ? C.DG[W.tier] : null; // dans un donjon : sa rareté (couleur, lumière)
 let ISLE_DG = null,
+  SEALS = 0, // donjon : sceaux activés (un bit par sceau)
   simT = 0,
   simT0 = 0; // donjon de l'île [rareté, boss, éteint] ; horloge de la simulation (pièges)
 const sameIsle = (a, b) => a && b && a.k === b.k && (a.s | 0) === (b.s | 0);

@@ -159,6 +159,8 @@ function buildScene() {
     for (const t of D.traps) TRAPS[idx(t.i, t.j)] = t.ph;
     add({ kind: 'barch', x: D.portal.x, y: D.portal.y + 0.4, z: 0, frames: ART.arch.ether, flip: false });
     add({ kind: 'dexit', x: D.exit.x, y: D.exit.y + 0.4, z: 0, frames: ART.arch.home });
+    D.seals.forEach((o, k) => add({ kind: 'seal', k, x: o.x, y: o.y, z: 0 }));
+    for (const k of D.door) add({ kind: 'sdoor', x: (k % MW) + 0.5, y: ((k / MW) | 0) + 0.5, z: 0, ph: k % 7 });
   }
   for (const b of STATIC) b.sort((a, c) => a.x + a.y - (c.x + c.y));
   for (let i = 0; i < 14; i++)

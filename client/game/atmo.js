@@ -7,7 +7,7 @@
    Les fichiers de client/game/ se partagent leurs déclarations (scripts classiques chargés dans l'ordre par persist.js). */
 'use strict';
 // ce qui reste dessiné en direct par-dessus le décor en glyphes (animé, ou qu'on doit voir clairement)
-const LIVE_KINDS = new Set(['gate', 'barch', 'dexit', 'chest', 'torch', 'fountain', 'node', 'corpse', 'foot', 'bpost']);
+const LIVE_KINDS = new Set(['gate', 'barch', 'dexit', 'chest', 'torch', 'fountain', 'node', 'corpse', 'foot', 'bpost', 'seal', 'sdoor']);
 let GD = null, // { cv, x0, y0 } : le décor en glyphes, en coordonnées du monde
   BAKING = false;
 

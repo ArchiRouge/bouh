@@ -98,6 +98,16 @@ function drawMinimap(cx, cy) {
     return [Math.round(cx + sx), Math.round(cy + sy)];
   };
   if (DGN)
+    W.dg.seals.forEach((o, k) => {
+      const [x, y] = toMini(o.x, o.y);
+      if ((x - cx) ** 2 + (y - cy) ** 2 <= 21 * 21 && SEEN[idx(Math.floor(o.x), Math.floor(o.y))]) {
+        u.fillStyle = '#0c0a1c';
+        u.fillRect(x - 2, y - 2, 5, 5);
+        u.fillStyle = SEALS & (1 << k) ? DGN.c : '#7a7090';
+        u.fillRect(x - 1, y - 1, 3, 3);
+      }
+    });
+  if (DGN)
     for (const o of [W.dg.portal, W.dg.exit]) {
       const [x, y] = toMini(o.x, o.y);
       if ((x - cx) ** 2 + (y - cy) ** 2 <= 21 * 21 && SEEN[idx(Math.floor(o.x), Math.floor(o.y))]) {
@@ -375,8 +385,12 @@ function drawUI() {
   }
   // boss du donjon : barre de vie en haut, cadre à la couleur de sa rareté
   if (DGN) {
-    const bm = mobs[W.dg.bossK];
-    if (bm.alive && (bm.aggro || Math.hypot(bm.x - me.x, bm.y - me.y) < 7)) {
+    const bm = mobs[W.dg.bossK],
+      nS = W.dg.seals.length,
+      lit = W.dg.seals.filter((o, k) => SEALS & (1 << k)).length;
+    const near = Math.hypot(bm.x - me.x, bm.y - me.y) < 7;
+    if (lit < nS && !near) text(u, 'Sceaux ' + lit + ' / ' + nS, UW >> 1, 8, DGN.c, 'center');
+    else if (bm.alive && (bm.aggro || near)) {
       const T = C.dgTier(bm.dgBoss),
         w = Math.min(150, UW - 80),
         x = (UW - w) >> 1,

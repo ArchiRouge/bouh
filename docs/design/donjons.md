@@ -143,3 +143,21 @@ Données : `DG_BOSSES[].sk` dans `content.js` ; moteur : `Sim.bossSkill` ; évé
 2. Boss de la maquette, le Dévoreur d'Éther seul boss mythique.
 3. Ressortir avant le boss : le donjon est perdu pour cette arrivée.
 4. Titres : boss Légendaires et Mythique seulement.
+
+## Donjons agrandis et sceaux (v15)
+
+Validé par Archibald (formulaire) : donjons environ deux fois plus grands, sceaux à activer, plus de monstres et de pièges.
+
+| Rareté | Salles | Sceaux | Élites (gardiens + autres) | Pièges | Salles occupées |
+| --- | --- | --- | --- | --- | --- |
+| Commun | 7 × 7 | 2 | 2 + 1 | 4 | 60 % |
+| Inhabituel | 10 × 10 | 2 | 2 + 2 | 8 | 60 % |
+| Rare | 13 × 13 | 3 | 3 + 4 | 14 | 55 % |
+| Épique | 16 × 16 | 4 | 4 + 6 | 22 | 55 % |
+| Légendaire | 20 × 20 | 5 | 5 + 9 | 32 | 50 % |
+
+- La salle du boss est fermée par un rideau de lumière sur ses cases d'entrée (`W.dg.door`, `W.dg.shut`).
+- Les sceaux sont dans les culs-de-sac lointains, choisis pour être éloignés les uns des autres et de la salle du boss ;
+  chacun est gardé par un élite. Toucher un sceau dont le gardien est vaincu l'active ; tous activés = la salle s'ouvre.
+- Le labyrinthe est relié pour que rien d'autre que la salle du boss ne soit coupé par sa fermeture.
+- Affichage : stèle avec rune (pâle, puis à la couleur du donjon), compteur « Sceaux n / N » en haut, sceaux sur la mini-carte.

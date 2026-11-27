@@ -117,6 +117,10 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 - `docs/design/donjons.md`. Entrance `W.gate` at the centre of each Ether-bridge island (`buildIsle`); its rarity (`DG`, item colours) is rolled per arrival
   (`Sim.dg`, from the save in solo: `opts.dg`). Entering = travel to isle `{ k: 'donjon', s, r, b, f }` (`buildDungeon`: maze of n×n rooms, 2-tile corridors,
   boss in the farthest 2×2 room, elites in far dead ends, spike traps, torches, crystals). Exit portal at the start, victory portal after the boss.
+  Sizes 7×7 → 20×20 rooms (`DG[].size`); maps wider than 56 tiles get their own `MW`/`MH` (`DW` in `buildDungeon`), so always use `W.MW`.
+  Seals (`DG[].seals`, 2–5): `W.dg.seals` in spread-out far dead ends, each guarded by an elite (`g` = spawn index); the boss room's
+  entrance tiles (`W.dg.door`) are blocked by `W.dg.shut` (checked in `W.walkable`) until `Sim.touchSeal` has lit them all
+  (events `seal`, `dgopen`; `publicState.sl` bitmask → client `SEALS`). The maze is re-linked so nothing but the boss room is cut off.
 - Save fields `dg`, `ttl`, `tt`; `arr: 2` respawns in front of the gate. Dungeon mobs never respawn; death respawns at the dungeon start.
 - Rendering: walls are terrain height 3 (`DG_STONE` per rarity), walls in front of the hero are drawn translucent, darkness is a cached dithered radial canvas.
 

@@ -246,6 +246,55 @@ function drawEntity(e, ox, oy) {
       g.drawImage(img, e.side === 'x' ? sx + 2 : sx - 9, sy - 22);
       return;
     }
+    case 'seal': {
+      // sceau du donjon : stèle sur un socle ; éteinte (rune pâle qui palpite) ou allumée (rune et halo à la couleur du donjon)
+      const lit = SEALS & (1 << e.k),
+        col = lit ? DGN.c : '#c8c0e8',
+        pu = lit ? 0.8 + 0.2 * Math.sin(time * 4 + e.k) : 0.45 + 0.3 * Math.sin(time * 2.5 + e.k);
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = lit ? 0.7 * pu : 0.3 * pu;
+      g.drawImage(glowOf(lit ? DGN.c : '#a090ff'), sx - 20, sy - 40, 40, 40);
+      g.globalCompositeOperation = 'source-over';
+      g.globalAlpha = 1;
+      g.drawImage(SHADOW, sx - 10, sy - 3, 20, 6);
+      g.fillStyle = '#3a3048';
+      g.fillRect(sx - 8, sy - 4, 16, 4);
+      g.fillStyle = '#7a7090';
+      g.fillRect(sx - 8, sy - 5, 16, 1);
+      g.fillStyle = '#2a2236';
+      g.fillRect(sx - 5, sy - 28, 10, 24);
+      g.fillStyle = '#5e5474';
+      g.fillRect(sx - 4, sy - 29, 8, 24);
+      g.fillStyle = '#8a80a4';
+      g.fillRect(sx - 4, sy - 29, 2, 24);
+      g.fillRect(sx - 4, sy - 29, 8, 1);
+      g.globalAlpha = pu;
+      g.fillStyle = col;
+      g.fillRect(sx - 1, sy - 26, 2, 1);
+      g.fillRect(sx - 2, sy - 24, 4, 1);
+      g.fillRect(sx - 1, sy - 22, 2, 5);
+      g.fillRect(sx - 3, sy - 16, 6, 1);
+      g.fillRect(sx - 1, sy - 14, 2, 2);
+      g.globalAlpha = 1;
+      if (!lit && Math.hypot(me.x - e.x, me.y - e.y) < 5) labels.push({ x: sx, y: sy - 32, t: 'Sceau', c: '#c8c0d8' });
+      return;
+    }
+    case 'sdoor': {
+      // barrière de la salle du boss : rideau de lumière tant que les sceaux ne sont pas tous activés
+      if (!W.dg.shut.size) return;
+      g.globalCompositeOperation = 'lighter';
+      for (let k = -1; k <= 1; k++) {
+        const a = 0.25 + 0.2 * Math.sin(time * 5 + e.ph + k * 1.7);
+        g.globalAlpha = a;
+        g.fillStyle = DGN.c;
+        g.fillRect(sx + k * 6, sy - 26, 1, 26);
+        g.globalAlpha = a * 0.5;
+        g.fillRect(sx + k * 6 - 1, sy - 26, 3, 26);
+      }
+      g.globalAlpha = 1;
+      g.globalCompositeOperation = 'source-over';
+      return;
+    }
     case 'dexit': {
       if (mobs[W.dg.bossK].alive) return;
       const img = e.frames[Math.floor(time * 5) % 4];

@@ -264,6 +264,10 @@ function onMsg(m) {
     simT0 = time;
   }
   ISLE_DG = m.dg || null;
+  if (DGN && m.sl != null) {
+    SEALS = m.sl;
+    if (SEALS === (1 << W.dg.seals.length) - 1) W.dg.shut.clear(); // la salle du boss est ouverte
+  }
   if (m.cp) CORPSES = m.cp.map(([id, x, y, n, name, left]) => ({ kind: 'corpse', id, x, y, z: W.hAt(x, y), n, name, left }));
   for (const ev of m.ev || []) handleEvent(ev);
 }
@@ -531,6 +535,21 @@ function handleEvent(ev) {
       if (mb) floatAt(mb, ev.fx === 'burn' ? 'Insensible au feu' : 'Insensible au froid', '#c8c0d8');
       break;
     }
+    case 'seal': {
+      const o = W.dg.seals[ev.k],
+        pos = { x: o.x, y: o.y, z: 0 };
+      SEALS |= 1 << ev.k;
+      ring(pos, 2.2, DGN.c, 0.8);
+      burst(pos, DGN.c, 30, 50);
+      sys('Sceau activé : ' + ev.n + ' / ' + ev.of + '.' + (ev.n < ev.of ? ' Trouve les autres pour ouvrir la salle du boss.' : ''));
+      break;
+    }
+    case 'dgopen':
+      W.dg.shut.clear();
+      sys("Tous les sceaux brillent : la salle du boss s'ouvre !");
+      floatAt(me, 'La salle du boss est ouverte', DGN.c, true);
+      shake = Math.max(shake, 0.4);
+      break;
     case 'ttl':
       if (ev.id === myId) {
         sys('Nouveau titre : « ' + ev.n + ' » (affiché sous ton nom, à changer dans la page personnage).');

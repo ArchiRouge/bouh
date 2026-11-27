@@ -380,19 +380,20 @@
       rnd = mulberry32(I.s),
       n = T.size,
       N = 3 * n + 1,
-      o0 = Math.floor((MW - N) / 2),
-      MN = MW * MH;
+      DW = Math.max(MW, N + 6), // les grands donjons débordent de la carte normale (56 cases)
+      o0 = Math.floor((DW - N) / 2),
+      MN = DW * DW;
     const TY = new Uint8Array(MN).fill(3),
       HT = new Uint8Array(MN).fill(3),
       SOL = new Uint8Array(MN).fill(1);
-    const idx = (i, j) => j * MW + i,
-      inb = (i, j) => i >= 0 && j >= 0 && i < MW && j < MH;
+    const idx = (i, j) => j * DW + i,
+      inb = (i, j) => i >= 0 && j >= 0 && i < DW && j < DW;
     const floor = (i, j) => {
       SOL[idx(i, j)] = 0;
       HT[idx(i, j)] = 0;
     };
-    for (let j = 0; j < MH; j++)
-      for (let i = 0; i < MW; i++)
+    for (let j = 0; j < DW; j++)
+      for (let i = 0; i < DW; i++)
         if (i < o0 || j < o0 || i >= o0 + N || j >= o0 + N) {
           TY[idx(i, j)] = 0;
           HT[idx(i, j)] = 0;
@@ -463,6 +464,53 @@
       by = Math.min(far[1], n - 3);
     for (let j = T0(by); j <= T0(by) + 4; j++) for (let i = T0(bx); i <= T0(bx) + 4; i++) floor(i, j);
     const inBoss = (cx, cy) => cx >= bx && cx <= bx + 1 && cy >= by && cy <= by + 1;
+    // la salle du boss sera fermée : tout le reste doit rester joignable sans la traverser (sceaux compris)
+    for (;;) {
+      const ok = new Uint8Array(n * n),
+        q2 = [start];
+      ok[cid(...start)] = 1;
+      for (let h = 0; h < q2.length; h++)
+        for (const [x, y] of nbs(...q2[h]))
+          if (!ok[cid(x, y)] && !inBoss(x, y)) {
+            ok[cid(x, y)] = 1;
+            q2.push([x, y]);
+          }
+      let fixed = false;
+      for (let c = 0; c < n * n && !fixed; c++) {
+        const cx = c % n,
+          cy = (c / n) | 0;
+        if (ok[c] || inBoss(cx, cy)) continue;
+        for (const [a, b2] of ADJ) {
+          const x = cx + a,
+            y = cy + b2;
+          if (inC(x, y) && ok[cid(x, y)]) {
+            join(cx, cy, x, y);
+            fixed = true;
+            break;
+          }
+        }
+      }
+      if (!fixed) break;
+    }
+    // distances sans passer par la salle du boss (pour placer sceaux et élites au plus loin)
+    dist.fill(-1);
+    dist[cid(...start)] = 0;
+    for (let h = 0, q3 = [start]; h < q3.length; h++)
+      for (const [x, y] of nbs(...q3[h]))
+        if (dist[cid(x, y)] < 0 && !inBoss(x, y)) {
+          dist[cid(x, y)] = dist[cid(...q3[h])] + 1;
+          q3.push([x, y]);
+        }
+    // portes de la salle du boss : les cases de passage qui y mènent, fermées tant que les sceaux ne sont pas tous activés
+    const door = [],
+      B0 = T0(bx),
+      C0 = T0(by);
+    for (let j = C0 - 1; j <= C0 + 5; j++)
+      for (let i = B0 - 1; i <= B0 + 5; i++) {
+        const ring = i < B0 || j < C0 || i > B0 + 4 || j > C0 + 4;
+        if (ring && (i < B0 || i > B0 + 4) !== (j < C0 || j > C0 + 4) && !SOL[idx(i, j)]) door.push(idx(i, j));
+      }
+    const shut = new Set(door);
     const spawn = { x: T0(start[0]) + 1, y: T0(start[1]) + 0.4 },
       portal = { x: T0(start[0]) + 1, y: T0(start[1]) + 1.7 };
     const spawns = [],
@@ -477,12 +525,44 @@
     for (let cy = 0; cy < n; cy++)
       for (let cx = 0; cx < n; cx++) if (nbs(cx, cy).length === 1 && dist[cid(cx, cy)] > 1 && !inBoss(cx, cy)) ends.push([cx, cy]);
     ends.sort((a, b) => dist[cid(...b)] - dist[cid(...a)]);
-    for (const [cx, cy] of ends.slice(0, T.elite)) put(T.mobs[Math.floor(rnd() * T.mobs.length)], cx, cy, { elite: 1 });
+    // sceaux : au fond des culs-de-sac les plus lointains, chacun gardé par un élite ; puis les élites en plus
+    if (ends.length < T.seals) {
+      const more = [];
+      for (let i = 0; i < n * n; i++) {
+        const c = [i % n, (i / n) | 0];
+        if (dist[i] > 1 && !inBoss(...c) && !ends.some(e => e[0] === c[0] && e[1] === c[1])) more.push(c);
+      }
+      more.sort((a, b) => dist[cid(...b)] - dist[cid(...a)]);
+      ends.push(...more.slice(0, T.seals - ends.length));
+    }
+    // sceaux éparpillés : parmi les culs-de-sac lointains, chacun le plus loin possible des autres et de la salle du boss
+    const pool = ends.slice(0, Math.max(T.seals, Math.ceil(ends.length * 0.6))),
+      pick = [],
+      far2 = (c, o) => Math.abs(c[0] - o[0]) + Math.abs(c[1] - o[1]);
+    while (pick.length < T.seals && pool.length) {
+      let bi = 0,
+        bs = -1;
+      pool.forEach((c, k) => {
+        const sc = Math.min(far2(c, [bx + 0.5, by + 0.5]), ...pick.map(o => far2(c, o))) + dist[cid(...c)] * 0.25;
+        if (sc > bs) {
+          bs = sc;
+          bi = k;
+        }
+      });
+      pick.push(pool.splice(bi, 1)[0]);
+    }
+    ends.splice(0, ends.length, ...pick, ...ends.filter(c => !pick.includes(c)));
+    const seals = [];
+    for (const [cx, cy] of ends.slice(0, T.seals)) {
+      seals.push({ x: T0(cx) + 1, y: T0(cy) + 1, g: spawns.length });
+      put(T.mobs[Math.floor(rnd() * T.mobs.length)], cx, cy, { elite: 1 });
+    }
+    for (const [cx, cy] of ends.slice(T.seals, T.seals + T.elite)) put(T.mobs[Math.floor(rnd() * T.mobs.length)], cx, cy, { elite: 1 });
     for (let cy = 0; cy < n; cy++)
       for (let cx = 0; cx < n; cx++) {
         const c0 = cid(cx, cy);
         if (used.has(c0) || dist[c0] < 2 || inBoss(cx, cy)) continue;
-        if (rnd() < 0.55) put(T.mobs[Math.floor(rnd() * T.mobs.length)], cx, cy);
+        if (rnd() < T.dens) put(T.mobs[Math.floor(rnd() * T.mobs.length)], cx, cy);
       }
     const B = DG_BOSSES[I.b],
       bossK = spawns.length;
@@ -509,8 +589,8 @@
     // torches sur les faces visibles des murs, cristaux aux carrefours
     const torches = [],
       crystals = [];
-    for (let j = 1; j < MH - 1; j++)
-      for (let i = 1; i < MW - 1; i++) {
+    for (let j = 1; j < DW - 1; j++)
+      for (let i = 1; i < DW - 1; i++) {
         const k = idx(i, j);
         if (!SOL[k]) continue;
         const fx = !SOL[idx(i + 1, j)],
@@ -533,10 +613,10 @@
       return inb(i, j) ? HT[idx(i, j)] : 0;
     };
     return {
-      MW,
-      MH,
-      CX,
-      CY,
+      MW: DW,
+      MH: DW,
+      CX: DW / 2,
+      CY: DW / 2,
       TY,
       HT,
       SOL,
@@ -545,8 +625,8 @@
       nodes: [],
       idx,
       inb,
-      tdist: (i, j) => Math.hypot(i + 0.5 - CX, j + 0.5 - CY),
-      walkable: (i, j) => inb(i, j) && !SOL[idx(i, j)],
+      tdist: (i, j) => Math.hypot(i + 0.5 - DW / 2, j + 0.5 - DW / 2),
+      walkable: (i, j) => inb(i, j) && !SOL[idx(i, j)] && !shut.has(idx(i, j)),
       hAt,
       zoneOf: () => T.name,
       isle: 'donjon',
@@ -556,7 +636,7 @@
       chest,
       seed: I.s,
       tier: I.r,
-      dg: { portal, exit, bossK, traps, torches, crystals, o0, N, n, boss: B }
+      dg: { portal, exit, bossK, traps, torches, crystals, o0, N, n, boss: B, seals, door, shut }
     };
   }
   function rollIsle(cur) {
@@ -1126,6 +1206,8 @@
       // îles : le donjon du centre (tiré à l'arrivée, ou repris de la sauvegarde en solo) ; donjon : pièges
       this.dg = W.gate ? cleanDg(opts && opts.dg) || rollDungeon() : null;
       this.traps = DGN ? new Map(W.dg.traps.map(o => [W.idx(o.i, o.j), o.ph])) : null;
+      this.seals = DGN ? W.dg.seals.map(() => 0) : null; // 1 = sceau activé
+      this.sealMsg = -99;
       this.fx = (ISLES[W.isle] || {}).fx || null;
       this.chestOpen = false;
       this.spawn = W.spawn || SPAWN;
@@ -2282,6 +2364,27 @@
           mm.returning = true;
         }
     }
+    // donjon : un héros qui touche un sceau l'active si son gardien est vaincu ; tous activés = la salle du boss s'ouvre
+    touchSeal(p) {
+      const D = this.W.dg;
+      D.seals.forEach((o, k) => {
+        if (this.seals[k] || Math.hypot(p.x - o.x, p.y - o.y) > 1.1) return;
+        if (this.mobs[o.g] && this.mobs[o.g].alive) {
+          if (this.t - this.sealMsg > 4) {
+            this.sealMsg = this.t;
+            this.ev({ e: 'msg', id: p.id, t: 'Ce sceau est protégé : vaincs son gardien.' });
+          }
+          return;
+        }
+        this.seals[k] = 1;
+        const lit = this.seals.filter(Boolean).length;
+        this.ev({ e: 'seal', k, n: lit, of: this.seals.length });
+        if (lit === this.seals.length) {
+          D.shut.clear();
+          this.ev({ e: 'dgopen' });
+        }
+      });
+    }
     step(dt) {
       this.t += dt;
       const W = this.W;
@@ -2305,6 +2408,7 @@
           }
           continue;
         }
+        if (this.seals) this.touchSeal(p);
         if (this.traps && !(p.trapT > this.t)) {
           const ph = this.traps.get(W.idx(Math.floor(p.x), Math.floor(p.y)));
           if (ph != null && trapUp(this.t, ph)) {
@@ -2539,7 +2643,8 @@
         c: this.chestOpen ? 1 : 0,
         cp: this.corpses.map(o => [o.id, +o.x.toFixed(2), +o.y.toFixed(2), o.items.length, o.name, Math.ceil(o.until - this.t)]),
         tm: +this.t.toFixed(2),
-        dg: this.dg ? [this.dg.r, this.dg.b, this.dg.done] : 0
+        dg: this.dg ? [this.dg.r, this.dg.b, this.dg.done] : 0,
+        sl: this.seals ? this.seals.reduce((a, v, k) => a | (v << k), 0) : 0
       };
     }
     meState(id) {
