@@ -130,7 +130,9 @@ an App Store Connect app record with the same bundle id, and the 4 secrets liste
 ## Rendering & smoothness
 - The world canvas is drawn at `RQ` sub-pixels per game pixel (starts at the full screen scale `S`) so the camera and moving
   characters glide at screen-pixel precision; static art stays on the game-pixel grid. `adaptQuality()` halves `RQ` if the
-  average frame time exceeds 20 ms (full → half → 1). Tapping the minimap shows `fps` and `Q<RQ>`.
+  average frame time exceeds 20 ms and the frame's own work (update + render) exceeds 12 ms (full → half → 1); iOS Low Power
+  Mode caps at 30 fps without the game being slow, so frame time alone must not trigger it. `charP()` = `3 / S` never depends
+  on `RQ` (it used to, and characters grew when quality dropped); below full quality characters are drawn smoothed. Tapping the minimap shows `fps` and `Q<RQ>`.
 - Camera distance: `ZOOM` (0 close, 1 normal = default, 2 far; `localStorage.etheria_zoom`, magnifier button / mouse wheel)
   lowers the integer screen scale `S` by one step per level, so the world stays pixel-sharp.
 - Interface size: HUD canvas scale `SU = round(pm / 279)` and `.card { zoom: .7 }` for the HTML panels (30 % smaller than the original).

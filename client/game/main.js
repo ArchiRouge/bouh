@@ -156,26 +156,33 @@ let perfN = 0,
   fpsN = 0,
   fpsT = 0,
   fpsShown = 0;
-function adaptQuality(ms) {
+// ms : temps entre deux images ; work : temps passé à calculer et dessiner l'image précédente. Les deux doivent être
+// élevés : en mode économie d'énergie, iOS limite à 30 images/s sans que le jeu soit lent (ne pas baisser la qualité pour ça)
+let perfW = 0;
+function adaptQuality(ms, work) {
   if (mode !== 'play' || document.hidden || ms > 250) return;
   perfN++;
   perfT += ms;
+  perfW += work;
   if (perfT < 2000) return;
-  const avg = perfT / perfN;
+  const avg = perfT / perfN,
+    avgW = perfW / perfN;
   perfN = 0;
   perfT = 0;
+  perfW = 0;
   if (perfGrace > 0) {
     perfGrace--;
     return;
   }
-  if (avg > 20 && RQ > 1) {
+  if (avg > 20 && avgW > 12 && RQ > 1) {
     RQ = Math.max(1, Math.floor(RQ / 2));
     resize();
     perfGrace = 1;
   }
 }
+let lastWork = 0;
 function loop(now) {
-  adaptQuality(now - last);
+  adaptQuality(now - last, lastWork);
   fpsN++;
   fpsT += now - last;
   if (fpsT >= 500) {
@@ -185,11 +192,13 @@ function loop(now) {
   }
   const dt = clamp((now - last) / 1000, 0, 0.05);
   last = now;
+  const t0 = performance.now();
   update(dt);
   render();
   drawUI();
   if (mode !== 'play') drawPreview();
   else drawCharPreview();
+  lastWork = performance.now() - t0;
   requestAnimationFrame(loop);
 }
 /* ---------- sauvegarde dans le compte Claude (survit aux mises à jour du jeu) ---------- */

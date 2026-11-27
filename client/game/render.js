@@ -274,10 +274,19 @@ function drawEntity(e, ox, oy) {
 }
 // ck = même échelle exprimée comme l'ancien facteur (~1,2) pour les effets placés autour du héros.
 // 3 pixels d'écran par pixel de personnage quel que soit le recul de la caméra : le héros et son armure restent lisibles
+// (taille fixe : elle ne dépend pas de la qualité adaptative RQ, sinon le héros grossissait quand la qualité baissait)
 function charP() {
-  return Math.max(1, Math.round((3 * RQ) / S)) / RQ;
+  return 3 / S;
 }
+// qualité réduite : 3 pixels d'écran ne tombent plus sur un nombre entier de pixels du canevas ; on lisse plutôt que de
+// perdre ou doubler des pixels du personnage
 function drawChar(e, sx, sy) {
+  const smooth = ((3 * RQ) / S) % 1 !== 0;
+  if (smooth) g.imageSmoothingEnabled = true;
+  drawChar0(e, sx, sy);
+  if (smooth) g.imageSmoothingEnabled = false;
+}
+function drawChar0(e, sx, sy) {
   if (!e.set) return;
   const p = charP(),
     ck = p * 2,
